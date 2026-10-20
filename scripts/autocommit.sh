@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_DIR="${1:-$(cd "$(dirname "$0")/.." && pwd)}"
 cd "${REPO_DIR}"
 
 # Check for modified or untracked files

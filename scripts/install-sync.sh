@@ -2,10 +2,15 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+BIN_DIR="${HOME}/.facelock/bin"
 PLIST="${HOME}/Library/LaunchAgents/io.github.facelock.sync.plist"
 
 mkdir -p "${HOME}/Library/LaunchAgents"
+mkdir -p "${BIN_DIR}"
 mkdir -p "${HOME}/.facelock"
+
+cp "${REPO_DIR}/scripts/"*.sh "${BIN_DIR}/"
+chmod +x "${BIN_DIR}/"*.sh
 
 cat << EOF > "${PLIST}"
 <?xml version="1.0" encoding="UTF-8"?>
@@ -16,9 +21,17 @@ cat << EOF > "${PLIST}"
     <string>io.github.facelock.sync</string>
     <key>ProgramArguments</key>
     <array>
-        <string>${REPO_DIR}/scripts/sync-daemon.sh</string>
+        <string>/bin/bash</string>
+        <string>${BIN_DIR}/sync-daemon.sh</string>
         <string>120</string>
     </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>FACE_LOCK_REPO</key>
+        <string>${REPO_DIR}</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
@@ -33,4 +46,4 @@ EOF
 
 launchctl unload "${PLIST}" 2>/dev/null || true
 launchctl load "${PLIST}"
-echo "✓ Background auto-sync LaunchAgent active (checks every 2 minutes)"
+echo "✓ Background auto-sync daemon installed and active (monitoring every 2 minutes)!"
