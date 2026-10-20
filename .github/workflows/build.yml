@@ -38,7 +38,7 @@ jobs:
           zip -r FaceLock-macOS-arm64.zip FaceLock.app
 
       - name: Upload Build Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: FaceLock-macOS-arm64
           path: build/FaceLock-macOS-arm64.zip
