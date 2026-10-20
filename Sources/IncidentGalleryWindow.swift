@@ -232,6 +232,16 @@ public final class IncidentGalleryController: NSObject {
     }
 
     @objc private func clearAllIncidents() {
+        let alert = NSAlert()
+        alert.messageText = "Очистить журнал инцидентов?"
+        alert.informativeText = "Все сохранённые фотографии посторонних будут безвозвратно удалены."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Удалить всё")
+        alert.addButton(withTitle: "Отмена")
+
+        let response = alert.runModal()
+        guard response == .alertFirstButtonReturn else { return }
+
         let home = FileManager.default.homeDirectoryForCurrentUser
         let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
         if let files = try? FileManager.default.contentsOfDirectory(atPath: dir.path) {

@@ -19,10 +19,13 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --enroll            Launch camera face enrollment wizard
               --settings          Open configuration and alert settings
               --gallery           Open intruder incident log gallery
+              --incidents [--json] List logged intruder incident captures
               --lock, --test-lock Trigger immediate fullscreen lock screen
               --toggle            Toggle protection between ACTIVE and PAUSED
+              --pause [mins]      Pause protection for N minutes (default: 15)
+              --resume            Resume protection immediately
               --diagnostics, -d   Run complete biometric & hardware system diagnostics
-              --status            Print current daemon status and vector metrics
+              --status [--json]   Print current daemon status and vector metrics
               --reset             Purge all enrolled facial vectors
               --update            Check GitHub for updates, pull, recompile & reload
               --version, -v       Print version information
@@ -41,17 +44,97 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(0)
         }
 
+        // Inter-process command dispatching if instance is already running
+        let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: "io.github.facelock")
+            .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
+        let isAlreadyRunning = !runningApps.isEmpty
+
         if args.contains("--status") {
             let enrolledCount = Config.shared.loadEnrolledVectors().count
+            if args.contains("--json") {
+                let statusDict: [String: Any] = [
+                    "version": "1.0.0",
+                    "daemon": isAlreadyRunning ? "running" : "stopped",
+                    "shieldState": Config.shared.isEnabled ? "active" : "paused",
+                    "protectionMode": Config.shared.protectionMode,
+                    "enrolledTemplates": enrolledCount,
+                    "similarityThreshold": Double(Config.shared.similarityThreshold),
+                    "walkAwayLockEnabled": Config.shared.walkAwayLockEnabled,
+                    "walkAwayIdleSeconds": Config.shared.walkAwayIdleSeconds,
+                    "telegramEnabled": Config.shared.telegramEnabled
+                ]
+                if let jsonData = try? JSONSerialization.data(withJSONObject: statusDict, options: [.prettyPrinted, .sortedKeys]),
+                   let jsonStr = String(data: jsonData, encoding: .utf8) {
+                    print(jsonStr)
+                }
+                exit(0)
+            }
             print("""
             FaceLock Status:
-              Daemon: \(Config.shared.isEnabled ? "ACTIVE" : "PAUSED")
+              Daemon: \(isAlreadyRunning ? "RUNNING" : "STOPPED")
+              Shield: \(Config.shared.isEnabled ? "ACTIVE" : "PAUSED")
               Mode: \(Config.shared.protectionMode)
               Enrolled Templates: \(enrolledCount) (\(enrolledCount > 0 ? "Strict Neural Biometrics" : "Presence Detection Fallback"))
               Decision Threshold: \(Config.shared.similarityThreshold)
               Walk-Away Auto Lock: \(Config.shared.walkAwayLockEnabled ? "Enabled (\(Int(Config.shared.walkAwayIdleSeconds))s)" : "Disabled")
               Telegram Notifications: \(Config.shared.telegramEnabled ? "Configured" : "Disabled")
             """)
+            exit(0)
+        }
+
+        if args.contains("--incidents") {
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
+            let files = ((try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? [])
+                .filter { $0.hasSuffix(".jpg") || $0.hasSuffix(".jpeg") }
+                .sorted(by: >)
+
+            var totalBytes: UInt64 = 0
+            var incidentsData: [[String: Any]] = []
+
+            for f in files {
+                let p = dir.appendingPathComponent(f).path
+                var sz: UInt64 = 0
+                if let attrs = try? FileManager.default.attributesOfItem(atPath: p),
+                   let s = attrs[.size] as? UInt64 {
+                    sz = s
+                    totalBytes += s
+                }
+                incidentsData.append([
+                    "filename": f,
+                    "path": p,
+                    "sizeBytes": sz
+                ])
+            }
+
+            if args.contains("--json") {
+                let outputDict: [String: Any] = [
+                    "totalCaptures": files.count,
+                    "totalSizeBytes": totalBytes,
+                    "directory": dir.path,
+                    "incidents": incidentsData
+                ]
+                if let d = try? JSONSerialization.data(withJSONObject: outputDict, options: [.prettyPrinted, .sortedKeys]),
+                   let s = String(data: d, encoding: .utf8) {
+                    print(s)
+                }
+                exit(0)
+            }
+
+            let sizeMB = Double(totalBytes) / (1024.0 * 1024.0)
+            print("""
+            FaceLock Intruder Incident Log:
+              Total Captures: \(files.count) (\(String(format: "%.2f", sizeMB)) MB)
+              Storage Directory: \(dir.path)
+            """)
+            if files.isEmpty {
+                print("  ✓ No intruder events logged.")
+            } else {
+                print("  Recent Captures (latest \(min(5, files.count))):")
+                for f in files.prefix(5) {
+                    print("    - \(f)")
+                }
+            }
             exit(0)
         }
 
@@ -76,10 +159,43 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             print("[FaceLock] Cleared all enrolled faces.")
         }
 
-        // Inter-process command dispatching if instance is already running
-        let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: "io.github.facelock")
-            .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
-        let isAlreadyRunning = !runningApps.isEmpty
+        if let pauseIdx = args.firstIndex(of: "--pause") {
+            var mins = 15.0
+            if pauseIdx + 1 < args.count, let val = Double(args[pauseIdx + 1]) {
+                mins = val
+            }
+            if isAlreadyRunning {
+                DistributedNotificationCenter.default().postNotificationName(
+                    AppDelegate.commandNotificationName,
+                    object: nil,
+                    userInfo: ["action": "pause", "minutes": mins],
+                    deliverImmediately: true
+                )
+                print("[FaceLock] Dispatched pause command (\(Int(mins)) min) to running instance.")
+            } else {
+                Config.shared.isEnabled = false
+                Config.shared.save()
+                print("[FaceLock] Protection paused offline.")
+            }
+            exit(0)
+        }
+
+        if args.contains("--resume") || args.contains("--unpause") {
+            if isAlreadyRunning {
+                DistributedNotificationCenter.default().postNotificationName(
+                    AppDelegate.commandNotificationName,
+                    object: nil,
+                    userInfo: ["action": "resume"],
+                    deliverImmediately: true
+                )
+                print("[FaceLock] Dispatched resume command to running instance.")
+            } else {
+                Config.shared.isEnabled = true
+                Config.shared.save()
+                print("[FaceLock] Protection resumed: ACTIVE 🛡️")
+            }
+            exit(0)
+        }
 
         if isAlreadyRunning {
             if args.contains("--toggle") {
@@ -204,6 +320,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 LockScreenController.shared.showLock()
             case "toggle":
                 StatusBarController.shared.toggleEnabled()
+            case "pause":
+                let minutes = notif.userInfo?["minutes"] as? Double ?? 15.0
+                StatusBarController.shared.pauseFor(minutes: minutes)
+            case "resume":
+                StatusBarController.shared.resumeProtection()
             default:
                 break
             }

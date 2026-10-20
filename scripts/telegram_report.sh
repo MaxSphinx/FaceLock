@@ -52,12 +52,37 @@ except Exception:
 ")
 
 # Check status of PRs to awesome catalogs safely
-PR_1712=$(gh pr view 1712 --repo serhii-londar/open-source-mac-os-apps --json state --jq .state 2>/dev/null || true)
-PR_1712="${PR_1712:-PENDING}"
-PR_1319=$(gh pr view 1319 --repo iCHAIT/awesome-macOS --json state --jq .state 2>/dev/null || true)
-PR_1319="${PR_1319:-PENDING}"
-PR_2007=$(gh pr view 2007 --repo matteocrippa/awesome-swift --json state --jq .state 2>/dev/null || true)
-PR_2007="${PR_2007:-PENDING}"
+format_pr_status() {
+    local repo="$1"
+    local pr_num="$2"
+    local raw
+    raw=$(gh pr view "$pr_num" --repo "$repo" --json state,mergeable 2>/dev/null || echo "{}")
+    python3 -c "import sys, json
+try:
+    d = json.loads('''$raw''')
+    s = d.get('state', 'PENDING')
+    m = d.get('mergeable', '')
+    if s == 'MERGED':
+        print('MERGED 🎉')
+    elif s == 'OPEN':
+        if m == 'CONFLICTING':
+            print('OPEN ⚠️ (конфликт)')
+        elif m == 'MERGEABLE':
+            print('OPEN ⏳ (готов к мерджу)')
+        else:
+            print('OPEN ⏳ (на ревью)')
+    elif s == 'CLOSED':
+        print('CLOSED 🛑')
+    else:
+        print(s)
+except Exception:
+    print('PENDING')
+" 2>/dev/null || echo "PENDING"
+}
+
+PR_1712=$(format_pr_status "serhii-londar/open-source-mac-os-apps" 1712)
+PR_1319=$(format_pr_status "iCHAIT/awesome-macOS" 1319)
+PR_2007=$(format_pr_status "matteocrippa/awesome-swift" 2007)
 
 # Latest commit info
 if [[ -d "$REPO_DIR/.git" ]]; then

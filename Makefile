@@ -62,6 +62,19 @@ gallery: build
 status: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --status
 
+incidents: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents
+
+test: build
+	@echo "==> Running CLI verification tests..."
+	@build/FaceLock.app/Contents/MacOS/FaceLock --help > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --version > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --status > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --status --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents --json > /dev/null
+	@echo "✓ All CLI tests passed!"
+
 diagnostics: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --diagnostics
 

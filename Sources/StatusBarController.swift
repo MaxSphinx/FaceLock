@@ -168,19 +168,30 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         toggleEnabled()
     }
 
-    @objc private func pauseFor15Min() {
+    public func pauseFor(minutes: Double) {
         Config.shared.isEnabled = false
         Config.shared.save()
         updateIcon()
         HUDController.shared.showToggleStatus(isEnabled: false)
 
         pauseTimer?.invalidate()
-        pauseTimer = Timer.scheduledTimer(withTimeInterval: 15 * 60, repeats: false) { [weak self] _ in
-            Config.shared.isEnabled = true
-            Config.shared.save()
-            self?.updateIcon()
-            HUDController.shared.showToggleStatus(isEnabled: true)
+        pauseTimer = Timer.scheduledTimer(withTimeInterval: max(1.0, minutes * 60), repeats: false) { [weak self] _ in
+            self?.resumeProtection()
         }
+    }
+
+    public func resumeProtection() {
+        pauseTimer?.invalidate()
+        pauseTimer = nil
+        Config.shared.isEnabled = true
+        Config.shared.save()
+        updateIcon()
+        HUDController.shared.showToggleStatus(isEnabled: true)
+        NSSound(named: "Tink")?.play()
+    }
+
+    @objc private func pauseFor15Min() {
+        pauseFor(minutes: 15)
     }
 
     @objc private func openEnrollment() {
