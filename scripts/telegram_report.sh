@@ -60,7 +60,13 @@ PR_2007=$(gh pr view 2007 --repo matteocrippa/awesome-swift --json state --jq .s
 PR_2007="${PR_2007:-PENDING}"
 
 # Latest commit info
-LATEST_COMMIT=$(git log -1 --pretty=format:"%h - %s" 2>/dev/null || echo "N/A")
+if [[ -d "$REPO_DIR/.git" ]]; then
+    LATEST_COMMIT=$(git -C "$REPO_DIR" log -1 --pretty=format:"%h - %s" 2>/dev/null || echo "N/A")
+elif [[ -d "$HOME/Developer/FaceLock/.git" ]]; then
+    LATEST_COMMIT=$(git -C "$HOME/Developer/FaceLock" log -1 --pretty=format:"%h - %s" 2>/dev/null || echo "N/A")
+else
+    LATEST_COMMIT=$(gh api "repos/$REPO/commits/main" --jq '"\(.sha[0:7]) - \(.commit.message | split("\n")[0])"' 2>/dev/null || echo "N/A")
+fi
 DATE_NOW=$(date "+%Y-%m-%d %H:%M:%S")
 
 CUSTOM_MSG="${1:-}"
