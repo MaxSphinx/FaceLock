@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock settings gallery status install install-cli uninstall stop clean help
+.PHONY: all build run enroll test-lock settings gallery status install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -8,17 +8,22 @@ all: build
 help:
 	@echo "FaceLock Build & Management"
 	@echo ""
-	@echo "  make build        - Compile Swift binary and sign app bundle"
-	@echo "  make install      - Install to /Applications/FaceLock.app and setup CLI"
-	@echo "  make run          - Launch FaceLock background daemon"
-	@echo "  make enroll       - Launch face calibration wizard"
-	@echo "  make settings     - Open settings window"
-	@echo "  make gallery      - Open intruder incident log"
-	@echo "  make test-lock    - Trigger immediate fullscreen lock test"
-	@echo "  make status       - Display current protection & biometric status"
-	@echo "  make stop         - Terminate running FaceLock instance"
-	@echo "  make uninstall    - Remove application and CLI symlink"
-	@echo "  make clean        - Remove build artifacts"
+	@echo "  make build          - Compile Swift binary and sign app bundle"
+	@echo "  make install        - Install to /Applications/FaceLock.app and setup CLI"
+	@echo "  make update         - Pull updates from GitHub, recompile & hot-reload"
+	@echo "  make commit         - Auto-stage, commit with contextual message & push"
+	@echo "  make sync           - Run continuous auto-commit & auto-update daemon"
+	@echo "  make install-sync   - Install background auto-sync LaunchAgent daemon"
+	@echo "  make uninstall-sync - Remove background auto-sync daemon"
+	@echo "  make run            - Launch FaceLock background daemon"
+	@echo "  make enroll         - Launch face calibration wizard"
+	@echo "  make settings       - Open settings window"
+	@echo "  make gallery        - Open intruder incident log"
+	@echo "  make test-lock      - Trigger immediate fullscreen lock test"
+	@echo "  make status         - Display current protection & biometric status"
+	@echo "  make stop           - Terminate running FaceLock instance"
+	@echo "  make uninstall      - Remove application and CLI symlink"
+	@echo "  make clean          - Remove build artifacts"
 
 build:
 	@./build.sh
@@ -45,6 +50,26 @@ gallery: build
 
 status: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --status
+
+commit:
+	@./scripts/autocommit.sh
+
+update:
+	@./scripts/autoupdate.sh
+
+sync:
+	@./scripts/sync-daemon.sh
+
+install-sync:
+	@./scripts/install-sync.sh
+
+uninstall-sync:
+	@echo "Stopping background auto-sync LaunchAgent..."
+	@-launchctl unload $(HOME)/Library/LaunchAgents/io.github.facelock.sync.plist 2>/dev/null || true
+	@rm -f $(HOME)/Library/LaunchAgents/io.github.facelock.sync.plist
+	@echo "✓ Auto-sync LaunchAgent removed"
+	@rm -f $(HOME)/Library/LaunchAgents/io.github.facelock.sync.plist
+	@echo "✓ Auto-sync LaunchAgent removed"
 
 install: build install-cli
 	@echo "Installing FaceLock to /Applications..."

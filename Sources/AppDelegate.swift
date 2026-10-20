@@ -20,6 +20,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --test-lock    Trigger immediate fullscreen lock screen test
               --reset        Purge all enrolled facial vectors
               --status       Print current daemon status and vector metrics
+              --update       Check GitHub for updates, pull, recompile & reload
               --version, -v  Print version information
               --help, -h     Show this help guide
             """)
@@ -42,6 +43,22 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               Walk-Away Auto Lock: \(Config.shared.walkAwayLockEnabled ? "Enabled (\(Int(Config.shared.walkAwayIdleSeconds))s)" : "Disabled")
               Telegram Notifications: \(Config.shared.telegramEnabled ? "Configured" : "Disabled")
             """)
+            exit(0)
+        }
+
+        if args.contains("--update") {
+            let proc = Process()
+            proc.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+            proc.arguments = ["pull", "--rebase", "origin", "main"]
+            try? proc.run()
+            proc.waitUntilExit()
+
+            print("[FaceLock] Rebuilding latest binary...")
+            let buildProc = Process()
+            buildProc.executableURL = URL(fileURLWithPath: "/usr/bin/make")
+            buildProc.arguments = ["install"]
+            try? buildProc.run()
+            buildProc.waitUntilExit()
             exit(0)
         }
 
