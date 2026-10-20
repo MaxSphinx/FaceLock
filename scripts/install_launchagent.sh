@@ -4,11 +4,17 @@
 set -euo pipefail
 
 PLIST_PATH="$HOME/Library/LaunchAgents/io.github.facelock.maintainer.plist"
-SCRIPT_PATH="/Users/maksim/Documents/antigravity/kind-shannon/FaceLock/scripts/autonomous_worker.sh"
+SCRIPT_PATH="$HOME/.facelock/bin/autonomous_worker.sh"
 LOG_DIR="$HOME/.facelock/logs"
 
 mkdir -p "$LOG_DIR"
 mkdir -p "$HOME/Library/LaunchAgents"
+mkdir -p "$HOME/.facelock/bin"
+
+# Copy worker and reporter scripts to ~/.facelock/bin to avoid macOS ~/Documents TCC restriction
+cp -f /Users/maksim/Documents/antigravity/kind-shannon/FaceLock/scripts/autonomous_worker.sh "$HOME/.facelock/bin/"
+cp -f /Users/maksim/Documents/antigravity/kind-shannon/FaceLock/scripts/telegram_report.sh "$HOME/.facelock/bin/"
+chmod +x "$HOME/.facelock/bin"/*
 
 # Unload existing agent if running
 if launchctl list | grep -q "io.github.facelock.maintainer"; then
