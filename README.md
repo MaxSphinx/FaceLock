@@ -98,7 +98,7 @@ Built strictly in modern **Swift & native AppKit**, with **zero external package
 Open Terminal and paste:
 
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/MaxSphinx/FaceLock/main/install.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/MaxSphinx/FaceLock/main/scripts/install.sh)"
 ```
 
 ### Option 2: Pre-built Binary Download
