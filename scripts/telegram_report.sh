@@ -4,8 +4,10 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR/.."
+REPO_DIR="/Users/maksim/Documents/antigravity/kind-shannon/FaceLock"
+if [[ -d "$REPO_DIR" ]]; then
+    cd "$REPO_DIR"
+fi
 
 REPO="MaxSphinx/FaceLock"
 CONFIG_FILE="$HOME/.facelock/config.json"
