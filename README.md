@@ -98,7 +98,15 @@ Built strictly in modern **Swift & native AppKit**, with **zero external package
 
 ## Installation
 
-### Option 1: Quick One-Liner (Recommended)
+### Option 1: Homebrew Cask (Recommended)
+
+Install directly via the official Homebrew tap:
+
+```bash
+brew install --cask MaxSphinx/facelock/facelock
+```
+
+### Option 2: Quick One-Liner
 
 Open Terminal and paste:
 
@@ -106,13 +114,13 @@ Open Terminal and paste:
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/MaxSphinx/FaceLock/main/scripts/install.sh)"
 ```
 
-### Option 2: Pre-built Binary Download
+### Option 3: Pre-built Binary Download
 
 Download the signed archive directly from [**GitHub Releases**](https://github.com/MaxSphinx/FaceLock/releases):
 1. Download [`FaceLock-macOS-arm64.zip`](https://github.com/MaxSphinx/FaceLock/releases/latest).
 2. Extract and drag `FaceLock.app` into `/Applications/`.
 
-### Option 3: Build from Source
+### Option 4: Build from Source
 
 ```bash
 git clone https://github.com/MaxSphinx/FaceLock.git
