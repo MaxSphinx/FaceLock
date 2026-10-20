@@ -4,6 +4,8 @@
 
 set -euo pipefail
 
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
+
 REPO_DIR="/Users/maksim/Documents/antigravity/kind-shannon/FaceLock"
 INTERVAL_SECONDS="${1:-14400}" # Default: every 4 hours (14400s)
 

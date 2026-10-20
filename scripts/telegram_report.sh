@@ -4,6 +4,9 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR/.."
+
 REPO="MaxSphinx/FaceLock"
 CONFIG_FILE="$HOME/.facelock/config.json"
 
@@ -20,17 +23,38 @@ if [[ -f "$CONFIG_FILE" ]]; then
     fi
 fi
 
-# Fetch GitHub stats
+# Fetch GitHub stats safely
 echo "==> Fetching GitHub stats for $REPO..."
 REPO_JSON=$(gh api "repos/$REPO" 2>/dev/null || echo "{}")
-STARS=$(echo "$REPO_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin).get('stargazers_count', 'N/A'))")
-FORKS=$(echo "$REPO_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin).get('forks_count', 'N/A'))")
-OPEN_ISSUES=$(echo "$REPO_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin).get('open_issues_count', 'N/A'))")
+STARS=$(echo "$REPO_JSON" | python3 -c "import sys, json; 
+try:
+    d = json.load(sys.stdin)
+    print(d.get('stargazers_count', 'N/A'))
+except Exception:
+    print('N/A')
+")
+FORKS=$(echo "$REPO_JSON" | python3 -c "import sys, json; 
+try:
+    d = json.load(sys.stdin)
+    print(d.get('forks_count', 'N/A'))
+except Exception:
+    print('N/A')
+")
+OPEN_ISSUES=$(echo "$REPO_JSON" | python3 -c "import sys, json; 
+try:
+    d = json.load(sys.stdin)
+    print(d.get('open_issues_count', 'N/A'))
+except Exception:
+    print('N/A')
+")
 
-# Check status of PRs to awesome catalogs
-PR_1712=$(gh pr view 1712 --repo serhii-londar/open-source-mac-os-apps --json state --jq .state 2>/dev/null || echo "PENDING")
-PR_1319=$(gh pr view 1319 --repo iCHAIT/awesome-macOS --json state --jq .state 2>/dev/null || echo "PENDING")
-PR_2007=$(gh pr view 2007 --repo matteocrippa/awesome-swift --json state --jq .state 2>/dev/null || echo "PENDING")
+# Check status of PRs to awesome catalogs safely
+PR_1712=$(gh pr view 1712 --repo serhii-londar/open-source-mac-os-apps --json state --jq .state 2>/dev/null || true)
+PR_1712="${PR_1712:-PENDING}"
+PR_1319=$(gh pr view 1319 --repo iCHAIT/awesome-macOS --json state --jq .state 2>/dev/null || true)
+PR_1319="${PR_1319:-PENDING}"
+PR_2007=$(gh pr view 2007 --repo matteocrippa/awesome-swift --json state --jq .state 2>/dev/null || true)
+PR_2007="${PR_2007:-PENDING}"
 
 # Latest commit info
 LATEST_COMMIT=$(git log -1 --pretty=format:"%h - %s" 2>/dev/null || echo "N/A")
