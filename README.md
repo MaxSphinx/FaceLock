@@ -19,6 +19,11 @@
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License" />
 </p>
 
+<p align="center">
+  <img src="docs/screenshots/lockscreen_demo.png" width="49%" alt="FaceLock Lockscreen Demo" />
+  <img src="docs/screenshots/settings_demo.png" width="49%" alt="FaceLock Settings Demo" />
+</p>
+
 ---
 
 ## Overview
