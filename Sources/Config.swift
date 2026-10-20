@@ -4,7 +4,6 @@ import Vision
 public final class Config: Codable {
     public static let shared = Config.load()
 
-    // MARK: - Core Settings
     public var pin: String
     public var similarityThreshold: Float
     public var verificationTimeout: Double
@@ -15,19 +14,15 @@ public final class Config: Codable {
     public var autoTriggerTouchID: Bool
     public var ignoredBundleIdentifiers: [String]
 
-    // MARK: - Telegram Alerts
     public var telegramBotToken: String
     public var telegramChatId: String
     public var telegramEnabled: Bool
 
-    // MARK: - App Filtering
-    public var protectionMode: String // "all" or "selective"
+    public var protectionMode: String
     public var protectedBundleIdentifiers: [String]
 
-    // MARK: - Anti-Spoofing & Liveness
     public var livenessDetectionEnabled: Bool
 
-    // MARK: - Idle Walk-Away Detection
     public var walkAwayLockEnabled: Bool
     public var walkAwayIdleSeconds: Double
 
@@ -131,8 +126,6 @@ public final class Config: Codable {
             try? data.write(to: url)
         }
     }
-
-    // MARK: - Enrolled 128-D Faceprint Vectors
 
     public var hasEnrolledFace: Bool {
         return !loadEnrolledVectors().isEmpty

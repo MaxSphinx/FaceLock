@@ -4,7 +4,8 @@
 
 set -euo pipefail
 
-REPO_DIR="/Users/maksim/Documents/antigravity/kind-shannon/FaceLock"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="${REPO_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 if [[ -d "$REPO_DIR" ]]; then
     cd "$REPO_DIR"
 fi
@@ -65,7 +66,7 @@ DATE_NOW=$(date "+%Y-%m-%d %H:%M:%S")
 CUSTOM_MSG="${1:-}"
 
 # Compose formatted Telegram message
-MESSAGE="🛡️ <b>FaceLock 24/7 Autonomous Report</b>
+MESSAGE="🛡️ <b>FaceLock Status Report</b>
 📅 <i>$DATE_NOW</i>
 
 📊 <b>Статистика репозитория:</b>
@@ -84,7 +85,7 @@ MESSAGE="🛡️ <b>FaceLock 24/7 Autonomous Report</b>
 if [[ -n "$CUSTOM_MSG" ]]; then
     MESSAGE="$MESSAGE
 
-📝 <b>Действие агента:</b>
+📝 <b>Обновление:</b>
 $CUSTOM_MSG"
 fi
 

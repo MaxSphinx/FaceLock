@@ -97,29 +97,24 @@ public final class TelegramNotifier {
 
         var body = Data()
 
-        // 1. chat_id
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"chat_id\"\r\n\r\n".data(using: .utf8)!)
         body.append("\(chatId)\r\n".data(using: .utf8)!)
 
-        // 2. caption
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"caption\"\r\n\r\n".data(using: .utf8)!)
         body.append("\(caption)\r\n".data(using: .utf8)!)
 
-        // 3. parse_mode
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"parse_mode\"\r\n\r\n".data(using: .utf8)!)
         body.append("HTML\r\n".data(using: .utf8)!)
 
-        // 4. photo
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"photo\"; filename=\"intruder.jpg\"\r\n".data(using: .utf8)!)
         body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
         body.append(photoData)
         body.append("\r\n".data(using: .utf8)!)
 
-        // End boundary
         body.append("--\(boundary)--\r\n".data(using: .utf8)!)
 
         request.httpBody = body

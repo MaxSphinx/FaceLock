@@ -20,7 +20,6 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
         super.init()
     }
 
-    // MARK: - Presentation
     public func showLock(targetApp: NSRunningApplication? = nil, intruderImage: NSImage? = nil, onUnlock: (() -> Void)? = nil) {
         guard !isLocked else { return }
         isLocked = true
@@ -84,7 +83,6 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
             darkOverlay.autoresizingMask = [.width, .height]
             backgroundEffect.addSubview(darkOverlay)
 
-            // Primary screen gets the interactive Card
             if index == 0 {
                 let card = makeCardView(screenSize: screen.frame.size)
                 backgroundEffect.addSubview(card)
@@ -96,7 +94,6 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
         }
     }
 
-    // MARK: - Interactive Card View
     private func makeCardView(screenSize: CGSize) -> NSView {
         let hasIntruder = (self.intruderImage != nil)
         let cardW: CGFloat = hasIntruder ? 460 : 440
@@ -128,7 +125,6 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
         self.headerContainer = headerBox
 
         if let photo = self.intruderImage {
-            // Large Intruder Avatar Photo (144x144)
             let avatarSize: CGFloat = 144
             let avatarX = (cardW - avatarSize) / 2
             let avatarY: CGFloat = 6
@@ -152,7 +148,6 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
             avatarView.imageScaling = .scaleProportionallyUpOrDown
             avatarContainer.addSubview(avatarView)
 
-            // Warning Badge
             let badgeSize: CGFloat = 34
             let badgeView = NSImageView(frame: NSRect(x: avatarSize - 32, y: 0, width: badgeSize, height: badgeSize))
             let badgeConfig = NSImage.SymbolConfiguration(pointSize: 28, weight: .bold)
@@ -162,7 +157,6 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
 
             headerBox.addSubview(avatarContainer)
 
-            // Pulsing red glow animation
             let glow = CABasicAnimation(keyPath: "shadowRadius")
             glow.fromValue = 8.0
             glow.toValue = 22.0
@@ -172,7 +166,6 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
             glow.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
             avatarContainer.layer?.add(glow, forKey: "aura")
         } else {
-            // Standard Lock Shield Icon
             let iconView = NSImageView(frame: NSRect(x: (cardW - 68) / 2, y: 20, width: 68, height: 68))
             let symbolConfig = NSImage.SymbolConfiguration(pointSize: 56, weight: .semibold)
             iconView.image = NSImage(systemSymbolName: "lock.shield.fill", accessibilityDescription: "Locked")?.withSymbolConfiguration(symbolConfig)
@@ -180,7 +173,6 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
             headerBox.addSubview(iconView)
         }
 
-        // Title
         let titleY = cardH - (hasIntruder ? 212 : 150)
         let title = NSTextField(frame: NSRect(x: 20, y: titleY, width: cardW - 40, height: 32))
         title.isEditable = false
@@ -193,7 +185,6 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
         title.alignment = .center
         effect.addSubview(title)
 
-        // Subtitle
         let subY = cardH - (hasIntruder ? 266 : 200)
         let subtitle = NSTextField(frame: NSRect(x: 30, y: subY, width: cardW - 60, height: 42))
         subtitle.isEditable = false
@@ -207,7 +198,6 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
         subtitle.alignment = .center
         effect.addSubview(subtitle)
 
-        // PIN Secure Text Field
         let pinContainerW: CGFloat = 260
         let pinY = cardH - (hasIntruder ? 332 : 260)
         let pinField = NSSecureTextField(frame: NSRect(x: (cardW - pinContainerW) / 2, y: pinY, width: pinContainerW, height: 44))
@@ -226,7 +216,6 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
         effect.addSubview(pinField)
         self.pinField = pinField
 
-        // Error message label
         let errY = pinY - 26
         let errLabel = NSTextField(frame: NSRect(x: 20, y: errY, width: cardW - 40, height: 20))
         errLabel.isEditable = false
@@ -240,7 +229,6 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
         effect.addSubview(errLabel)
         self.errorLabel = errLabel
 
-        // Unlock Button
         let btnY = errY - 48
         let unlockBtn = NSButton(frame: NSRect(x: (cardW - pinContainerW) / 2, y: btnY, width: pinContainerW, height: 40))
         unlockBtn.title = "Разблокировать"
@@ -250,7 +238,6 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
         unlockBtn.action = #selector(onPinSubmitted)
         effect.addSubview(unlockBtn)
 
-        // Touch ID Button
         let touchY = btnY - 48
         let touchBtn = NSButton(frame: NSRect(x: (cardW - pinContainerW) / 2, y: touchY, width: pinContainerW, height: 36))
         touchBtn.bezelStyle = .inline
@@ -404,7 +391,6 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
     }
 }
 
-// MARK: - Fullscreen Window Subclass
 private final class FullscreenLockWindow: NSWindow {
     init(screen: NSScreen) {
         super.init(
@@ -424,16 +410,11 @@ private final class FullscreenLockWindow: NSWindow {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
 
-    override func cancelOperation(_ sender: Any?) {
-        // Intercept Esc key
-    }
+    override func cancelOperation(_ sender: Any?) {}
 
-    override func performClose(_ sender: Any?) {
-        // Prevent closing window
-    }
+    override func performClose(_ sender: Any?) {}
 
     override func keyDown(with event: NSEvent) {
-        // Block Cmd+Q, Cmd+W, etc.
         if event.modifierFlags.contains(.command) {
             let chars = event.charactersIgnoringModifiers ?? ""
             if chars == "q" || chars == "w" || chars == "m" || chars == "h" {

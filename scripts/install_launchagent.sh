@@ -11,9 +11,12 @@ mkdir -p "$LOG_DIR"
 mkdir -p "$HOME/Library/LaunchAgents"
 mkdir -p "$HOME/.facelock/bin"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 # Copy worker and reporter scripts to ~/.facelock/bin to avoid macOS ~/Documents TCC restriction
-cp -f /Users/maksim/Documents/antigravity/kind-shannon/FaceLock/scripts/autonomous_worker.sh "$HOME/.facelock/bin/"
-cp -f /Users/maksim/Documents/antigravity/kind-shannon/FaceLock/scripts/telegram_report.sh "$HOME/.facelock/bin/"
+cp -f "$REPO_DIR/scripts/autonomous_worker.sh" "$HOME/.facelock/bin/"
+cp -f "$REPO_DIR/scripts/telegram_report.sh" "$HOME/.facelock/bin/"
 chmod +x "$HOME/.facelock/bin"/*
 
 # Unload existing agent if running

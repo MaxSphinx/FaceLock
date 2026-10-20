@@ -66,7 +66,6 @@ public final class EnrollmentController: NSObject {
         let content = NSView(frame: win.contentView!.bounds)
         content.wantsLayer = true
 
-        // Title
         let title = NSTextField(frame: NSRect(x: 20, y: height - 50, width: width - 40, height: 26))
         title.isEditable = false
         title.isBordered = false
@@ -76,7 +75,6 @@ public final class EnrollmentController: NSObject {
         title.alignment = .center
         content.addSubview(title)
 
-        // Subtitle
         let subtitle = NSTextField(frame: NSRect(x: 20, y: height - 85, width: width - 40, height: 30))
         subtitle.isEditable = false
         subtitle.isBordered = false
@@ -87,7 +85,6 @@ public final class EnrollmentController: NSObject {
         subtitle.alignment = .center
         content.addSubview(subtitle)
 
-        // Camera Preview View
         let previewSize: CGFloat = 260
         let previewX = (width - previewSize) / 2
         let previewY = height - 95 - previewSize
@@ -101,7 +98,6 @@ public final class EnrollmentController: NSObject {
         content.addSubview(preview)
         self.previewImageView = preview
 
-        // Status Label
         let status = NSTextField(frame: NSRect(x: 20, y: previewY - 35, width: width - 40, height: 24))
         status.isEditable = false
         status.isBordered = false
@@ -111,7 +107,6 @@ public final class EnrollmentController: NSObject {
         content.addSubview(status)
         self.statusLabel = status
 
-        // Progress Bar
         let progress = NSProgressIndicator(frame: NSRect(x: (width - 260) / 2, y: previewY - 65, width: 260, height: 16))
         progress.isIndeterminate = false
         progress.minValue = 0
@@ -119,7 +114,6 @@ public final class EnrollmentController: NSObject {
         content.addSubview(progress)
         self.progressIndicator = progress
 
-        // Action Button
         let btn = NSButton(frame: NSRect(x: (width - 200) / 2, y: 20, width: 200, height: 38))
         btn.bezelStyle = .rounded
         btn.title = "Начать сканирование"

@@ -80,7 +80,6 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
     private func buildMenu() -> NSMenu {
         let menu = NSMenu()
 
-        // 1. Header with quick switch
         let isEnabled = Config.shared.isEnabled
         let hasFace = Config.shared.hasEnrolledFace
         let statusTitle = isEnabled
@@ -96,12 +95,10 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         toggleItem.target = self
         menu.addItem(toggleItem)
 
-        // Quick Pause options
         let pause15 = NSMenuItem(title: "Пауза на 15 минут", action: #selector(pauseFor15Min), keyEquivalent: "")
         pause15.target = self
         menu.addItem(pause15)
 
-        // Protection Mode Switch
         let isSelective = (Config.shared.protectionMode == "selective")
         let modeTitle = isSelective ? "Режим: Только секретные приложения (Telegram, Safari...)" : "Режим: Все приложения подряд"
         let modeItem = NSMenuItem(title: modeTitle, action: #selector(toggleProtectionMode), keyEquivalent: "m")
@@ -110,30 +107,25 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
-        // 2. Incident Gallery
         let galleryItem = NSMenuItem(title: "Журнал инцидентов (Галерея фото)...", action: #selector(openGallery), keyEquivalent: "g")
         galleryItem.target = self
         menu.addItem(galleryItem)
 
-        // 3. Face Enrollment
         let enrollItem = NSMenuItem(title: "Запомнить моё лицо (Калибровка 3D Face ID)...", action: #selector(openEnrollment), keyEquivalent: "e")
         enrollItem.target = self
         menu.addItem(enrollItem)
 
-        // 4. Test Lock Screen
         let testLockItem = NSMenuItem(title: "Проверить экран блокировки (Тест)...", action: #selector(testLock), keyEquivalent: "t")
         testLockItem.target = self
         menu.addItem(testLockItem)
 
         menu.addItem(NSMenuItem.separator())
 
-        // 5. Settings
         let tgState = Config.shared.telegramEnabled ? "Вкл" : "Выкл"
         let settingsItem = NSMenuItem(title: "Настройки (Telegram: \(tgState), Пароль, Walk-away)...", action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.target = self
         menu.addItem(settingsItem)
 
-        // 6. Reset faces if enrolled
         if hasFace {
             let resetFacesItem = NSMenuItem(title: "Сбросить слепки лица", action: #selector(resetFaces), keyEquivalent: "")
             resetFacesItem.target = self

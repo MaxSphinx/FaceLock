@@ -5,7 +5,6 @@ public final class SettingsController: NSObject {
 
     private var window: NSWindow?
 
-    // UI Controls
     private var tokenField: NSTextField?
     private var chatIdField: NSTextField?
     private var telegramSwitch: NSButton?
@@ -57,7 +56,6 @@ public final class SettingsController: NSObject {
 
         var currentY: CGFloat = height - 45
 
-        // Section 1: Telegram
         let tgHeader = makeSectionHeader(title: "1. Telegram-оповещения с фото", originY: currentY, width: width)
         root.addSubview(tgHeader)
         currentY -= 35
@@ -111,7 +109,6 @@ public final class SettingsController: NSObject {
         self.telegramTestStatusLabel = tgStatus
         currentY -= 36
 
-        // Section 2: Protection Mode
         let modeHeader = makeSectionHeader(title: "2. Режим проверки приложений", originY: currentY, width: width)
         root.addSubview(modeHeader)
         currentY -= 32
@@ -128,7 +125,6 @@ public final class SettingsController: NSObject {
         self.modeRadioSelective = radioSelective
         currentY -= 38
 
-        // Section 3: Walk-away lock
         let walkHeader = makeSectionHeader(title: "3. Авто-замок при уходе от Mac (Walk-away)", originY: currentY, width: width)
         root.addSubview(walkHeader)
         currentY -= 32
@@ -156,7 +152,6 @@ public final class SettingsController: NSObject {
         self.idleLabel = sliderVal
         currentY -= 38
 
-        // Section 4: Security (Liveness & PIN)
         let secHeader = makeSectionHeader(title: "4. Безопасность и пароль", originY: currentY, width: width)
         root.addSubview(secHeader)
         currentY -= 32
@@ -178,7 +173,6 @@ public final class SettingsController: NSObject {
         root.addSubview(pinInp)
         self.pinField = pinInp
 
-        // Save & Close Button
         let saveBtn = NSButton(frame: NSRect(x: (width - 160) / 2, y: 16, width: 160, height: 36))
         saveBtn.title = "Сохранить"
         saveBtn.bezelStyle = .rounded

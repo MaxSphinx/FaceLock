@@ -43,7 +43,6 @@ public final class IncidentGalleryController: NSObject {
         root.wantsLayer = true
         root.autoresizingMask = [.width, .height]
 
-        // Header View
         let header = NSView(frame: NSRect(x: 0, y: height - 70, width: width, height: 70))
         header.autoresizingMask = [.width, .minYMargin]
         header.wantsLayer = true
@@ -66,7 +65,6 @@ public final class IncidentGalleryController: NSObject {
         subtitle.textColor = .secondaryLabelColor
         header.addSubview(subtitle)
 
-        // Finder Button
         let finderBtn = NSButton(frame: NSRect(x: width - 260, y: 20, width: 130, height: 32))
         finderBtn.title = "Открыть в Finder"
         finderBtn.bezelStyle = .rounded
@@ -75,7 +73,6 @@ public final class IncidentGalleryController: NSObject {
         finderBtn.action = #selector(openInFinder)
         header.addSubview(finderBtn)
 
-        // Clear All Button
         let clearBtn = NSButton(frame: NSRect(x: width - 120, y: 20, width: 100, height: 32))
         clearBtn.title = "Очистить"
         clearBtn.bezelStyle = .rounded
@@ -86,7 +83,6 @@ public final class IncidentGalleryController: NSObject {
 
         root.addSubview(header)
 
-        // Scroll View with Gallery Grid
         let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: width, height: height - 70))
         scroll.autoresizingMask = [.width, .height]
         scroll.hasVerticalScroller = true
@@ -153,7 +149,6 @@ public final class IncidentGalleryController: NSObject {
         card.layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
         card.autoresizingMask = [.width]
 
-        // Thumbnail
         let thumbSize: CGFloat = 96
         let thumbView = NSImageView(frame: NSRect(x: 12, y: 12, width: thumbSize, height: thumbSize))
         thumbView.wantsLayer = true
@@ -163,7 +158,6 @@ public final class IncidentGalleryController: NSObject {
         thumbView.image = NSImage(contentsOf: fileURL)
         card.addSubview(thumbView)
 
-        // Text details
         let filename = fileURL.lastPathComponent
         let dateStr = parseDateFromFilename(filename)
 
@@ -198,7 +192,6 @@ public final class IncidentGalleryController: NSObject {
         statusBadge.layer?.masksToBounds = true
         card.addSubview(statusBadge)
 
-        // View button
         let viewBtn = NSButton(frame: NSRect(x: frame.width - 165, y: (frame.height - 30) / 2, width: 72, height: 30))
         viewBtn.title = "Просмотр"
         viewBtn.bezelStyle = .inline
@@ -208,7 +201,6 @@ public final class IncidentGalleryController: NSObject {
         viewBtn.identifier = NSUserInterfaceItemIdentifier(fileURL.path)
         card.addSubview(viewBtn)
 
-        // Delete button
         let deleteBtn = NSButton(frame: NSRect(x: frame.width - 85, y: (frame.height - 30) / 2, width: 70, height: 30))
         deleteBtn.title = "Удалить"
         deleteBtn.bezelStyle = .inline

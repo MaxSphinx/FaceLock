@@ -38,17 +38,14 @@ public final class AppMonitor {
         guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else { return }
         guard let bundleId = app.bundleIdentifier else { return }
 
-        // Skip self
         if bundleId == Bundle.main.bundleIdentifier || bundleId == "io.github.facelock" {
             return
         }
 
-        // Skip ignored system apps
         if Config.shared.ignoredBundleIdentifiers.contains(bundleId) {
             return
         }
 
-        // Selective Protection Mode check
         if Config.shared.protectionMode == "selective" {
             guard Config.shared.protectedBundleIdentifiers.contains(bundleId) else {
                 return
@@ -58,16 +55,13 @@ public final class AppMonitor {
         let pid = app.processIdentifier
         let now = Date()
 
-        // Debounce if user recently verified this exact application
         if pid == lastVerifiedPID && now.timeIntervalSince(lastVerifiedTime) < Config.shared.debounceSeconds {
             return
         }
 
-        // Show quick HUD pill
         let appName = app.localizedName ?? bundleId
         HUDController.shared.showScanning(appName: appName)
 
-        // Turn on camera and scan face
         CameraScanner.shared.scanFace(timeout: Config.shared.verificationTimeout) { [weak self] (success, distance, intruderImage) in
             DispatchQueue.main.async {
                 guard let self = self else { return }
@@ -85,7 +79,6 @@ public final class AppMonitor {
                     HUDController.shared.hide()
                     print("[AppMonitor] Face NOT verified for \(appName)! Locking with intruder photo: \(intruderImage != nil)...")
 
-                    // Send Telegram alert if enabled
                     if let photo = intruderImage {
                         TelegramNotifier.shared.sendIntruderAlert(photo: photo, appName: appName)
                     }

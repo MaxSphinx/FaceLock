@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_DIR="${1:-$(cd "$(dirname "$0")/.." && pwd)}"
+REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "${REPO_DIR}"
 
 # Check for modified or untracked files
@@ -10,18 +10,25 @@ if [ -z "$(git status --porcelain)" ]; then
     exit 0
 fi
 
-TIMESTAMP="$(date '+%Y-%m-%d %H:%M:%S')"
+# Allow passing custom commit message as first argument
+CUSTOM_MSG="${1:-}"
 
-# Generate contextual commit message
-CHANGED_FILES="$(git status --porcelain | awk '{print $2}')"
-if echo "${CHANGED_FILES}" | grep -q "^Sources/"; then
-    MSG="feat(core): update biometric engine (${TIMESTAMP})"
-elif echo "${CHANGED_FILES}" | grep -q "^Resources/"; then
-    MSG="chore(assets): update app resources (${TIMESTAMP})"
-elif echo "${CHANGED_FILES}" | grep -q -E "^(README|\.github)"; then
-    MSG="docs: synchronize project documentation (${TIMESTAMP})"
+if [ -n "${CUSTOM_MSG}" ]; then
+    MSG="${CUSTOM_MSG}"
 else
-    MSG="chore(sync): automated workspace update (${TIMESTAMP})"
+    # Generate human-readable conventional commit message based on staged files
+    CHANGED_FILES="$(git status --porcelain | awk '{print $2}')"
+    if echo "${CHANGED_FILES}" | grep -q "^Sources/"; then
+        MSG="feat(core): refine biometric verification engine"
+    elif echo "${CHANGED_FILES}" | grep -q "^Resources/"; then
+        MSG="chore(assets): update application assets"
+    elif echo "${CHANGED_FILES}" | grep -q -E "^(README|docs/|\.github)"; then
+        MSG="docs: update documentation and project guides"
+    elif echo "${CHANGED_FILES}" | grep -q "^scripts/"; then
+        MSG="chore(scripts): optimize maintenance automation"
+    else
+        MSG="chore: codebase polish and improvements"
+    fi
 fi
 
 echo "==> Staging changes..."
@@ -33,4 +40,4 @@ git commit -m "${MSG}"
 echo "==> Pushing to GitHub (origin/main)..."
 git push origin main
 
-echo "✓ Successfully auto-committed and pushed to GitHub."
+echo "✓ Successfully committed and pushed to GitHub."

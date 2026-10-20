@@ -30,7 +30,6 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         super.init()
     }
 
-    // MARK: - Setup
     public func prepare() {
         cameraQueue.async { [weak self] in
             self?.configureSessionIfNeeded()
@@ -77,7 +76,6 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         isConfigured = true
     }
 
-    // MARK: - Verification Scan
     public func scanFace(timeout: Double = 1.3, completion: @escaping (Bool, Float?, NSImage?) -> Void) {
         cameraQueue.async { [weak self] in
             guard let self = self else { return }
@@ -164,11 +162,9 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         }
     }
 
-    // MARK: - AVCaptureVideoDataOutputSampleBufferDelegate
     public func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
 
-        // If enrollment mode active, forward preview frames
         if let enrollHandler = enrollmentFrameHandler {
             let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
             let context = CIContext()
@@ -186,12 +182,10 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
 
         guard isScanning else { return }
 
-        // Keep a fallback snapshot of the scene
         if self.lastFrameSnapshot == nil {
             self.lastFrameSnapshot = self.fullSnapshot(from: pixelBuffer)
         }
 
-        // 1. Detect faces
         let faceReq = VNDetectFaceRectanglesRequest()
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .up, options: [:])
         do {
@@ -202,7 +196,6 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
 
         var faces = faceReq.results ?? []
 
-        // Low-light compensation fallback if raw frame has insufficient contrast
         if faces.isEmpty {
             let ci = CIImage(cvPixelBuffer: pixelBuffer)
             if let exp = CIFilter(name: "CIExposureAdjust") {
@@ -217,26 +210,20 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
             }
         }
 
-        guard !faces.isEmpty else {
-            // No face in this frame, wait for next frame
-            return
-        }
+        guard !faces.isEmpty else { return }
 
         let enrolled = Config.shared.loadEnrolledVectors()
         let isStrict = Config.shared.strictFaceMatch && !enrolled.isEmpty
 
         if !isStrict {
-            // Any face is sufficient (detection mode)
             handleScanSuccess(distance: 0.0)
             return
         }
 
-        // Extract 128-D Apple Neural Faceprint Vector
         let targetFace = faces.first
         if let (candidateVec, faceObs) = FaceprintExtractor.shared.extractVector(from: pixelBuffer, faceObservation: targetFace) {
             self.lastCandidateVector = candidateVec
 
-            // Save cropped intruder face candidate
             if self.latestIntruderPhoto == nil {
                 self.latestIntruderPhoto = self.cropFace(from: pixelBuffer, boundingBox: faceObs.boundingBox)
             }
