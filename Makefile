@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock settings gallery status install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync
+.PHONY: all build run enroll test-lock settings gallery status install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -12,6 +12,7 @@ help:
 	@echo "  make install        - Install to /Applications/FaceLock.app and setup CLI"
 	@echo "  make update         - Pull updates from GitHub, recompile & hot-reload"
 	@echo "  make commit         - Auto-stage, commit with contextual message & push"
+	@echo "  make release        - Cut git release tag & trigger GitHub Release build"
 	@echo "  make sync           - Run continuous auto-commit & auto-update daemon"
 	@echo "  make install-sync   - Install background auto-sync LaunchAgent daemon"
 	@echo "  make uninstall-sync - Remove background auto-sync daemon"
@@ -53,6 +54,9 @@ status: build
 
 commit:
 	@./scripts/autocommit.sh
+
+release:
+	@./scripts/release.sh $(VERSION) "$(MSG)"
 
 update:
 	@./scripts/autoupdate.sh

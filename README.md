@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/MaxSphinx/FaceLock/releases"><img src="https://img.shields.io/github/v/release/MaxSphinx/FaceLock?style=flat-square&color=00BBF9" alt="Latest Release" /></a>
   <a href="https://github.com/MaxSphinx/FaceLock/actions"><img src="https://img.shields.io/github/actions/workflow/status/MaxSphinx/FaceLock/build.yml?branch=main&style=flat-square&label=build" alt="Build Status" /></a>
   <img src="https://img.shields.io/badge/platform-macOS%2014.0%2B-blue?style=flat-square" alt="Platform" />
   <img src="https://img.shields.io/badge/arch-Apple%20Silicon%20(arm64)-orange?style=flat-square" alt="Architecture" />
@@ -82,7 +83,13 @@ Built strictly in modern **Swift & native AppKit**, with **zero external package
 - Apple Silicon Mac (M1, M2, M3, M4 series)
 - Xcode Command Line Tools (`xcode-select --install`)
 
-### Build & Install
+### Option 1: Direct Binary Download (Pre-built)
+
+Download the signed application bundle from [**GitHub Releases**](https://github.com/MaxSphinx/FaceLock/releases) (or see [**RELEASES.md**](RELEASES.md) for release notes):
+1. Download [`FaceLock-macOS-arm64.zip`](https://github.com/MaxSphinx/FaceLock/releases/latest).
+2. Extract and move `FaceLock.app` into your `/Applications/` directory.
+
+### Option 2: Build & Install from Source
 
 ```bash
 # Clone the repository
