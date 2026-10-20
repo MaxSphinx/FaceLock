@@ -1,0 +1,28 @@
+# Build & Packaging
+build/
+*.app
+*.dSYM/
+*.ipa
+DerivedData/
+
+# Swift Package Manager & Temporary files
+.build/
+.swiftpm/
+*.swp
+*~
+*.tmp
+*.log
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# User Data & Local Secrets (DO NOT COMMIT)
+*.dat
+*.plist.local
+owner_face_vectors.json
+config.json
+intruders/
