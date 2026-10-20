@@ -1,0 +1,49 @@
+name: Build & Release Package
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build FaceLock (macOS Apple Silicon)
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -switch /Applications/Xcode_15.4.app || true
+
+      - name: Compile Application Bundle
+        run: |
+          chmod +x build.sh
+          make build
+
+      - name: Test CLI Flags
+        run: |
+          ./build/FaceLock.app/Contents/MacOS/FaceLock --help
+          ./build/FaceLock.app/Contents/MacOS/FaceLock --version
+          ./build/FaceLock.app/Contents/MacOS/FaceLock --status
+
+      - name: Compress App Bundle
+        run: |
+          cd build
+          zip -r FaceLock-macOS-arm64.zip FaceLock.app
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FaceLock-macOS-arm64
+          path: build/FaceLock-macOS-arm64.zip
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/FaceLock-macOS-arm64.zip
+          generate_release_notes: true

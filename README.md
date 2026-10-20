@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/apple/swift-artwork/main/visual-assets/swift-hero/swift-hero-64.png" width="72" height="72" alt="FaceLock Logo" />
+  <img src="Resources/AppIcon.png" width="96" height="96" alt="FaceLock App Icon" />
 </p>
 
 <h1 align="center">FaceLock</h1>
@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/MaxSphinx/FaceLock/actions"><img src="https://img.shields.io/github/actions/workflow/status/MaxSphinx/FaceLock/build.yml?branch=main&style=flat-square&label=build" alt="Build Status" /></a>
   <img src="https://img.shields.io/badge/platform-macOS%2014.0%2B-blue?style=flat-square" alt="Platform" />
   <img src="https://img.shields.io/badge/arch-Apple%20Silicon%20(arm64)-orange?style=flat-square" alt="Architecture" />
   <img src="https://img.shields.io/badge/swift-5.9%2B-F05138?style=flat-square&logo=swift&logoColor=white" alt="Swift" />
@@ -85,8 +86,8 @@ Built strictly in modern **Swift & native AppKit**, with **zero external package
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/facelock.git
-cd facelock
+git clone https://github.com/MaxSphinx/FaceLock.git
+cd FaceLock
 
 # Compile and install to /Applications & setup CLI
 make install
@@ -220,8 +221,8 @@ Settings are stored at `~/.facelock/config.json`:
 
 ### Установка в одну команду
 ```bash
-git clone https://github.com/your-username/facelock.git
-cd facelock
+git clone https://github.com/MaxSphinx/FaceLock.git
+cd FaceLock
 make install
 ```
 </details>

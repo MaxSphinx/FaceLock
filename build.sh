@@ -28,8 +28,11 @@ swiftc -O \
     Sources/*.swift \
     -o "${MACOS_DIR}/${APP_NAME}"
 
-# Copy Info.plist
+# Copy Info.plist and Resources
 cp Resources/Info.plist "${CONTENTS_DIR}/Info.plist"
+if [ -f "Resources/AppIcon.icns" ]; then
+    cp Resources/AppIcon.icns "${RESOURCES_DIR}/AppIcon.icns"
+fi
 
 # Code sign ad-hoc
 echo "==> Code-signing application bundle..."

@@ -306,6 +306,7 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
         if entered == Config.shared.pin {
             unlock()
         } else {
+            NSSound.beep()
             shakeCard()
             errorLabel?.isHidden = false
             pinField?.stringValue = ""
@@ -338,6 +339,8 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
     // MARK: - Unlock with Animation
     public func unlock() {
         guard isLocked else { return }
+
+        NSSound(named: "Glass")?.play()
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }

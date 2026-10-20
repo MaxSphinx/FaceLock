@@ -1,0 +1,27 @@
+name: Feature Request
+description: Suggest an idea or enhancement for FaceLock
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: Thank you for suggesting a feature to make FaceLock even better!
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Motivation
+      description: Is your feature request related to a problem or specific use case?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe how you envision this feature working in FaceLock.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Approaches
+      description: Have you considered any alternative solutions or workarounds?

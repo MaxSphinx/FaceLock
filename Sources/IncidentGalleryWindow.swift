@@ -198,6 +198,16 @@ public final class IncidentGalleryController: NSObject {
         statusBadge.layer?.masksToBounds = true
         card.addSubview(statusBadge)
 
+        // View button
+        let viewBtn = NSButton(frame: NSRect(x: frame.width - 165, y: (frame.height - 30) / 2, width: 72, height: 30))
+        viewBtn.title = "Просмотр"
+        viewBtn.bezelStyle = .inline
+        viewBtn.autoresizingMask = [.minXMargin]
+        viewBtn.target = self
+        viewBtn.action = #selector(viewIncidentClicked(_:))
+        viewBtn.identifier = NSUserInterfaceItemIdentifier(fileURL.path)
+        card.addSubview(viewBtn)
+
         // Delete button
         let deleteBtn = NSButton(frame: NSRect(x: frame.width - 85, y: (frame.height - 30) / 2, width: 70, height: 30))
         deleteBtn.title = "Удалить"
@@ -238,6 +248,11 @@ public final class IncidentGalleryController: NSObject {
             }
         }
         reloadIncidents()
+    }
+
+    @objc private func viewIncidentClicked(_ sender: NSButton) {
+        guard let path = sender.identifier?.rawValue else { return }
+        NSWorkspace.shared.open(URL(fileURLWithPath: path))
     }
 
     @objc private func deleteIncidentClicked(_ sender: NSButton) {
