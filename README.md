@@ -76,27 +76,42 @@ Built strictly in modern **Swift & native AppKit**, with **zero external package
 
 ---
 
+## Why FaceLock? (Comparison)
+
+| Capability | Standard macOS Lock | Commercial Lock Apps | **FaceLock** |
+|:---|:---:|:---:|:---:|
+| **Per-App Focus Verification** | ❌ No | ❌ No | **✅ Instant Neural Check** |
+| **Intruder Capture with Night HDR** | ❌ No | ⚠️ Basic webcam | **✅ Exposure Lift (+1.3 EV) & Crop** |
+| **Instant Telegram Incident Alerts** | ❌ No | ❌ No | **✅ Photo + Timestamp + App** |
+| **Unbypassable Shield (`.screenSaver`)**| ❌ No | ⚠️ Standard window | **✅ Blocks Cmd+Q, Cmd+W, Esc** |
+| **Walk-Away Inactivity Defense** | ⚠️ Inactivity timer | ⚠️ Flaky Bluetooth | **✅ CGEvent + Silent Neural Camera** |
+| **Neural Engine Acceleration** | ❌ | ❌ | **✅ 100% Apple Silicon ANE** |
+| **Privacy & Local Storage** | ✅ Yes | ❌ Cloud telemetry | **✅ 100% On-Device & Zero Telemetry** |
+| **License & Price** | Closed source | \$15 – \$35 | **✅ Free & Open Source (MIT)** |
+
+---
+
 ## Installation
 
-### Prerequisites
-- macOS 14.0 (Sonoma) or macOS 15.0+ (Sequoia)
-- Apple Silicon Mac (M1, M2, M3, M4 series)
-- Xcode Command Line Tools (`xcode-select --install`)
+### Option 1: Quick One-Liner (Recommended)
 
-### Option 1: Direct Binary Download (Pre-built)
-
-Download the signed application bundle from [**GitHub Releases**](https://github.com/MaxSphinx/FaceLock/releases) (or see [**RELEASES.md**](RELEASES.md) for release notes):
-1. Download [`FaceLock-macOS-arm64.zip`](https://github.com/MaxSphinx/FaceLock/releases/latest).
-2. Extract and move `FaceLock.app` into your `/Applications/` directory.
-
-### Option 2: Build & Install from Source
+Open Terminal and paste:
 
 ```bash
-# Clone the repository
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/MaxSphinx/FaceLock/main/install.sh)"
+```
+
+### Option 2: Pre-built Binary Download
+
+Download the signed archive directly from [**GitHub Releases**](https://github.com/MaxSphinx/FaceLock/releases):
+1. Download [`FaceLock-macOS-arm64.zip`](https://github.com/MaxSphinx/FaceLock/releases/latest).
+2. Extract and drag `FaceLock.app` into `/Applications/`.
+
+### Option 3: Build from Source
+
+```bash
 git clone https://github.com/MaxSphinx/FaceLock.git
 cd FaceLock
-
-# Compile and install to /Applications & setup CLI
 make install
 ```
 
@@ -246,6 +261,18 @@ Feel free to open an issue or submit a pull request.
 3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
+
+---
+
+## ⭐️ Star History & Support
+
+If FaceLock protects your MacBook or you find it useful, please consider giving it a **Star** on GitHub — it directly supports future development and features!
+
+<p align="center">
+  <a href="https://star-history.com/#MaxSphinx/FaceLock&Date">
+    <img src="https://api.star-history.com/svg?repos=MaxSphinx/FaceLock&type=Date" alt="FaceLock Star History Chart" style="max-width: 100%;" />
+  </a>
+</p>
 
 ---
 
