@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock settings gallery status install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report
+.PHONY: all build run enroll test-lock lock settings gallery status diagnostics toggle install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -21,7 +21,10 @@ help:
 	@echo "  make settings       - Open settings window"
 	@echo "  make gallery        - Open intruder incident log"
 	@echo "  make test-lock      - Trigger immediate fullscreen lock test"
+	@echo "  make lock           - Trigger lock screen via daemon or standalone"
+	@echo "  make toggle         - Toggle protection between ACTIVE and PAUSED"
 	@echo "  make status         - Display current protection & biometric status"
+	@echo "  make diagnostics    - Run full biometric, hardware & storage diagnostics"
 	@echo "  make stop           - Terminate running FaceLock instance"
 	@echo "  make uninstall      - Remove application and CLI symlink"
 	@echo "  make clean          - Remove build artifacts"
@@ -41,6 +44,13 @@ test-lock: build
 	@echo "Testing Fullscreen Lock (Touch ID or PIN)..."
 	@build/FaceLock.app/Contents/MacOS/FaceLock --test-lock
 
+lock: build
+	@echo "Triggering Lock Screen..."
+	@build/FaceLock.app/Contents/MacOS/FaceLock --lock
+
+toggle: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle
+
 settings: build
 	@echo "Opening Settings..."
 	@build/FaceLock.app/Contents/MacOS/FaceLock --settings
@@ -51,6 +61,9 @@ gallery: build
 
 status: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --status
+
+diagnostics: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --diagnostics
 
 commit:
 	@./scripts/autocommit.sh

@@ -158,7 +158,10 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --enroll` | Launch interactive camera calibration wizard |
 | `facelock --settings` | Open configuration GUI (Telegram, PIN, App lists) |
 | `facelock --gallery` | Open captured intruder incident gallery |
-| `facelock --test-lock` | Trigger immediate fullscreen security shield test |
+| `facelock --lock` | Trigger immediate fullscreen security shield |
+| `facelock --toggle` | Toggle protection between ACTIVE and PAUSED |
+| `facelock --diagnostics` | Run full biometric, hardware & storage diagnostics |
+| `facelock --test-lock` | Trigger fullscreen security shield test |
 | `facelock --status` | Display daemon status and biometric template metrics |
 | `facelock --reset` | Purge all enrolled facial vectors |
 | `facelock --version` | Output version and platform architecture |
