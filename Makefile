@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock settings gallery status install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release
+.PHONY: all build run enroll test-lock settings gallery status install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -105,6 +105,18 @@ uninstall:
 stop:
 	@echo "Stopping FaceLock process..."
 	@-pkill -f "FaceLock.app/Contents/MacOS/FaceLock" || true
+
+report:
+	@./scripts/telegram_report.sh
+
+maintainer-install:
+	@./scripts/install_launchagent.sh
+
+maintainer-stop:
+	@echo "Stopping 24/7 Autonomous Maintainer..."
+	@-launchctl unload $(HOME)/Library/LaunchAgents/io.github.facelock.maintainer.plist 2>/dev/null || true
+	@rm -f $(HOME)/Library/LaunchAgents/io.github.facelock.maintainer.plist
+	@echo "✓ Autonomous Maintainer stopped"
 
 clean:
 	@rm -rf build
