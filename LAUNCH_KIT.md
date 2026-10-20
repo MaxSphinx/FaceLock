@@ -74,7 +74,7 @@ I created **FaceLock**, a native macOS security utility that turns your Mac's ca
 
 Install with 1 line:
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/MaxSphinx/FaceLock/main/install.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/MaxSphinx/FaceLock/main/scripts/install.sh)"
 ```
 
 GitHub: https://github.com/MaxSphinx/FaceLock

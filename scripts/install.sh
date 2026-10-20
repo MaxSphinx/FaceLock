@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # FaceLock One-Line Installer for macOS (Apple Silicon)
-# Usage: /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/MaxSphinx/FaceLock/main/install.sh)"
+# Usage: /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/MaxSphinx/FaceLock/main/scripts/install.sh)"
 
 set -euo pipefail
 
