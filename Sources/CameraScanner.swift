@@ -117,7 +117,9 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
             session.stopRunning()
         }
 
-        let intruderImage = self.latestIntruderPhoto ?? self.lastFrameSnapshot
+        // Only save intruder photo if an actual human face was detected and rejected.
+        // If no face was seen (e.g. user walked away), do not treat empty frame as intruder.
+        let intruderImage = self.latestIntruderPhoto
         if let photo = intruderImage {
             self.saveIntruderPhoto(photo)
         }

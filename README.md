@@ -168,6 +168,14 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --gallery` | Open captured intruder incident gallery |
 | `facelock --lock` | Trigger immediate fullscreen security shield |
 | `facelock --toggle` | Toggle protection between ACTIVE and PAUSED |
+| `facelock --pause [mins]` | Pause protection for N minutes (default: 15) |
+| `facelock --resume` | Resume protection immediately |
+| `facelock --config [--json]` | Display active FaceLock configuration settings |
+| `facelock --apps [--json]` | List protected and ignored application bundle IDs |
+| `facelock --protect-app <id>` | Add application bundle ID to protected list |
+| `facelock --unprotect-app <id>` | Remove application bundle ID from protected list |
+| `facelock --set-threshold <val>` | Set similarity threshold (0.05 - 0.60, default: 0.22) |
+| `facelock --set-mode <mode>` | Set mode: 'all' (every app) or 'selective' (secret apps) |
 | `facelock --diagnostics` | Run full biometric, hardware & storage diagnostics |
 | `facelock --test-lock` | Trigger fullscreen security shield test |
 | `facelock --status` | Display daemon status and biometric template metrics |

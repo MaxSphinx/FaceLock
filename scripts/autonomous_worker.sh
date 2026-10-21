@@ -31,10 +31,12 @@ while true; do
     EVENT_MSG=""
     if [[ "$PR_1712_STATE" == "MERGED" ]]; then
         EVENT_MSG="🎉 PR #1712 в open-source-mac-os-apps успешно смерджен! Проект добавлен в каталог 50k★ и Telegram канал!"
-    elif [[ "$PR_1319_STATE" == "MERGED" ]]; then
-        EVENT_MSG="🎉 PR #1319 в awesome-macOS успешно смерджен!"
-    elif [[ "$PR_2007_STATE" == "MERGED" ]]; then
-        EVENT_MSG="🎉 PR #2007 в awesome-swift успешно смерджен!"
+    fi
+    if [[ "$PR_1319_STATE" == "MERGED" ]]; then
+        EVENT_MSG="${EVENT_MSG} 🎉 PR #1319 в awesome-macOS успешно смерджен!"
+    fi
+    if [[ "$PR_2007_STATE" == "MERGED" ]]; then
+        EVENT_MSG="${EVENT_MSG} 🎉 PR #2007 в awesome-swift успешно смерджен!"
     fi
     
     # 3. Check for open issues to notify

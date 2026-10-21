@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock settings gallery status diagnostics toggle install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents test-telegram incidents
+.PHONY: all build run enroll test-lock lock settings gallery status config apps diagnostics toggle install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents test-telegram incidents
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -24,6 +24,8 @@ help:
 	@echo "  make lock           - Trigger lock screen via daemon or standalone"
 	@echo "  make toggle         - Toggle protection between ACTIVE and PAUSED"
 	@echo "  make status         - Display current protection & biometric status"
+	@echo "  make config         - Display active FaceLock configuration settings"
+	@echo "  make apps           - List protected and ignored application bundle IDs"
 	@echo "  make incidents      - List logged intruder incident captures"
 	@echo "  make clear-incidents- Purge all saved intruder captures from disk"
 	@echo "  make test-telegram  - Dispatch test notification to Telegram chat"
@@ -65,6 +67,12 @@ gallery: build
 status: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --status
 
+config: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --config
+
+apps: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --apps
+
 incidents: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents
 
@@ -80,6 +88,10 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --version > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --status > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --status --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --config > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --config --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --apps > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --apps --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --diagnostics --json > /dev/null

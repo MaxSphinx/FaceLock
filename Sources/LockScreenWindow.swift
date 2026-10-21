@@ -179,8 +179,9 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
         title.isBordered = false
         title.backgroundColor = .clear
         title.textColor = .white
-        let appTitle = targetApp?.localizedName ?? "Приложение"
-        title.stringValue = hasIntruder ? "Обнаружен посторонний!" : "\(appTitle) заблокировано"
+        let appTitle = targetApp?.localizedName ?? "Компьютер"
+        let defaultTitle = (targetApp == nil) ? "Сеанс заблокирован" : "\(appTitle) заблокировано"
+        title.stringValue = hasIntruder ? "Обнаружен посторонний!" : defaultTitle
         title.font = .systemFont(ofSize: 23, weight: .bold)
         title.alignment = .center
         effect.addSubview(title)
@@ -191,9 +192,12 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
         subtitle.isBordered = false
         subtitle.backgroundColor = .clear
         subtitle.textColor = NSColor(white: 0.85, alpha: 1.0)
+        let defaultSubtitle = (targetApp == nil)
+            ? "Автоматическая блокировка (Walk-Away). Приложите Touch ID или введите PIN-код:"
+            : "Лицо не распознано. Приложите Touch ID или введите PIN-код:"
         subtitle.stringValue = hasIntruder
             ? "Зафиксировано чужое лицо перед экраном.\nРазблокируйте через Touch ID или введите PIN-код:"
-            : "Лицо не распознано. Приложите Touch ID или введите PIN-код:"
+            : defaultSubtitle
         subtitle.font = .systemFont(ofSize: 13, weight: .medium)
         subtitle.alignment = .center
         effect.addSubview(subtitle)

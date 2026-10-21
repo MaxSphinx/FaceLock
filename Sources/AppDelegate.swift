@@ -25,6 +25,12 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --toggle                   Toggle protection between ACTIVE and PAUSED
               --pause [mins]             Pause protection for N minutes (default: 15)
               --resume                   Resume protection immediately
+              --config [--json]          Display active FaceLock configuration
+              --apps [--json]            List protected and ignored application bundle IDs
+              --protect-app <bundleId>   Add application bundle ID to protected list
+              --unprotect-app <bundleId> Remove application bundle ID from protected list
+              --set-threshold <val>      Set similarity threshold (0.05 - 0.60, default: 0.22)
+              --set-mode <mode>          Set mode: 'all' (every app) or 'selective' (secret apps)
               --diagnostics, -d [--json] Run complete biometric & hardware system diagnostics
               --status [--json]          Print current daemon status and vector metrics
               --test-telegram            Dispatch a verification alert to configured Telegram chat
@@ -82,6 +88,132 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               Telegram Notifications: \(Config.shared.telegramEnabled ? "Configured" : "Disabled")
             """)
             exit(0)
+        }
+
+        if args.contains("--config") {
+            let config = Config.shared
+            if args.contains("--json") {
+                let configDict: [String: Any] = [
+                    "similarityThreshold": Double(config.similarityThreshold),
+                    "verificationTimeout": config.verificationTimeout,
+                    "debounceSeconds": config.debounceSeconds,
+                    "isEnabled": config.isEnabled,
+                    "strictFaceMatch": config.strictFaceMatch,
+                    "protectionMode": config.protectionMode,
+                    "walkAwayLockEnabled": config.walkAwayLockEnabled,
+                    "walkAwayIdleSeconds": config.walkAwayIdleSeconds,
+                    "telegramEnabled": config.telegramEnabled,
+                    "livenessDetectionEnabled": config.livenessDetectionEnabled,
+                    "autoTriggerTouchID": config.autoTriggerTouchID,
+                    "protectedAppsCount": config.protectedBundleIdentifiers.count,
+                    "ignoredAppsCount": config.ignoredBundleIdentifiers.count,
+                    "hasEnrolledFace": config.hasEnrolledFace
+                ]
+                if let jsonData = try? JSONSerialization.data(withJSONObject: configDict, options: [.prettyPrinted, .sortedKeys]),
+                   let jsonStr = String(data: jsonData, encoding: .utf8) {
+                    print(jsonStr)
+                }
+                exit(0)
+            }
+            print("""
+            FaceLock Configuration:
+              Protection State: \(config.isEnabled ? "ACTIVE 🛡️" : "PAUSED ⏸️")
+              Protection Mode: \(config.protectionMode)
+              Decision Threshold: \(config.similarityThreshold)
+              Verification Timeout: \(config.verificationTimeout)s
+              Switch Debounce: \(config.debounceSeconds)s
+              Walk-Away Auto Lock: \(config.walkAwayLockEnabled ? "Enabled (\(Int(config.walkAwayIdleSeconds))s idle)" : "Disabled")
+              Anti-Spoofing Liveness: \(config.livenessDetectionEnabled ? "Enabled" : "Disabled")
+              Touch ID Fallback: \(config.autoTriggerTouchID ? "Enabled" : "Disabled")
+              Telegram Alerts: \(config.telegramEnabled ? "Enabled" : "Disabled")
+              Protected Apps: \(config.protectedBundleIdentifiers.count) applications
+              Enrolled Face Vectors: \(config.loadEnrolledVectors().count) templates
+            """)
+            exit(0)
+        }
+
+        if args.contains("--apps") {
+            let config = Config.shared
+            if args.contains("--json") {
+                let dict: [String: Any] = [
+                    "mode": config.protectionMode,
+                    "protectedApps": config.protectedBundleIdentifiers,
+                    "ignoredApps": config.ignoredBundleIdentifiers
+                ]
+                if let jsonData = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
+                   let jsonStr = String(data: jsonData, encoding: .utf8) {
+                    print(jsonStr)
+                }
+                exit(0)
+            }
+            print("FaceLock Protected Applications (Mode: \(config.protectionMode)):")
+            for app in config.protectedBundleIdentifiers {
+                print("  • \(app)")
+            }
+            print("\nIgnored System Applications:")
+            for app in config.ignoredBundleIdentifiers {
+                print("  - \(app)")
+            }
+            exit(0)
+        }
+
+        if let idx = args.firstIndex(of: "--protect-app"), idx + 1 < args.count {
+            let bundleId = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !bundleId.isEmpty else {
+                print("Error: Missing bundle identifier. Usage: facelock --protect-app <bundleId>")
+                exit(1)
+            }
+            let config = Config.shared
+            if !config.protectedBundleIdentifiers.contains(bundleId) {
+                config.protectedBundleIdentifiers.append(bundleId)
+                config.save()
+                print("✓ Added '\(bundleId)' to protected applications list.")
+            } else {
+                print("ℹ️ '\(bundleId)' is already in protected applications list.")
+            }
+            exit(0)
+        }
+
+        if let idx = args.firstIndex(of: "--unprotect-app"), idx + 1 < args.count {
+            let bundleId = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !bundleId.isEmpty else {
+                print("Error: Missing bundle identifier. Usage: facelock --unprotect-app <bundleId>")
+                exit(1)
+            }
+            let config = Config.shared
+            if let pos = config.protectedBundleIdentifiers.firstIndex(of: bundleId) {
+                config.protectedBundleIdentifiers.remove(at: pos)
+                config.save()
+                print("✓ Removed '\(bundleId)' from protected applications list.")
+            } else {
+                print("ℹ️ '\(bundleId)' was not found in protected applications list.")
+            }
+            exit(0)
+        }
+
+        if let idx = args.firstIndex(of: "--set-threshold"), idx + 1 < args.count {
+            if let val = Float(args[idx + 1]), val >= 0.05 && val <= 0.60 {
+                Config.shared.similarityThreshold = val
+                Config.shared.save()
+                print("✓ Similarity decision threshold updated to \(val).")
+                exit(0)
+            } else {
+                print("Error: Threshold must be a floating point value between 0.05 and 0.60.")
+                exit(1)
+            }
+        }
+
+        if let idx = args.firstIndex(of: "--set-mode"), idx + 1 < args.count {
+            let mode = args[idx + 1].lowercased()
+            if mode == "all" || mode == "selective" {
+                Config.shared.protectionMode = mode
+                Config.shared.save()
+                print("✓ Protection mode updated to '\(mode)'.")
+                exit(0)
+            } else {
+                print("Error: Mode must be either 'all' or 'selective'.")
+                exit(1)
+            }
         }
 
         if args.contains("--incidents") {

@@ -57,9 +57,9 @@ format_pr_status() {
     local pr_num="$2"
     local raw
     raw=$(gh pr view "$pr_num" --repo "$repo" --json state,mergeable 2>/dev/null || echo "{}")
-    python3 -c "import sys, json
+    echo "$raw" | python3 -c "import sys, json
 try:
-    d = json.loads('''$raw''')
+    d = json.load(sys.stdin)
     s = d.get('state', 'PENDING')
     m = d.get('mergeable', '')
     if s == 'MERGED':
