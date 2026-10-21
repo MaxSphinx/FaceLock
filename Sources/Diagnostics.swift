@@ -5,11 +5,7 @@ import Vision
 import LocalAuthentication
 
 public struct Diagnostics {
-    public static func run() {
-        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        print("          🛡️  FaceLock Autonomous Diagnostics Suite         ")
-        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-
+    public static func run(jsonOutput: Bool = false) {
         // 1. System & Architecture
         let osVer = ProcessInfo.processInfo.operatingSystemVersionString
         var uts = utsname()
@@ -18,10 +14,6 @@ public struct Diagnostics {
             $0.withMemoryRebound(to: CChar.self, capacity: 1) { String(cString: $0) }
         }
         let isAppleSilicon = (arch == "arm64")
-        print("\n[1] Platform & Environment:")
-        print("  • OS Version: \(osVer)")
-        print("  • Architecture: \(arch) (\(isAppleSilicon ? "Apple Silicon Neural Engine Active ✅" : "Intel Legacy ⚠️"))")
-        print("  • PID: \(ProcessInfo.processInfo.processIdentifier)")
 
         // 2. Daemon & Process Status
         let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: "io.github.facelock")
@@ -29,31 +21,15 @@ public struct Diagnostics {
         let isRunning = !runningApps.isEmpty
         let config = Config.shared
 
-        print("\n[2] Process & Daemon State:")
-        if isRunning {
-            let pids = runningApps.map { "\($0.processIdentifier)" }.joined(separator: ", ")
-            print("  • Daemon Process: RUNNING (PID: \(pids)) ✅")
-        } else {
-            print("  • Daemon Process: STANDBY (Not running) ℹ️")
-        }
-        print("  • Shield Status: \(config.isEnabled ? "ACTIVE 🛡️" : "PAUSED ⏸️")")
-        print("  • Protection Mode: \(config.protectionMode) (\(config.protectedBundleIdentifiers.count) protected apps)")
-        print("  • Walk-Away Detection: \(config.walkAwayLockEnabled ? "Enabled (\(Int(config.walkAwayIdleSeconds))s idle)" : "Disabled")")
-
         // 3. Camera Subsystem
-        print("\n[3] Camera Hardware & Permissions:")
         let camAuth = AVCaptureDevice.authorizationStatus(for: .video)
+        var camAuthStr = "unknown"
         switch camAuth {
-        case .authorized:
-            print("  • Camera Authorization: AUTHORIZED ✅")
-        case .denied:
-            print("  • Camera Authorization: DENIED ❌ (Grant access in System Settings > Privacy & Security > Camera)")
-        case .restricted:
-            print("  • Camera Authorization: RESTRICTED ⚠️")
-        case .notDetermined:
-            print("  • Camera Authorization: NOT DETERMINED ❓ (Will prompt on first scan)")
-        @unknown default:
-            print("  • Camera Authorization: UNKNOWN")
+        case .authorized: camAuthStr = "authorized"
+        case .denied: camAuthStr = "denied"
+        case .restricted: camAuthStr = "restricted"
+        case .notDetermined: camAuthStr = "notDetermined"
+        @unknown default: camAuthStr = "unknown"
         }
 
         let discovery = AVCaptureDevice.DiscoverySession(
@@ -62,24 +38,11 @@ public struct Diagnostics {
             position: .unspecified
         )
         let devices = discovery.devices
-        if devices.isEmpty {
-            print("  • Video Devices: No cameras detected ⚠️")
-        } else {
-            print("  • Detected Cameras (\(devices.count)):")
-            for dev in devices {
-                print("    - \(dev.localizedName) [\(dev.uniqueID)]")
-            }
-        }
 
         // 4. Apple Neural Vision & Face Recognition
-        print("\n[4] Apple Neural Vision & Faceprints:")
         let hasFaceprintReq = (NSClassFromString("VNCreateFaceprintRequest") != nil)
-        print("  • Vision Framework: Loaded ✅")
-        print("  • Neural Faceprint Model (VNCreateFaceprintRequest): \(hasFaceprintReq ? "AVAILABLE ✅" : "UNAVAILABLE ❌")")
-        print("  • Similarity Decision Threshold: \(config.similarityThreshold) (Strict Neural Mode)")
 
         // 5. Biometric Authentication (Touch ID)
-        print("\n[5] Biometrics & LocalAuthentication:")
         let laContext = LAContext()
         var laError: NSError?
         let canTouchID = laContext.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &laError)
@@ -93,23 +56,15 @@ public struct Diagnostics {
             @unknown default: bioTypeStr = "Unknown"
             }
         }
-        print("  • Biometric Hardware: \(bioTypeStr)")
-        print("  • Biometrics Ready: \(canTouchID ? "YES ✅" : "NO (\(laError?.localizedDescription ?? "Unavailable")) ⚠️")")
-        print("  • Auto-Trigger Touch ID: \(config.autoTriggerTouchID ? "Enabled" : "Disabled")")
 
         // 6. Storage & Vector Datasets
-        print("\n[6] Storage & Datasets:")
         let home = FileManager.default.homeDirectoryForCurrentUser
         let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
         let configPath = facelockDir.appendingPathComponent("config.json").path
         let vectorsPath = facelockDir.appendingPathComponent("owner_face_vectors.json").path
         let intrudersDir = facelockDir.appendingPathComponent("intruders", isDirectory: true)
-
         let configExists = FileManager.default.fileExists(atPath: configPath)
-        print("  • Config File: \(configExists ? "Valid (\(configPath)) ✅" : "Missing ⚠️")")
-
         let vectors = config.loadEnrolledVectors()
-        print("  • Enrolled Face Templates: \(vectors.count) vectors (\(vectors.isEmpty ? "None - run 'facelock --enroll'" : "Calibrated at \(vectorsPath) ✅"))")
 
         var intruderCount = 0
         var totalBytes: UInt64 = 0
@@ -124,16 +79,125 @@ public struct Diagnostics {
                 }
             }
         }
+
+        // 7. Telegram Integration & Autonomous Workers
+        let tgConfigured = !config.telegramBotToken.isEmpty && !config.telegramChatId.isEmpty
+        let launchAgentPath = home.appendingPathComponent("Library/LaunchAgents/io.github.facelock.maintainer.plist").path
+        let agentInstalled = FileManager.default.fileExists(atPath: launchAgentPath)
+
+        if jsonOutput {
+            let diagDict: [String: Any] = [
+                "timestamp": ISO8601DateFormatter().string(from: Date()),
+                "platform": [
+                    "osVersion": osVer,
+                    "architecture": arch,
+                    "appleSilicon": isAppleSilicon,
+                    "pid": ProcessInfo.processInfo.processIdentifier
+                ],
+                "daemon": [
+                    "running": isRunning,
+                    "pids": runningApps.map { $0.processIdentifier },
+                    "shieldState": config.isEnabled ? "active" : "paused",
+                    "protectionMode": config.protectionMode,
+                    "walkAwayLockEnabled": config.walkAwayLockEnabled,
+                    "walkAwayIdleSeconds": config.walkAwayIdleSeconds
+                ],
+                "camera": [
+                    "authorization": camAuthStr,
+                    "devicesCount": devices.count,
+                    "devices": devices.map { ["name": $0.localizedName, "id": $0.uniqueID] }
+                ],
+                "biometrics": [
+                    "neuralFaceprintAvailable": hasFaceprintReq,
+                    "similarityThreshold": Double(config.similarityThreshold),
+                    "biometryType": bioTypeStr,
+                    "biometricsReady": canTouchID,
+                    "autoTriggerTouchID": config.autoTriggerTouchID
+                ],
+                "storage": [
+                    "configPath": configPath,
+                    "configExists": configExists,
+                    "vectorsPath": vectorsPath,
+                    "enrolledVectors": vectors.count,
+                    "intrudersDir": intrudersDir.path,
+                    "intruderCaptures": intruderCount,
+                    "intruderSizeBytes": totalBytes
+                ],
+                "integrations": [
+                    "telegramConfigured": tgConfigured,
+                    "telegramEnabled": config.telegramEnabled,
+                    "maintainerInstalled": agentInstalled
+                ]
+            ]
+            if let jsonData = try? JSONSerialization.data(withJSONObject: diagDict, options: [.prettyPrinted, .sortedKeys]),
+               let jsonStr = String(data: jsonData, encoding: .utf8) {
+                print(jsonStr)
+            }
+            return
+        }
+
+        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        print("          🛡️  FaceLock Autonomous Diagnostics Suite         ")
+        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+        print("\n[1] Platform & Environment:")
+        print("  • OS Version: \(osVer)")
+        print("  • Architecture: \(arch) (\(isAppleSilicon ? "Apple Silicon Neural Engine Active ✅" : "Intel Legacy ⚠️"))")
+        print("  • PID: \(ProcessInfo.processInfo.processIdentifier)")
+
+        print("\n[2] Process & Daemon State:")
+        if isRunning {
+            let pids = runningApps.map { "\($0.processIdentifier)" }.joined(separator: ", ")
+            print("  • Daemon Process: RUNNING (PID: \(pids)) ✅")
+        } else {
+            print("  • Daemon Process: STANDBY (Not running) ℹ️")
+        }
+        print("  • Shield Status: \(config.isEnabled ? "ACTIVE 🛡️" : "PAUSED ⏸️")")
+        print("  • Protection Mode: \(config.protectionMode) (\(config.protectedBundleIdentifiers.count) protected apps)")
+        print("  • Walk-Away Detection: \(config.walkAwayLockEnabled ? "Enabled (\(Int(config.walkAwayIdleSeconds))s idle)" : "Disabled")")
+
+        print("\n[3] Camera Hardware & Permissions:")
+        switch camAuth {
+        case .authorized:
+            print("  • Camera Authorization: AUTHORIZED ✅")
+        case .denied:
+            print("  • Camera Authorization: DENIED ❌ (Grant access in System Settings > Privacy & Security > Camera)")
+        case .restricted:
+            print("  • Camera Authorization: RESTRICTED ⚠️")
+        case .notDetermined:
+            print("  • Camera Authorization: NOT DETERMINED ❓ (Will prompt on first scan)")
+        @unknown default:
+            print("  • Camera Authorization: UNKNOWN")
+        }
+
+        if devices.isEmpty {
+            print("  • Video Devices: No cameras detected ⚠️")
+        } else {
+            print("  • Detected Cameras (\(devices.count)):")
+            for dev in devices {
+                print("    - \(dev.localizedName) [\(dev.uniqueID)]")
+            }
+        }
+
+        print("\n[4] Apple Neural Vision & Faceprints:")
+        print("  • Vision Framework: Loaded ✅")
+        print("  • Neural Faceprint Model (VNCreateFaceprintRequest): \(hasFaceprintReq ? "AVAILABLE ✅" : "UNAVAILABLE ❌")")
+        print("  • Similarity Decision Threshold: \(config.similarityThreshold) (Strict Neural Mode)")
+
+        print("\n[5] Biometrics & LocalAuthentication:")
+        print("  • Biometric Hardware: \(bioTypeStr)")
+        print("  • Biometrics Ready: \(canTouchID ? "YES ✅" : "NO (\(laError?.localizedDescription ?? "Unavailable")) ⚠️")")
+        print("  • Auto-Trigger Touch ID: \(config.autoTriggerTouchID ? "Enabled" : "Disabled")")
+
+        print("\n[6] Storage & Datasets:")
+        print("  • Config File: \(configExists ? "Valid (\(configPath)) ✅" : "Missing ⚠️")")
+        print("  • Enrolled Face Templates: \(vectors.count) vectors (\(vectors.isEmpty ? "None - run 'facelock --enroll'" : "Calibrated at \(vectorsPath) ✅"))")
+
         let sizeMB = Double(totalBytes) / (1024.0 * 1024.0)
         print("  • Intruder Incident Log: \(intruderCount) captures (\(String(format: "%.2f", sizeMB)) MB) in \(intrudersDir.path)")
 
-        // 7. Telegram Integration & Autonomous Workers
         print("\n[7] Integrations & Automation:")
-        let tgConfigured = !config.telegramBotToken.isEmpty && !config.telegramChatId.isEmpty
         print("  • Telegram Bot Alerts: \(tgConfigured ? "Configured (Active: \(config.telegramEnabled ? "YES ✅" : "NO ⏸️"))" : "Not configured ℹ️")")
-
-        let launchAgentPath = home.appendingPathComponent("Library/LaunchAgents/io.github.facelock.maintainer.plist").path
-        let agentInstalled = FileManager.default.fileExists(atPath: launchAgentPath)
         print("  • 24/7 Autonomous Maintainer: \(agentInstalled ? "Installed & Active ✅" : "Not installed (Run 'make maintainer-install') ℹ️")")
 
         print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")

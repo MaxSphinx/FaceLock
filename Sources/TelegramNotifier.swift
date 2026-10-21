@@ -32,15 +32,23 @@ public final class TelegramNotifier {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm:ss (dd.MM.yyyy)"
         let timeStr = formatter.string(from: Date())
+        let safeAppName = escapeHTML(appName)
 
         let caption = """
         🚨 <b>FaceLock: Обнаружен посторонний!</b>
-        💻 <b>Приложение:</b> \(appName)
+        💻 <b>Приложение:</b> \(safeAppName)
         🕒 <b>Время:</b> \(timeStr)
         🔒 Экран MacBook заблокирован защитным замком.
         """
 
         sendPhotoRequest(token: token, chatId: chatId, photoData: jpegData, caption: caption, completion: completion)
+    }
+
+    private func escapeHTML(_ text: String) -> String {
+        return text
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
     }
 
     public func sendTestMessage(token: String, chatId: String, completion: @escaping (Bool, String) -> Void) {

@@ -127,6 +127,29 @@ public final class Config: Codable {
         }
     }
 
+    public func reload() {
+        if let data = try? Data(contentsOf: Config.configURL),
+           let fresh = try? JSONDecoder().decode(Config.self, from: data) {
+            self.pin = fresh.pin
+            self.similarityThreshold = fresh.similarityThreshold
+            self.verificationTimeout = fresh.verificationTimeout
+            self.debounceSeconds = fresh.debounceSeconds
+            self.isEnabled = fresh.isEnabled
+            self.strictFaceMatch = fresh.strictFaceMatch
+            self.showHUD = fresh.showHUD
+            self.autoTriggerTouchID = fresh.autoTriggerTouchID
+            self.ignoredBundleIdentifiers = fresh.ignoredBundleIdentifiers
+            self.telegramBotToken = fresh.telegramBotToken
+            self.telegramChatId = fresh.telegramChatId
+            self.telegramEnabled = fresh.telegramEnabled
+            self.protectionMode = fresh.protectionMode
+            self.protectedBundleIdentifiers = fresh.protectedBundleIdentifiers
+            self.livenessDetectionEnabled = fresh.livenessDetectionEnabled
+            self.walkAwayLockEnabled = fresh.walkAwayLockEnabled
+            self.walkAwayIdleSeconds = fresh.walkAwayIdleSeconds
+        }
+    }
+
     public var hasEnrolledFace: Bool {
         return !loadEnrolledVectors().isEmpty
     }

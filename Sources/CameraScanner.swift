@@ -330,7 +330,8 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
 
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
-        let filename = "intruder_\(formatter.string(from: Date())).jpg"
+        let entropy = UUID().uuidString.prefix(6)
+        let filename = "intruder_\(formatter.string(from: Date()))_\(entropy).jpg"
         let url = dir.appendingPathComponent(filename)
 
         guard let tiff = image.tiffRepresentation,
@@ -340,7 +341,20 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         }
         try? jpeg.write(to: url)
         print("[CameraScanner] Intruder photo saved: \(url.path)")
+        pruneOldIntruderPhotos(in: dir, maxRetained: 150)
         return url
+    }
+
+    private func pruneOldIntruderPhotos(in dir: URL, maxRetained: Int) {
+        guard let files = try? FileManager.default.contentsOfDirectory(atPath: dir.path) else { return }
+        let jpegs = files
+            .filter { $0.hasSuffix(".jpg") || $0.hasSuffix(".jpeg") }
+            .sorted(by: >)
+        if jpegs.count > maxRetained {
+            for oldFile in jpegs.suffix(from: maxRetained) {
+                try? FileManager.default.removeItem(at: dir.appendingPathComponent(oldFile))
+            }
+        }
     }
 
     // MARK: - Capture Faceprints for Enrollment

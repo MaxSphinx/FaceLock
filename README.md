@@ -171,6 +171,9 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --diagnostics` | Run full biometric, hardware & storage diagnostics |
 | `facelock --test-lock` | Trigger fullscreen security shield test |
 | `facelock --status` | Display daemon status and biometric template metrics |
+| `facelock --incidents [--json]` | List logged intruder incident captures and disk usage |
+| `facelock --clear-incidents` | Purge all saved intruder photo captures from disk |
+| `facelock --test-telegram` | Dispatch verification alert to configured Telegram chat |
 | `facelock --reset` | Purge all enrolled facial vectors |
 | `facelock --version` | Output version and platform architecture |
 | `facelock --help` | Show comprehensive CLI guide |

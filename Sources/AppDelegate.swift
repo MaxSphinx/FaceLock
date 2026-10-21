@@ -16,20 +16,22 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               facelock [options]
 
             OPTIONS:
-              --enroll            Launch camera face enrollment wizard
-              --settings          Open configuration and alert settings
-              --gallery           Open intruder incident log gallery
-              --incidents [--json] List logged intruder incident captures
-              --lock, --test-lock Trigger immediate fullscreen lock screen
-              --toggle            Toggle protection between ACTIVE and PAUSED
-              --pause [mins]      Pause protection for N minutes (default: 15)
-              --resume            Resume protection immediately
-              --diagnostics, -d   Run complete biometric & hardware system diagnostics
-              --status [--json]   Print current daemon status and vector metrics
-              --reset             Purge all enrolled facial vectors
-              --update            Check GitHub for updates, pull, recompile & reload
-              --version, -v       Print version information
-              --help, -h          Show this help guide
+              --enroll                   Launch camera face enrollment wizard
+              --settings                 Open configuration and alert settings
+              --gallery                  Open intruder incident log gallery
+              --incidents [--json]       List logged intruder incident captures
+              --clear-incidents          Purge all saved intruder photo captures from disk
+              --lock, --test-lock        Trigger immediate fullscreen lock screen
+              --toggle                   Toggle protection between ACTIVE and PAUSED
+              --pause [mins]             Pause protection for N minutes (default: 15)
+              --resume                   Resume protection immediately
+              --diagnostics, -d [--json] Run complete biometric & hardware system diagnostics
+              --status [--json]          Print current daemon status and vector metrics
+              --test-telegram            Dispatch a verification alert to configured Telegram chat
+              --reset                    Purge all enrolled facial vectors
+              --update                   Check GitHub for updates, pull, recompile & reload
+              --version, -v              Print version information
+              --help, -h                 Show this help guide
             """)
             exit(0)
         }
@@ -40,7 +42,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if args.contains("--diagnostics") || args.contains("-d") {
-            Diagnostics.run()
+            Diagnostics.run(jsonOutput: args.contains("--json"))
             exit(0)
         }
 
@@ -136,6 +138,104 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
             exit(0)
+        }
+
+        if args.contains("--clear-incidents") {
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
+            var deletedCount = 0
+            var freedBytes: UInt64 = 0
+
+            if let files = try? FileManager.default.contentsOfDirectory(atPath: dir.path) {
+                let jpegs = files.filter { $0.hasSuffix(".jpg") || $0.hasSuffix(".jpeg") }
+                for f in jpegs {
+                    let p = dir.appendingPathComponent(f).path
+                    if let attrs = try? FileManager.default.attributesOfItem(atPath: p),
+                       let sz = attrs[.size] as? UInt64 {
+                        freedBytes += sz
+                    }
+                    if (try? FileManager.default.removeItem(atPath: p)) != nil {
+                        deletedCount += 1
+                    }
+                }
+            }
+
+            if args.contains("--json") {
+                let outDict: [String: Any] = [
+                    "success": true,
+                    "deletedCount": deletedCount,
+                    "freedSizeBytes": freedBytes,
+                    "directory": dir.path
+                ]
+                if let d = try? JSONSerialization.data(withJSONObject: outDict, options: [.prettyPrinted, .sortedKeys]),
+                   let s = String(data: d, encoding: .utf8) {
+                    print(s)
+                }
+                exit(0)
+            }
+
+            let freedMB = Double(freedBytes) / (1024.0 * 1024.0)
+            print("[FaceLock] Cleared \(deletedCount) intruder captures (\(String(format: "%.2f", freedMB)) MB freed) from \(dir.path).")
+            exit(0)
+        }
+
+        if args.contains("--test-telegram") {
+            let token = Config.shared.telegramBotToken.trimmingCharacters(in: .whitespacesAndNewlines)
+            let chatId = Config.shared.telegramChatId.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            guard !token.isEmpty && !chatId.isEmpty else {
+                if args.contains("--json") {
+                    let errDict: [String: Any] = [
+                        "success": false,
+                        "error": "Telegram Bot Token or Chat ID not configured in ~/.facelock/config.json"
+                    ]
+                    if let d = try? JSONSerialization.data(withJSONObject: errDict, options: [.prettyPrinted, .sortedKeys]),
+                       let s = String(data: d, encoding: .utf8) {
+                        print(s)
+                    }
+                } else {
+                    print("[FaceLock] Telegram Bot Token or Chat ID is not configured.")
+                    print("To configure, open 'facelock --settings' or edit ~/.facelock/config.json.")
+                }
+                exit(1)
+            }
+
+            if !args.contains("--json") {
+                print("[FaceLock] Dispatching verification alert to Telegram (chat: \(chatId))...")
+            }
+            var done = false
+            var testSuccess = false
+            var testMessage = ""
+
+            TelegramNotifier.shared.sendTestMessage(token: token, chatId: chatId) { success, msg in
+                testSuccess = success
+                testMessage = msg
+                done = true
+            }
+
+            let timeoutDate = Date().addingTimeInterval(10.0)
+            while !done && Date() < timeoutDate {
+                RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.1))
+            }
+
+            if args.contains("--json") {
+                let outDict: [String: Any] = [
+                    "success": testSuccess,
+                    "chatId": chatId,
+                    "message": testMessage
+                ]
+                if let d = try? JSONSerialization.data(withJSONObject: outDict, options: [.prettyPrinted, .sortedKeys]),
+                   let s = String(data: d, encoding: .utf8) {
+                    print(s)
+                }
+            } else {
+                if testSuccess {
+                    print("✓ Telegram test notification successfully sent to chat \(chatId)!")
+                } else {
+                    print("⚠️ Telegram test notification failed: \(testMessage.isEmpty ? "Request timed out" : testMessage)")
+                }
+            }
+            exit(testSuccess ? 0 : 1)
         }
 
         if args.contains("--update") {
