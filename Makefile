@@ -95,6 +95,9 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --diagnostics --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-walkaway 45 --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-pin 0000 --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --enable-telegram --json > /dev/null
 	@echo "✓ All CLI tests passed!"
 
 diagnostics: build

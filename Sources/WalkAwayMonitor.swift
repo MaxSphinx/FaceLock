@@ -53,6 +53,9 @@ public final class WalkAwayMonitor {
                     print("[WalkAwayMonitor] User is still in front of screen (reading/watching). Not locking.")
                 } else {
                     print("[WalkAwayMonitor] Nobody in front of screen! Auto-locking Mac...")
+                    if let photo = intruderImage {
+                        TelegramNotifier.shared.sendIntruderAlert(photo: photo, appName: "Walk-Away Auto-Lock")
+                    }
                     LockScreenController.shared.showLock(targetApp: nil, intruderImage: intruderImage)
                 }
             }

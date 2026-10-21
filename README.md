@@ -174,6 +174,11 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --apps [--json]` | List protected and ignored application bundle IDs |
 | `facelock --protect-app <id>` | Add application bundle ID to protected list |
 | `facelock --unprotect-app <id>` | Remove application bundle ID from protected list |
+| `facelock --set-pin <pin>` | Set lock screen unlock PIN from terminal |
+| `facelock --set-telegram <tok> <id>` | Configure Telegram bot credentials and enable alerts |
+| `facelock --enable-telegram` | Enable Telegram intruder photo alerts |
+| `facelock --disable-telegram` | Disable Telegram intruder alerts |
+| `facelock --set-walkaway <sec\|off>` | Configure walk-away timeout (10-600s) or disable ('off') |
 | `facelock --set-threshold <val>` | Set similarity threshold (0.05 - 0.60, default: 0.22) |
 | `facelock --set-mode <mode>` | Set mode: 'all' (every app) or 'selective' (secret apps) |
 | `facelock --diagnostics` | Run full biometric, hardware & storage diagnostics |

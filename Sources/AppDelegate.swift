@@ -29,6 +29,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --apps [--json]            List protected and ignored application bundle IDs
               --protect-app <bundleId>   Add application bundle ID to protected list
               --unprotect-app <bundleId> Remove application bundle ID from protected list
+              --set-pin <pin>            Update lock screen unlock PIN
+              --set-telegram <tok> <id>  Configure Telegram bot credentials and enable alerts
+              --enable-telegram          Enable Telegram notifications
+              --disable-telegram         Disable Telegram notifications
+              --set-walkaway <sec|off>   Configure walk-away timeout (10-600s) or 'off'
               --set-threshold <val>      Set similarity threshold (0.05 - 0.60, default: 0.22)
               --set-mode <mode>          Set mode: 'all' (every app) or 'selective' (secret apps)
               --diagnostics, -d [--json] Run complete biometric & hardware system diagnostics
@@ -214,6 +219,89 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 print("Error: Mode must be either 'all' or 'selective'.")
                 exit(1)
             }
+        }
+
+        if let idx = args.firstIndex(of: "--set-pin"), idx + 1 < args.count {
+            let newPin = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !newPin.isEmpty else {
+                print("Error: Missing PIN value. Usage: facelock --set-pin <pin>")
+                exit(1)
+            }
+            Config.shared.pin = newPin
+            Config.shared.save()
+            if args.contains("--json") {
+                print("{\"success\":true,\"message\":\"Lock screen PIN updated\"}")
+            } else {
+                print("✓ Lock screen PIN successfully updated.")
+            }
+            exit(0)
+        }
+
+        if let idx = args.firstIndex(of: "--set-telegram"), idx + 2 < args.count {
+            let token = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+            let chatId = args[idx + 2].trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !token.isEmpty && !chatId.isEmpty else {
+                print("Error: Usage: facelock --set-telegram <token> <chatId>")
+                exit(1)
+            }
+            Config.shared.telegramBotToken = token
+            Config.shared.telegramChatId = chatId
+            Config.shared.telegramEnabled = true
+            Config.shared.save()
+            if args.contains("--json") {
+                print("{\"success\":true,\"chatId\":\"\(chatId)\",\"telegramEnabled\":true}")
+            } else {
+                print("✓ Telegram credentials configured and alerts enabled for chat \(chatId).")
+            }
+            exit(0)
+        }
+
+        if args.contains("--enable-telegram") {
+            Config.shared.telegramEnabled = true
+            Config.shared.save()
+            if args.contains("--json") {
+                print("{\"success\":true,\"telegramEnabled\":true}")
+            } else {
+                print("✓ Telegram intruder alerts enabled.")
+            }
+            exit(0)
+        }
+
+        if args.contains("--disable-telegram") {
+            Config.shared.telegramEnabled = false
+            Config.shared.save()
+            if args.contains("--json") {
+                print("{\"success\":true,\"telegramEnabled\":false}")
+            } else {
+                print("✓ Telegram intruder alerts disabled.")
+            }
+            exit(0)
+        }
+
+        if let idx = args.firstIndex(of: "--set-walkaway"), idx + 1 < args.count {
+            let val = args[idx + 1].lowercased()
+            if val == "off" || val == "disable" || val == "0" {
+                Config.shared.walkAwayLockEnabled = false
+                Config.shared.save()
+                if args.contains("--json") {
+                    print("{\"success\":true,\"walkAwayLockEnabled\":false}")
+                } else {
+                    print("✓ Walk-away auto-lock disabled.")
+                }
+            } else if let secs = Double(val), secs >= 10.0 && secs <= 600.0 {
+                Config.shared.walkAwayLockEnabled = true
+                Config.shared.walkAwayIdleSeconds = secs
+                Config.shared.save()
+                if args.contains("--json") {
+                    print("{\"success\":true,\"walkAwayLockEnabled\":true,\"walkAwayIdleSeconds\":\(secs)}")
+                } else {
+                    print("✓ Walk-away auto-lock enabled with \(Int(secs))s idle timeout.")
+                }
+            } else {
+                print("Error: Invalid timeout. Provide seconds (10 - 600) or 'off'.")
+                exit(1)
+            }
+            exit(0)
         }
 
         if args.contains("--incidents") {
