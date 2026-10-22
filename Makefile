@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock settings gallery status config apps diagnostics toggle install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents test-telegram incidents
+.PHONY: all build run enroll test-lock lock settings gallery status config apps diagnostics toggle install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents test-telegram incidents
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -28,6 +28,7 @@ help:
 	@echo "  make apps           - List protected and ignored application bundle IDs"
 	@echo "  make incidents      - List logged intruder incident captures"
 	@echo "  make clear-incidents- Purge all saved intruder captures from disk"
+	@echo "  make prune-incidents- Prune older intruder captures (keep latest 30)"
 	@echo "  make test-telegram  - Dispatch test notification to Telegram chat"
 	@echo "  make diagnostics    - Run full biometric, hardware & storage diagnostics"
 	@echo "  make stop           - Terminate running FaceLock instance"
@@ -78,6 +79,9 @@ incidents: build
 
 clear-incidents: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --clear-incidents
+
+prune-incidents: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --prune-incidents 30
 
 test-telegram: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --test-telegram

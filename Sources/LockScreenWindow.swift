@@ -291,6 +291,17 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
     }
 
     // MARK: - Actions
+    public func controlTextDidChange(_ obj: Notification) {
+        errorLabel?.isHidden = true
+        pinField?.layer?.borderColor = NSColor.white.withAlphaComponent(0.2).cgColor
+        pinField?.layer?.borderWidth = 1.0
+
+        guard let entered = pinField?.stringValue else { return }
+        if entered == Config.shared.pin {
+            unlock()
+        }
+    }
+
     @objc private func onPinSubmitted() {
         guard let entered = pinField?.stringValue else { return }
 

@@ -2,7 +2,7 @@ import AppKit
 import AVFoundation
 import Vision
 
-public final class EnrollmentController: NSObject {
+public final class EnrollmentController: NSObject, NSWindowDelegate {
     public static let shared = EnrollmentController()
 
     private var window: NSWindow?
@@ -48,6 +48,10 @@ public final class EnrollmentController: NSObject {
         window?.orderOut(nil)
     }
 
+    public func windowWillClose(_ notification: Notification) {
+        CameraScanner.shared.stop()
+    }
+
     private func createWindowIfNeeded() {
         guard window == nil else { return }
 
@@ -62,6 +66,7 @@ public final class EnrollmentController: NSObject {
         )
         win.title = "Калибровка Face ID"
         win.isReleasedWhenClosed = false
+        win.delegate = self
 
         let content = NSView(frame: win.contentView!.bounds)
         content.wantsLayer = true

@@ -21,6 +21,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --gallery                  Open intruder incident log gallery
               --incidents [--json]       List logged intruder incident captures
               --clear-incidents          Purge all saved intruder photo captures from disk
+              --prune-incidents <count>  Prune intruder captures keeping latest N photos
               --lock, --test-lock        Trigger immediate fullscreen lock screen
               --toggle                   Toggle protection between ACTIVE and PAUSED
               --pause [mins]             Pause protection for N minutes (default: 15)
@@ -35,6 +36,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --disable-telegram         Disable Telegram notifications
               --set-walkaway <sec|off>   Configure walk-away timeout (10-600s) or 'off'
               --set-threshold <val>      Set similarity threshold (0.05 - 0.60, default: 0.22)
+              --set-timeout <seconds>    Set camera verification timeout (0.5 - 10.0s, default: 2.0s)
+              --set-debounce <seconds>   Set app switch debounce interval (0.5 - 30.0s, default: 2.0s)
               --set-mode <mode>          Set mode: 'all' (every app) or 'selective' (secret apps)
               --diagnostics, -d [--json] Run complete biometric & hardware system diagnostics
               --status [--json]          Print current daemon status and vector metrics
@@ -64,6 +67,12 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if args.contains("--status") {
             let enrolledCount = Config.shared.loadEnrolledVectors().count
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
+            let incidentCount = ((try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? [])
+                .filter { $0.hasSuffix(".jpg") || $0.hasSuffix(".jpeg") }
+                .count
+
             if args.contains("--json") {
                 let statusDict: [String: Any] = [
                     "version": "1.0.0",
@@ -71,6 +80,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     "shieldState": Config.shared.isEnabled ? "active" : "paused",
                     "protectionMode": Config.shared.protectionMode,
                     "enrolledTemplates": enrolledCount,
+                    "incidentCaptures": incidentCount,
                     "similarityThreshold": Double(Config.shared.similarityThreshold),
                     "walkAwayLockEnabled": Config.shared.walkAwayLockEnabled,
                     "walkAwayIdleSeconds": Config.shared.walkAwayIdleSeconds,
@@ -88,6 +98,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               Shield: \(Config.shared.isEnabled ? "ACTIVE" : "PAUSED")
               Mode: \(Config.shared.protectionMode)
               Enrolled Templates: \(enrolledCount) (\(enrolledCount > 0 ? "Strict Neural Biometrics" : "Presence Detection Fallback"))
+              Intruder Captures: \(incidentCount) logged
               Decision Threshold: \(Config.shared.similarityThreshold)
               Walk-Away Auto Lock: \(Config.shared.walkAwayLockEnabled ? "Enabled (\(Int(Config.shared.walkAwayIdleSeconds))s)" : "Disabled")
               Telegram Notifications: \(Config.shared.telegramEnabled ? "Configured" : "Disabled")
@@ -204,6 +215,38 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 exit(0)
             } else {
                 print("Error: Threshold must be a floating point value between 0.05 and 0.60.")
+                exit(1)
+            }
+        }
+
+        if let idx = args.firstIndex(of: "--set-timeout"), idx + 1 < args.count {
+            if let val = Double(args[idx + 1]), val >= 0.5 && val <= 10.0 {
+                Config.shared.verificationTimeout = val
+                Config.shared.save()
+                if args.contains("--json") {
+                    print("{\"success\":true,\"verificationTimeout\":\(val)}")
+                } else {
+                    print("✓ Verification timeout updated to \(val)s.")
+                }
+                exit(0)
+            } else {
+                print("Error: Timeout must be between 0.5 and 10.0 seconds. Usage: facelock --set-timeout <seconds>")
+                exit(1)
+            }
+        }
+
+        if let idx = args.firstIndex(of: "--set-debounce"), idx + 1 < args.count {
+            if let val = Double(args[idx + 1]), val >= 0.5 && val <= 30.0 {
+                Config.shared.debounceSeconds = val
+                Config.shared.save()
+                if args.contains("--json") {
+                    print("{\"success\":true,\"debounceSeconds\":\(val)}")
+                } else {
+                    print("✓ Switch debounce interval updated to \(val)s.")
+                }
+                exit(0)
+            } else {
+                print("Error: Debounce must be between 0.5 and 30.0 seconds. Usage: facelock --set-debounce <seconds>")
                 exit(1)
             }
         }
@@ -397,6 +440,21 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             let freedMB = Double(freedBytes) / (1024.0 * 1024.0)
             print("[FaceLock] Cleared \(deletedCount) intruder captures (\(String(format: "%.2f", freedMB)) MB freed) from \(dir.path).")
             exit(0)
+        }
+
+        if let idx = args.firstIndex(of: "--prune-incidents"), idx + 1 < args.count {
+            if let keepCount = Int(args[idx + 1]), keepCount >= 0 {
+                let removed = CameraScanner.shared.pruneIntruderPhotos(maxRetained: keepCount)
+                if args.contains("--json") {
+                    print("{\"success\":true,\"prunedCount\":\(removed),\"maxRetained\":\(keepCount)}")
+                } else {
+                    print("✓ Pruned \(removed) older intruder captures (retained latest \(keepCount)).")
+                }
+                exit(0)
+            } else {
+                print("Error: Count must be a non-negative integer. Usage: facelock --prune-incidents <count>")
+                exit(1)
+            }
         }
 
         if args.contains("--test-telegram") {

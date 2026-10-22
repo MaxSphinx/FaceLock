@@ -180,12 +180,15 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --disable-telegram` | Disable Telegram intruder alerts |
 | `facelock --set-walkaway <sec\|off>` | Configure walk-away timeout (10-600s) or disable ('off') |
 | `facelock --set-threshold <val>` | Set similarity threshold (0.05 - 0.60, default: 0.22) |
+| `facelock --set-timeout <sec>` | Set camera verification timeout (0.5 - 10.0s, default: 2.0s) |
+| `facelock --set-debounce <sec>` | Set app switch debounce interval (0.5 - 30.0s, default: 2.0s) |
 | `facelock --set-mode <mode>` | Set mode: 'all' (every app) or 'selective' (secret apps) |
 | `facelock --diagnostics` | Run full biometric, hardware & storage diagnostics |
 | `facelock --test-lock` | Trigger fullscreen security shield test |
 | `facelock --status` | Display daemon status and biometric template metrics |
 | `facelock --incidents [--json]` | List logged intruder incident captures and disk usage |
 | `facelock --clear-incidents` | Purge all saved intruder photo captures from disk |
+| `facelock --prune-incidents <n>` | Prune intruder captures keeping latest N photos |
 | `facelock --test-telegram` | Dispatch verification alert to configured Telegram chat |
 | `facelock --reset` | Purge all enrolled facial vectors |
 | `facelock --version` | Output version and platform architecture |

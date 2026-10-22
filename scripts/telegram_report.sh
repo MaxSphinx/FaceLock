@@ -84,6 +84,46 @@ PR_1712=$(format_pr_status "serhii-londar/open-source-mac-os-apps" 1712)
 PR_1319=$(format_pr_status "iCHAIT/awesome-macOS" 1319)
 PR_2007=$(format_pr_status "matteocrippa/awesome-swift" 2007)
 
+# Fetch local daemon telemetry safely
+DAEMON_PID=$(pgrep -f "FaceLock.app/Contents/MacOS/FaceLock" 2>/dev/null | head -n 1 || true)
+if [[ -n "$DAEMON_PID" ]]; then
+    DAEMON_STATUS="АКТИВЕН (PID $DAEMON_PID) ✅"
+else
+    DAEMON_STATUS="ОСТАНОВЛЕН ℹ️"
+fi
+
+SHIELD_STATUS=$(python3 -c "import json, os
+p = os.path.expanduser('~/.facelock/config.json')
+if os.path.exists(p):
+    try:
+        c = json.load(open(p))
+        print('АКТИВНА 🛡️' if c.get('isEnabled', True) else 'НА ПАУЗЕ ⏸️')
+    except:
+        print('N/A')
+else:
+    print('N/A')
+" 2>/dev/null || echo "N/A")
+
+ENROLLED_COUNT=$(python3 -c "import json, os
+p = os.path.expanduser('~/.facelock/owner_face_vectors.json')
+if os.path.exists(p):
+    try:
+        v = json.load(open(p))
+        print(f'{len(v)} нейровекторов')
+    except:
+        print('0')
+else:
+    print('0')
+" 2>/dev/null || echo "0")
+
+INTRUDER_COUNT=$(python3 -c "import os
+p = os.path.expanduser('~/.facelock/intruders')
+if os.path.exists(p):
+    print(f'{len([f for f in os.listdir(p) if f.endswith(\".jpg\") or f.endswith(\".jpeg\")])} инцидентов')
+else:
+    print('0')
+" 2>/dev/null || echo "0")
+
 # Latest commit info
 if [[ -d "$REPO_DIR/.git" ]]; then
     LATEST_COMMIT=$(git -C "$REPO_DIR" log -1 --pretty=format:"%h - %s" 2>/dev/null || echo "N/A")
@@ -109,6 +149,12 @@ MESSAGE="🛡️ <b>FaceLock Status Report</b>
 • <code>open-source-mac-os-apps #1712</code> (50k★): <b>$PR_1712</b>
 • <code>awesome-macOS #1319</code> (19k★): <b>$PR_1319</b>
 • <code>awesome-swift #2007</code> (26k★): <b>$PR_2007</b>
+
+🖥️ <b>Локальный статус FaceLock:</b>
+• Демон: <b>$DAEMON_STATUS</b>
+• Защита: <b>$SHIELD_STATUS</b>
+• Слепки лица: <b>$ENROLLED_COUNT</b>
+• Нарушители: <b>$INTRUDER_COUNT</b>
 
 💻 <b>Последний коммит:</b>
 <code>$LATEST_COMMIT</code>"

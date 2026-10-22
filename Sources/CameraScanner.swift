@@ -347,16 +347,28 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         return url
     }
 
-    private func pruneOldIntruderPhotos(in dir: URL, maxRetained: Int) {
-        guard let files = try? FileManager.default.contentsOfDirectory(atPath: dir.path) else { return }
+    @discardableResult
+    public func pruneIntruderPhotos(maxRetained: Int = 150) -> Int {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
+        return pruneOldIntruderPhotos(in: dir, maxRetained: maxRetained)
+    }
+
+    @discardableResult
+    private func pruneOldIntruderPhotos(in dir: URL, maxRetained: Int) -> Int {
+        guard let files = try? FileManager.default.contentsOfDirectory(atPath: dir.path) else { return 0 }
         let jpegs = files
             .filter { $0.hasSuffix(".jpg") || $0.hasSuffix(".jpeg") }
             .sorted(by: >)
+        var removedCount = 0
         if jpegs.count > maxRetained {
             for oldFile in jpegs.suffix(from: maxRetained) {
-                try? FileManager.default.removeItem(at: dir.appendingPathComponent(oldFile))
+                if (try? FileManager.default.removeItem(at: dir.appendingPathComponent(oldFile))) != nil {
+                    removedCount += 1
+                }
             }
         }
+        return removedCount
     }
 
     // MARK: - Capture Faceprints for Enrollment
