@@ -20,8 +20,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --settings                 Open configuration and alert settings
               --gallery                  Open intruder incident log gallery
               --incidents [--json]       List logged intruder incident captures
+              --latest-incident [--json] Inspect the most recent intruder photo capture
               --clear-incidents          Purge all saved intruder photo captures from disk
               --prune-incidents <count>  Prune intruder captures keeping latest N photos
+              --verify-face [--timeout]  One-shot face biometric check without locking
+              --verify-pin <pin>         Verify whether given PIN matches lock screen PIN
               --lock, --test-lock        Trigger immediate fullscreen lock screen
               --toggle                   Toggle protection between ACTIVE and PAUSED
               --pause [mins]             Pause protection for N minutes (default: 15)
@@ -280,6 +283,21 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(0)
         }
 
+        if let idx = args.firstIndex(of: "--verify-pin"), idx + 1 < args.count {
+            let candidatePin = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+            let isValid = (candidatePin == Config.shared.pin)
+            if args.contains("--json") {
+                print("{\"valid\":\(isValid),\"length\":\(candidatePin.count)}")
+            } else {
+                if isValid {
+                    print("✓ PIN matches configured lock screen PIN.")
+                } else {
+                    print("❌ PIN does not match.")
+                }
+            }
+            exit(isValid ? 0 : 1)
+        }
+
         if let idx = args.firstIndex(of: "--set-telegram"), idx + 2 < args.count {
             let token = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
             let chatId = args[idx + 2].trimmingCharacters(in: .whitespacesAndNewlines)
@@ -457,6 +475,56 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        if args.contains("--latest-incident") {
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
+            let files = ((try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? [])
+                .filter { $0.hasSuffix(".jpg") || $0.hasSuffix(".jpeg") }
+                .sorted(by: >)
+
+            if let latest = files.first {
+                let path = dir.appendingPathComponent(latest).path
+                var sz: UInt64 = 0
+                var modDate: Date? = nil
+                if let attrs = try? FileManager.default.attributesOfItem(atPath: path) {
+                    sz = (attrs[.size] as? UInt64) ?? 0
+                    modDate = attrs[.modificationDate] as? Date
+                }
+                let dateStr = modDate != nil ? ISO8601DateFormatter().string(from: modDate!) : ""
+
+                if args.contains("--json") {
+                    let out: [String: Any] = [
+                        "hasIncident": true,
+                        "filename": latest,
+                        "path": path,
+                        "sizeBytes": sz,
+                        "timestamp": dateStr
+                    ]
+                    if let d = try? JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys]),
+                       let s = String(data: d, encoding: .utf8) {
+                        print(s)
+                    }
+                } else {
+                    let sizeKB = Double(sz) / 1024.0
+                    print("""
+                    Latest FaceLock Intruder Incident:
+                      Filename: \(latest)
+                      Timestamp: \(dateStr.isEmpty ? "Unknown" : dateStr)
+                      Size: \(String(format: "%.1f", sizeKB)) KB
+                      File Path: \(path)
+                    """)
+                }
+                exit(0)
+            } else {
+                if args.contains("--json") {
+                    print("{\"hasIncident\":false,\"message\":\"No intruder incidents logged\"}")
+                } else {
+                    print("✓ No intruder incidents logged in \(dir.path).")
+                }
+                exit(0)
+            }
+        }
+
         if args.contains("--test-telegram") {
             let token = Config.shared.telegramBotToken.trimmingCharacters(in: .whitespacesAndNewlines)
             let chatId = Config.shared.telegramChatId.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -514,6 +582,118 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
             exit(testSuccess ? 0 : 1)
+        }
+
+        if args.contains("--verify-face") || args.contains("--test-face") {
+            let camAuth = AVCaptureDevice.authorizationStatus(for: .video)
+            if camAuth == .denied || camAuth == .restricted {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"Camera access is denied or restricted in System Settings\",\"exitCode\":3}")
+                } else {
+                    print("Error: Camera access is denied or restricted in macOS System Settings > Privacy & Security > Camera.")
+                }
+                exit(3)
+            }
+
+            let enrolledCount = Config.shared.loadEnrolledVectors().count
+            if enrolledCount == 0 {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"No face templates enrolled. Run 'facelock --enroll' first.\",\"exitCode\":3}")
+                } else {
+                    print("Error: No enrolled face templates found. Run 'facelock --enroll' first to calibrate your face.")
+                }
+                exit(3)
+            }
+
+            var timeout = Config.shared.verificationTimeout
+            if let idx = args.firstIndex(of: "--timeout"), idx + 1 < args.count, let val = Double(args[idx + 1]), val >= 0.5 && val <= 10.0 {
+                timeout = val
+            }
+
+            let saveIntruder = args.contains("--save-intruder")
+            CameraScanner.shared.autoSaveIntruders = saveIntruder
+
+            if !args.contains("--json") {
+                print("==> Initializing camera sensor and scanning face (timeout: \(timeout)s)...")
+            }
+
+            var done = false
+            var matchSuccess = false
+            var matchDistance: Float?
+            var faceDetected = false
+
+            CameraScanner.shared.scanFace(timeout: timeout) { success, distance, intruderImg in
+                matchSuccess = success
+                matchDistance = distance
+                faceDetected = success || (intruderImg != nil)
+                done = true
+            }
+
+            let deadline = Date().addingTimeInterval(timeout + 3.0)
+            while !done && Date() < deadline {
+                RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.05))
+            }
+
+            let threshold = Config.shared.similarityThreshold
+
+            if matchSuccess {
+                let distStr = matchDistance != nil ? String(format: "%.4f", matchDistance!) : "0.0000"
+                if args.contains("--json") {
+                    let out: [String: Any] = [
+                        "success": true,
+                        "matched": true,
+                        "faceDetected": true,
+                        "distance": Double(matchDistance ?? 0.0),
+                        "threshold": Double(threshold),
+                        "enrolledTemplates": enrolledCount,
+                        "status": "owner_verified"
+                    ]
+                    if let d = try? JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys]),
+                       let s = String(data: d, encoding: .utf8) {
+                        print(s)
+                    }
+                } else {
+                    print("✓ Face verified! Owner recognized ✅ (distance: \(distStr), threshold: \(threshold), templates: \(enrolledCount))")
+                }
+                exit(0)
+            } else if faceDetected {
+                let distStr = matchDistance != nil ? String(format: "%.4f", matchDistance!) : "N/A"
+                if args.contains("--json") {
+                    let out: [String: Any] = [
+                        "success": false,
+                        "matched": false,
+                        "faceDetected": true,
+                        "distance": Double(matchDistance ?? 1.0),
+                        "threshold": Double(threshold),
+                        "enrolledTemplates": enrolledCount,
+                        "status": "intruder_rejected"
+                    ]
+                    if let d = try? JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys]),
+                       let s = String(data: d, encoding: .utf8) {
+                        print(s)
+                    }
+                } else {
+                    print("❌ Face verification failed: Face does not match enrolled owner 🛡️ (best distance: \(distStr), threshold: \(threshold))")
+                }
+                exit(1)
+            } else {
+                if args.contains("--json") {
+                    let out: [String: Any] = [
+                        "success": false,
+                        "matched": false,
+                        "faceDetected": false,
+                        "status": "no_face_detected",
+                        "error": "No face detected in camera view within timeout"
+                    ]
+                    if let d = try? JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys]),
+                       let s = String(data: d, encoding: .utf8) {
+                        print(s)
+                    }
+                } else {
+                    print("⚠️ Face verification timed out: No face detected in camera field of view within \(timeout)s.")
+                }
+                exit(2)
+            }
         }
 
         if args.contains("--update") {

@@ -18,9 +18,12 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
     private var latestIntruderPhoto: NSImage?
     private var lastFrameSnapshot: NSImage?
     public private(set) var lastCandidateVector: [Float]?
+    public private(set) var latestBestDistance: Float?
+    public var autoSaveIntruders: Bool = true
 
     public func clearCandidateFaceprint() {
         self.lastCandidateVector = nil
+        self.latestBestDistance = nil
     }
 
     // Enrollment support
@@ -90,6 +93,7 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
             self.scanCompletion = completion
             self.latestIntruderPhoto = nil
             self.lastFrameSnapshot = nil
+            self.latestBestDistance = nil
 
             if !self.session.isRunning {
                 self.session.startRunning()
@@ -120,14 +124,15 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         // Only save intruder photo if an actual human face was detected and rejected.
         // If no face was seen (e.g. user walked away), do not treat empty frame as intruder.
         let intruderImage = self.latestIntruderPhoto
-        if let photo = intruderImage {
+        if let photo = intruderImage, autoSaveIntruders {
             self.saveIntruderPhoto(photo)
         }
 
+        let bestDist = self.latestBestDistance
         let comp = scanCompletion
         scanCompletion = nil
         DispatchQueue.main.async {
-            comp?(false, nil, intruderImage)
+            comp?(false, bestDist, intruderImage)
         }
     }
 
@@ -138,6 +143,7 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         scanTimer = nil
         latestIntruderPhoto = nil
         lastFrameSnapshot = nil
+        latestBestDistance = nil
 
         if session.isRunning {
             session.stopRunning()
@@ -158,6 +164,7 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
             self.enrollmentFrameHandler = nil
             self.latestIntruderPhoto = nil
             self.lastFrameSnapshot = nil
+            self.latestBestDistance = nil
             if self.session.isRunning {
                 self.session.stopRunning()
             }
@@ -232,6 +239,9 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
 
             let sortedDists = enrolled.map { FaceprintExtractor.cosineDistance(candidateVec, $0) }.sorted()
             let minDistance = sortedDists.first ?? 100.0
+            if self.latestBestDistance == nil || minDistance < self.latestBestDistance! {
+                self.latestBestDistance = minDistance
+            }
             let top3Distance = sortedDists.count >= 3 ? (sortedDists[0] + sortedDists[1] + sortedDists[2]) / 3.0 : minDistance
             let th = Config.shared.similarityThreshold
 

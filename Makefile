@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock settings gallery status config apps diagnostics toggle install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents test-telegram incidents
+.PHONY: all build run enroll test-lock lock settings gallery status config apps diagnostics toggle install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents test-telegram incidents latest-incident verify-face verify-pin
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -27,8 +27,10 @@ help:
 	@echo "  make config         - Display active FaceLock configuration settings"
 	@echo "  make apps           - List protected and ignored application bundle IDs"
 	@echo "  make incidents      - List logged intruder incident captures"
+	@echo "  make latest-incident- Display most recent intruder incident capture"
 	@echo "  make clear-incidents- Purge all saved intruder captures from disk"
 	@echo "  make prune-incidents- Prune older intruder captures (keep latest 30)"
+	@echo "  make verify-face    - One-shot biometric face verification via camera"
 	@echo "  make test-telegram  - Dispatch test notification to Telegram chat"
 	@echo "  make diagnostics    - Run full biometric, hardware & storage diagnostics"
 	@echo "  make stop           - Terminate running FaceLock instance"
@@ -77,6 +79,15 @@ apps: build
 incidents: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents
 
+latest-incident: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --latest-incident
+
+verify-face: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --verify-face
+
+verify-pin: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --verify-pin $(PIN)
+
 clear-incidents: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --clear-incidents
 
@@ -98,9 +109,11 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --apps --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --latest-incident > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --latest-incident --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --diagnostics --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-walkaway 45 --json > /dev/null
-	@build/FaceLock.app/Contents/MacOS/FaceLock --set-pin 0000 --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --verify-pin 0000 --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --enable-telegram --json > /dev/null
 	@echo "✓ All CLI tests passed!"
 
