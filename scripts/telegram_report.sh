@@ -132,6 +132,7 @@ elif [[ -d "$HOME/Developer/FaceLock/.git" ]]; then
 else
     LATEST_COMMIT=$(gh api "repos/$REPO/commits/main" --jq '"\(.sha[0:7]) - \(.commit.message | split("\n")[0])"' 2>/dev/null || echo "N/A")
 fi
+SAFE_LATEST_COMMIT=$(echo "$LATEST_COMMIT" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
 DATE_NOW=$(date "+%Y-%m-%d %H:%M:%S")
 
 CUSTOM_MSG="${1:-}"
@@ -157,7 +158,7 @@ MESSAGE="🛡️ <b>FaceLock Status Report</b>
 • Нарушители: <b>$INTRUDER_COUNT</b>
 
 💻 <b>Последний коммит:</b>
-<code>$LATEST_COMMIT</code>"
+<code>$SAFE_LATEST_COMMIT</code>"
 
 if [[ -n "$CUSTOM_MSG" ]]; then
     MESSAGE="$MESSAGE
@@ -172,9 +173,9 @@ echo "$MESSAGE"
 if [[ -n "$TOKEN" && -n "$CHAT_ID" ]]; then
     echo "==> Sending report to Telegram chat $CHAT_ID..."
     RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot$TOKEN/sendMessage" \
-        -d "chat_id=$CHAT_ID" \
-        -d "parse_mode=HTML" \
-        -d "text=$MESSAGE")
+        --data-urlencode "chat_id=$CHAT_ID" \
+        --data-urlencode "parse_mode=HTML" \
+        --data-urlencode "text=$MESSAGE")
     if echo "$RESPONSE" | grep -q '"ok":true'; then
         echo "✓ Telegram message sent successfully!"
     else
