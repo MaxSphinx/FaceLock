@@ -180,8 +180,88 @@ public final class Config: Codable {
         print("[Config] Added new face vector sample. Total enrolled: \(current.count)")
     }
 
+    public func addProtectedApp(_ bundleId: String) -> Bool {
+        let trimmed = bundleId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        if !protectedBundleIdentifiers.contains(trimmed) {
+            protectedBundleIdentifiers.append(trimmed)
+            save()
+            return true
+        }
+        return false
+    }
+
+    public func removeProtectedApp(_ bundleId: String) -> Bool {
+        let trimmed = bundleId.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let idx = protectedBundleIdentifiers.firstIndex(of: trimmed) {
+            protectedBundleIdentifiers.remove(at: idx)
+            save()
+            return true
+        }
+        return false
+    }
+
+    public func addIgnoredApp(_ bundleId: String) -> Bool {
+        let trimmed = bundleId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        if !ignoredBundleIdentifiers.contains(trimmed) {
+            ignoredBundleIdentifiers.append(trimmed)
+            save()
+            return true
+        }
+        return false
+    }
+
+    public func removeIgnoredApp(_ bundleId: String) -> Bool {
+        let trimmed = bundleId.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let idx = ignoredBundleIdentifiers.firstIndex(of: trimmed) {
+            ignoredBundleIdentifiers.remove(at: idx)
+            save()
+            return true
+        }
+        return false
+    }
+
     public func clearEnrolledVectors() {
         let url = Config.vectorsURL
         try? FileManager.default.removeItem(at: url)
+    }
+
+    public func exportVectors(to destinationPath: String) throws -> Int {
+        let expandedPath = NSString(string: destinationPath).expandingTildeInPath
+        let destURL = URL(fileURLWithPath: expandedPath)
+        let vectors = loadEnrolledVectors()
+        guard !vectors.isEmpty else {
+            throw NSError(domain: "io.github.facelock", code: 1, userInfo: [NSLocalizedDescriptionKey: "No enrolled face vectors found to export"])
+        }
+        let data = try JSONEncoder().encode(vectors)
+        try data.write(to: destURL, options: .atomic)
+        return vectors.count
+    }
+
+    public func importVectors(from sourcePath: String, merge: Bool = true) throws -> Int {
+        let expandedPath = NSString(string: sourcePath).expandingTildeInPath
+        let sourceURL = URL(fileURLWithPath: expandedPath)
+        let data = try Data(contentsOf: sourceURL)
+        let imported = try JSONDecoder().decode([[Float]].self, from: data)
+        guard !imported.isEmpty else {
+            throw NSError(domain: "io.github.facelock", code: 2, userInfo: [NSLocalizedDescriptionKey: "Imported vector file is empty"])
+        }
+        var combined: [[Float]]
+        if merge {
+            combined = loadEnrolledVectors()
+            for vec in imported {
+                if !vec.isEmpty && !combined.contains(where: { $0 == vec }) {
+                    combined.append(vec)
+                }
+            }
+        } else {
+            combined = imported
+        }
+        if combined.count > 30 {
+            combined = Array(combined.suffix(30))
+        }
+        saveEnrolledVectors(combined)
+        return combined.count
     }
 }

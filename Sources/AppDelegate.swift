@@ -33,6 +33,13 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --apps [--json]            List protected and ignored application bundle IDs
               --protect-app <bundleId>   Add application bundle ID to protected list
               --unprotect-app <bundleId> Remove application bundle ID from protected list
+              --ignore-app <bundleId>    Add application bundle ID to ignored list
+              --unignore-app <bundleId>  Remove application bundle ID from ignored list
+              --set-liveness <on|off>    Enable or disable anti-spoofing liveness verification
+              --set-touchid <on|off>     Enable or disable Touch ID fallback on lock screen
+              --export-vectors <path>    Export enrolled facial biometric vectors to JSON file
+              --import-vectors <path>    Import facial biometric vectors from JSON file
+              --health [--json]          Fast operational healthcheck (exit 0 if healthy)
               --set-pin <pin>            Update lock screen unlock PIN
               --set-telegram <tok> <id>  Configure Telegram bot credentials and enable alerts
               --enable-telegram          Enable Telegram notifications
@@ -109,6 +116,43 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(0)
         }
 
+        if args.contains("--health") || args.contains("--ping") {
+            let enrolledCount = Config.shared.loadEnrolledVectors().count
+            let camAuth = AVCaptureDevice.authorizationStatus(for: .video)
+            let camOk = (camAuth == .authorized || camAuth == .notDetermined)
+            let isHealthy = isAlreadyRunning && Config.shared.isEnabled && (enrolledCount > 0) && camOk
+            var issues: [String] = []
+            if !isAlreadyRunning { issues.append("Daemon is stopped") }
+            if !Config.shared.isEnabled { issues.append("Shield protection is paused") }
+            if enrolledCount == 0 { issues.append("No face templates enrolled") }
+            if !camOk { issues.append("Camera access is restricted or denied") }
+
+            if args.contains("--json") {
+                let out: [String: Any] = [
+                    "healthy": isHealthy,
+                    "daemonRunning": isAlreadyRunning,
+                    "shieldActive": Config.shared.isEnabled,
+                    "enrolledTemplates": enrolledCount,
+                    "cameraAuthorized": camAuth == .authorized,
+                    "issues": issues
+                ]
+                if let d = try? JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys]),
+                   let s = String(data: d, encoding: .utf8) {
+                    print(s)
+                }
+            } else {
+                if isHealthy {
+                    print("✓ FaceLock is HEALTHY (Daemon running, shield active, \(enrolledCount) templates calibrated).")
+                } else {
+                    print("⚠️ FaceLock HEALTH WARNING:")
+                    for issue in issues {
+                        print("  • \(issue)")
+                    }
+                }
+            }
+            exit(isHealthy ? 0 : 1)
+        }
+
         if args.contains("--config") {
             let config = Config.shared
             if args.contains("--json") {
@@ -182,13 +226,15 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 print("Error: Missing bundle identifier. Usage: facelock --protect-app <bundleId>")
                 exit(1)
             }
-            let config = Config.shared
-            if !config.protectedBundleIdentifiers.contains(bundleId) {
-                config.protectedBundleIdentifiers.append(bundleId)
-                config.save()
-                print("✓ Added '\(bundleId)' to protected applications list.")
+            let added = Config.shared.addProtectedApp(bundleId)
+            if args.contains("--json") {
+                print("{\"success\":true,\"action\":\"\(added ? "added" : "already_present")\",\"bundleId\":\"\(bundleId)\"}")
             } else {
-                print("ℹ️ '\(bundleId)' is already in protected applications list.")
+                if added {
+                    print("✓ Added '\(bundleId)' to protected applications list.")
+                } else {
+                    print("ℹ️ '\(bundleId)' is already in protected applications list.")
+                }
             }
             exit(0)
         }
@@ -199,15 +245,130 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 print("Error: Missing bundle identifier. Usage: facelock --unprotect-app <bundleId>")
                 exit(1)
             }
-            let config = Config.shared
-            if let pos = config.protectedBundleIdentifiers.firstIndex(of: bundleId) {
-                config.protectedBundleIdentifiers.remove(at: pos)
-                config.save()
-                print("✓ Removed '\(bundleId)' from protected applications list.")
+            let removed = Config.shared.removeProtectedApp(bundleId)
+            if args.contains("--json") {
+                print("{\"success\":true,\"action\":\"\(removed ? "removed" : "not_found")\",\"bundleId\":\"\(bundleId)\"}")
             } else {
-                print("ℹ️ '\(bundleId)' was not found in protected applications list.")
+                if removed {
+                    print("✓ Removed '\(bundleId)' from protected applications list.")
+                } else {
+                    print("ℹ️ '\(bundleId)' was not found in protected applications list.")
+                }
             }
             exit(0)
+        }
+
+        if let idx = args.firstIndex(of: "--ignore-app"), idx + 1 < args.count {
+            let bundleId = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !bundleId.isEmpty else {
+                print("Error: Missing bundle identifier. Usage: facelock --ignore-app <bundleId>")
+                exit(1)
+            }
+            let added = Config.shared.addIgnoredApp(bundleId)
+            if args.contains("--json") {
+                print("{\"success\":true,\"action\":\"\(added ? "added" : "already_present")\",\"bundleId\":\"\(bundleId)\"}")
+            } else {
+                if added {
+                    print("✓ Added '\(bundleId)' to ignored applications list.")
+                } else {
+                    print("ℹ️ '\(bundleId)' is already in ignored applications list.")
+                }
+            }
+            exit(0)
+        }
+
+        if let idx = args.firstIndex(of: "--unignore-app"), idx + 1 < args.count {
+            let bundleId = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !bundleId.isEmpty else {
+                print("Error: Missing bundle identifier. Usage: facelock --unignore-app <bundleId>")
+                exit(1)
+            }
+            let removed = Config.shared.removeIgnoredApp(bundleId)
+            if args.contains("--json") {
+                print("{\"success\":true,\"action\":\"\(removed ? "removed" : "not_found")\",\"bundleId\":\"\(bundleId)\"}")
+            } else {
+                if removed {
+                    print("✓ Removed '\(bundleId)' from ignored applications list.")
+                } else {
+                    print("ℹ️ '\(bundleId)' was not found in ignored applications list.")
+                }
+            }
+            exit(0)
+        }
+
+        if let idx = args.firstIndex(of: "--set-liveness"), idx + 1 < args.count {
+            let val = args[idx + 1].lowercased()
+            let enabled = (val == "on" || val == "true" || val == "1" || val == "enable" || val == "yes")
+            Config.shared.livenessDetectionEnabled = enabled
+            Config.shared.save()
+            if args.contains("--json") {
+                print("{\"success\":true,\"livenessDetectionEnabled\":\(enabled)}")
+            } else {
+                print("✓ Anti-spoofing liveness verification \(enabled ? "enabled" : "disabled").")
+            }
+            exit(0)
+        }
+
+        if let idx = args.firstIndex(of: "--set-touchid"), idx + 1 < args.count {
+            let val = args[idx + 1].lowercased()
+            let enabled = (val == "on" || val == "true" || val == "1" || val == "enable" || val == "yes")
+            Config.shared.autoTriggerTouchID = enabled
+            Config.shared.save()
+            if args.contains("--json") {
+                print("{\"success\":true,\"autoTriggerTouchID\":\(enabled)}")
+            } else {
+                print("✓ Touch ID fallback on lock screen \(enabled ? "enabled" : "disabled").")
+            }
+            exit(0)
+        }
+
+        if let idx = args.firstIndex(of: "--export-vectors"), idx + 1 < args.count {
+            let path = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !path.isEmpty else {
+                print("Error: Usage: facelock --export-vectors <path>")
+                exit(1)
+            }
+            do {
+                let count = try Config.shared.exportVectors(to: path)
+                if args.contains("--json") {
+                    print("{\"success\":true,\"exportedCount\":\(count),\"path\":\"\(path)\"}")
+                } else {
+                    print("✓ Exported \(count) facial template vectors to '\(path)'.")
+                }
+                exit(0)
+            } catch {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"\(error.localizedDescription)\"}")
+                } else {
+                    print("Error exporting vectors: \(error.localizedDescription)")
+                }
+                exit(1)
+            }
+        }
+
+        if let idx = args.firstIndex(of: "--import-vectors"), idx + 1 < args.count {
+            let path = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !path.isEmpty else {
+                print("Error: Usage: facelock --import-vectors <path>")
+                exit(1)
+            }
+            let replace = args.contains("--replace")
+            do {
+                let total = try Config.shared.importVectors(from: path, merge: !replace)
+                if args.contains("--json") {
+                    print("{\"success\":true,\"totalVectors\":\(total),\"path\":\"\(path)\",\"merged\":\(!replace)}")
+                } else {
+                    print("✓ Imported vectors from '\(path)'. Total enrolled templates: \(total).")
+                }
+                exit(0)
+            } catch {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"\(error.localizedDescription)\"}")
+                } else {
+                    print("Error importing vectors: \(error.localizedDescription)")
+                }
+                exit(1)
+            }
         }
 
         if let idx = args.firstIndex(of: "--set-threshold"), idx + 1 < args.count {

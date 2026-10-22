@@ -174,10 +174,17 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --apps [--json]` | List protected and ignored application bundle IDs |
 | `facelock --protect-app <id>` | Add application bundle ID to protected list |
 | `facelock --unprotect-app <id>` | Remove application bundle ID from protected list |
+| `facelock --ignore-app <id>` | Add application bundle ID to ignored list |
+| `facelock --unignore-app <id>` | Remove application bundle ID from ignored list |
 | `facelock --set-pin <pin>` | Set lock screen unlock PIN from terminal |
 | `facelock --set-telegram <tok> <id>` | Configure Telegram bot credentials and enable alerts |
 | `facelock --enable-telegram` | Enable Telegram intruder photo alerts |
 | `facelock --disable-telegram` | Disable Telegram intruder alerts |
+| `facelock --set-liveness <on\|off>` | Toggle anti-spoofing 3D liveness detection |
+| `facelock --set-touchid <on\|off>` | Toggle Touch ID fallback on lock screen |
+| `facelock --export-vectors <path>` | Backup enrolled face vectors to JSON file |
+| `facelock --import-vectors <path>` | Restore or merge face vectors from JSON file |
+| `facelock --health [--json]` | Operational healthcheck (exit 0 if healthy) |
 | `facelock --set-walkaway <sec\|off>` | Configure walk-away timeout (10-600s) or disable ('off') |
 | `facelock --set-threshold <val>` | Set similarity threshold (0.05 - 0.60, default: 0.22) |
 | `facelock --set-timeout <sec>` | Set camera verification timeout (0.5 - 10.0s, default: 2.0s) |

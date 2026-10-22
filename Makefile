@@ -115,6 +115,10 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-walkaway 45 --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --verify-pin 0000 --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --enable-telegram --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-liveness on --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-touchid on --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --ignore-app com.apple.calculator --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --unignore-app com.apple.calculator --json > /dev/null
 	@echo "✓ All CLI tests passed!"
 
 diagnostics: build
