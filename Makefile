@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock settings gallery status config apps diagnostics health toggle install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents test-telegram incidents latest-incident verify-face verify-pin status-json diagnostics-json
+.PHONY: all build run enroll test-lock lock settings gallery status config apps diagnostics health toggle toggle-wake wake install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents test-telegram incidents latest-incident verify-face verify-pin status-json diagnostics-json
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -23,6 +23,7 @@ help:
 	@echo "  make test-lock      - Trigger immediate fullscreen lock test"
 	@echo "  make lock           - Trigger lock screen via daemon or standalone"
 	@echo "  make toggle         - Toggle protection between ACTIVE and PAUSED"
+	@echo "  make toggle-wake    - Toggle lock verification upon Mac screen wake"
 	@echo "  make status         - Display current protection & biometric status"
 	@echo "  make status-json    - Display status in JSON format"
 	@echo "  make health         - Fast operational healthcheck (exit 0 if healthy)"
@@ -61,6 +62,11 @@ lock: build
 
 toggle: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle
+
+toggle-wake: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-lock-on-wake toggle
+
+wake: toggle-wake
 
 settings: build
 	@echo "Opening Settings..."
@@ -127,6 +133,7 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --enable-telegram --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-liveness on --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-touchid on --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-lock-on-wake toggle --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-lock-on-wake off --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --ignore-app com.apple.calculator --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --unignore-app com.apple.calculator --json > /dev/null

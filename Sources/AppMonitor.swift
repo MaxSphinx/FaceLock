@@ -8,6 +8,8 @@ public final class AppMonitor {
     private var observer: NSObjectProtocol?
     private var wakeObserver: NSObjectProtocol?
     private var screenWakeObserver: NSObjectProtocol?
+    private var screenLockObserver: NSObjectProtocol?
+    private var screenUnlockObserver: NSObjectProtocol?
 
     private init() {}
 
@@ -40,7 +42,23 @@ public final class AppMonitor {
             self?.handleSystemWake()
         }
 
-        print("[AppMonitor] Started monitoring application switches and wake events.")
+        screenLockObserver = DistributedNotificationCenter.default().addObserver(
+            forName: NSNotification.Name("com.apple.screenIsLocked"),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.handleScreenLocked()
+        }
+
+        screenUnlockObserver = DistributedNotificationCenter.default().addObserver(
+            forName: NSNotification.Name("com.apple.screenIsUnlocked"),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.handleScreenUnlocked()
+        }
+
+        print("[AppMonitor] Started monitoring application switches, lock events, and wake events.")
     }
 
     public func stop() {
@@ -56,9 +74,35 @@ public final class AppMonitor {
             NSWorkspace.shared.notificationCenter.removeObserver(swObs)
             screenWakeObserver = nil
         }
+        if let slObs = screenLockObserver {
+            DistributedNotificationCenter.default().removeObserver(slObs)
+            screenLockObserver = nil
+        }
+        if let suObs = screenUnlockObserver {
+            DistributedNotificationCenter.default().removeObserver(suObs)
+            screenUnlockObserver = nil
+        }
+    }
+
+    public func resetVerificationSession() {
+        lastVerifiedPID = 0
+        lastVerifiedTime = .distantPast
+    }
+
+    private func handleScreenLocked() {
+        print("[AppMonitor] Screen locked event received. Invalidating verification session.")
+        resetVerificationSession()
+    }
+
+    private func handleScreenUnlocked() {
+        print("[AppMonitor] Screen unlocked event received.")
+        if Config.shared.lockOnWake {
+            handleSystemWake()
+        }
     }
 
     private func handleSystemWake() {
+        resetVerificationSession()
         guard Config.shared.isEnabled, Config.shared.lockOnWake else { return }
         guard !LockScreenController.shared.isLocked else { return }
 

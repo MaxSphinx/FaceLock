@@ -97,6 +97,11 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         modeItem.target = self
         menu.addItem(modeItem)
 
+        let wakeState = Config.shared.lockOnWake ? "Вкл" : "Выкл"
+        let wakeItem = NSMenuItem(title: "Проверка при пробуждении: \(wakeState)", action: #selector(toggleLockOnWake), keyEquivalent: "w")
+        wakeItem.target = self
+        menu.addItem(wakeItem)
+
         menu.addItem(NSMenuItem.separator())
 
         let galleryItem = NSMenuItem(title: "Журнал инцидентов (Галерея фото)...", action: #selector(openGallery), keyEquivalent: "g")
@@ -146,6 +151,16 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         }
         Config.shared.save()
         let msg = (Config.shared.protectionMode == "selective") ? "Режим: Секретные приложения" : "Режим: Все приложения"
+        HUDController.shared.showScanning(appName: msg)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            HUDController.shared.hide()
+        }
+    }
+
+    @objc public func toggleLockOnWake() {
+        Config.shared.lockOnWake.toggle()
+        Config.shared.save()
+        let msg = Config.shared.lockOnWake ? "Проверка при пробуждении: Вкл" : "Проверка при пробуждении: Выкл"
         HUDController.shared.showScanning(appName: msg)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
             HUDController.shared.hide()

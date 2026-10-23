@@ -42,7 +42,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --unignore-app <bundleId>  Remove application bundle ID from ignored list
               --set-liveness <on|off>    Enable or disable anti-spoofing liveness verification
               --set-touchid <on|off>     Enable or disable Touch ID fallback on lock screen
-              --set-lock-on-wake <on|off> Enable or disable lock verification upon Mac screen wake
+              --set-lock-on-wake <on|off|toggle> Enable, disable or toggle lock verification upon Mac screen wake
               --export-vectors <path>    Export enrolled facial biometric vectors to JSON file
               --import-vectors <path>    Import facial biometric vectors from JSON file
               --health [--json]          Fast operational healthcheck (exit 0 if healthy)
@@ -67,7 +67,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if args.contains("--version") || args.contains("-v") {
-            print("FaceLock v1.0.0 (darwin-arm64)")
+            print("FaceLock v1.0.4 (darwin-arm64)")
             exit(0)
         }
 
@@ -91,7 +91,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
             if args.contains("--json") {
                 let statusDict: [String: Any] = [
-                    "version": "1.0.0",
+                    "version": "1.0.4",
                     "daemon": isAlreadyRunning ? "running" : "stopped",
                     "shieldState": Config.shared.isEnabled ? "active" : "paused",
                     "protectionMode": Config.shared.protectionMode,
@@ -332,9 +332,18 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(0)
         }
 
-        if let idx = args.firstIndex(of: "--set-lock-on-wake"), idx + 1 < args.count {
-            let val = args[idx + 1].lowercased()
-            let enabled = (val == "on" || val == "true" || val == "1" || val == "enable" || val == "yes")
+        if let idx = (args.firstIndex(of: "--set-lock-on-wake") ?? args.firstIndex(of: "--lock-on-wake")) {
+            let enabled: Bool
+            if idx + 1 < args.count && !args[idx + 1].starts(with: "--") {
+                let val = args[idx + 1].lowercased()
+                if val == "toggle" {
+                    enabled = !Config.shared.lockOnWake
+                } else {
+                    enabled = (val == "on" || val == "true" || val == "1" || val == "enable" || val == "yes")
+                }
+            } else {
+                enabled = !Config.shared.lockOnWake
+            }
             Config.shared.lockOnWake = enabled
             Config.shared.save()
             if args.contains("--json") {
@@ -1247,6 +1256,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 LockScreenController.shared.showLock()
             case "toggle":
                 StatusBarController.shared.toggleEnabled()
+            case "toggle-lock-on-wake":
+                StatusBarController.shared.toggleLockOnWake()
             case "pause":
                 let minutes = notif.userInfo?["minutes"] as? Double ?? 15.0
                 StatusBarController.shared.pauseFor(minutes: minutes)

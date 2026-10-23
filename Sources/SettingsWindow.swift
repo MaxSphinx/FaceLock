@@ -19,6 +19,7 @@ public final class SettingsController: NSObject {
     private var walkAwaySwitch: NSButton?
     private var idleSlider: NSSlider?
     private var idleLabel: NSTextField?
+    private var lockOnWakeSwitch: NSButton?
 
     private var livenessSwitch: NSButton?
     private var pinField: NSSecureTextField?
@@ -42,7 +43,7 @@ public final class SettingsController: NSObject {
         guard window == nil else { return }
 
         let width: CGFloat = 520
-        let height: CGFloat = 680
+        let height: CGFloat = 710
 
         let win = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: width, height: height),
@@ -147,15 +148,15 @@ public final class SettingsController: NSObject {
         self.modeRadioSelective = radioSelective
         currentY -= 38
 
-        let walkHeader = makeSectionHeader(title: "4. Авто-замок при уходе от Mac (Walk-away)", originY: currentY, width: width)
+        let walkHeader = makeSectionHeader(title: "4. Авто-замок при уходе и пробуждении", originY: currentY, width: width)
         root.addSubview(walkHeader)
         currentY -= 32
 
-        let walkToggle = NSButton(checkboxWithTitle: "Блокировать экран, если никого нет перед Mac", target: self, action: #selector(onConfigChanged))
+        let walkToggle = NSButton(checkboxWithTitle: "Блокировать экран, если никого нет перед Mac (Walk-away)", target: self, action: #selector(onConfigChanged))
         walkToggle.frame = NSRect(x: 25, y: currentY, width: 450, height: 20)
         root.addSubview(walkToggle)
         self.walkAwaySwitch = walkToggle
-        currentY -= 32
+        currentY -= 30
 
         let idleText = NSTextField(labelWithString: "Таймаут бездействия:")
         idleText.frame = NSRect(x: 25, y: currentY, width: 150, height: 20)
@@ -172,6 +173,12 @@ public final class SettingsController: NSObject {
         sliderVal.font = .systemFont(ofSize: 12, weight: .bold)
         root.addSubview(sliderVal)
         self.idleLabel = sliderVal
+        currentY -= 32
+
+        let wakeToggle = NSButton(checkboxWithTitle: "Проверять лицо при пробуждении Mac / экрана (Lock on Wake)", target: self, action: #selector(onConfigChanged))
+        wakeToggle.frame = NSRect(x: 25, y: currentY, width: 470, height: 20)
+        root.addSubview(wakeToggle)
+        self.lockOnWakeSwitch = wakeToggle
         currentY -= 38
 
         let secHeader = makeSectionHeader(title: "5. Безопасность и пароль", originY: currentY, width: width)
@@ -250,6 +257,7 @@ public final class SettingsController: NSObject {
         walkAwaySwitch?.state = config.walkAwayLockEnabled ? .on : .off
         idleSlider?.doubleValue = config.walkAwayIdleSeconds
         idleLabel?.stringValue = "\(Int(config.walkAwayIdleSeconds)) сек"
+        lockOnWakeSwitch?.state = config.lockOnWake ? .on : .off
 
         livenessSwitch?.state = config.livenessDetectionEnabled ? .on : .off
         pinField?.stringValue = config.pin
@@ -295,6 +303,7 @@ public final class SettingsController: NSObject {
         config.telegramEnabled = (telegramSwitch?.state == .on)
 
         config.walkAwayLockEnabled = (walkAwaySwitch?.state == .on)
+        config.lockOnWake = (lockOnWakeSwitch?.state == .on)
         config.livenessDetectionEnabled = (livenessSwitch?.state == .on)
 
         if let enteredPin = pinField?.stringValue, !enteredPin.isEmpty {
