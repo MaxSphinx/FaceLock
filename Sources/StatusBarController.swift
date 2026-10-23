@@ -50,8 +50,8 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         }
 
         button.toolTip = isEnabled
-            ? "FaceLock: Активно (Кликните для паузы, правый клик для меню)"
-            : "FaceLock: На паузе (Кликните для включения, правый клик для меню)"
+            ? "FaceLock: Защита активна (кликните для меню)"
+            : "FaceLock: На паузе (кликните для меню)"
     }
 
     public func toggleEnabled() {
@@ -110,6 +110,10 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         let testLockItem = NSMenuItem(title: "Проверить экран блокировки (Тест)...", action: #selector(testLock), keyEquivalent: "t")
         testLockItem.target = self
         menu.addItem(testLockItem)
+
+        let immediateLockItem = NSMenuItem(title: "Заблокировать экран сейчас", action: #selector(immediateLock), keyEquivalent: "l")
+        immediateLockItem.target = self
+        menu.addItem(immediateLockItem)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -191,6 +195,10 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
     }
 
     @objc private func testLock() {
+        LockScreenController.shared.showLock()
+    }
+
+    @objc private func immediateLock() {
         LockScreenController.shared.showLock()
     }
 

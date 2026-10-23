@@ -100,7 +100,8 @@ public struct Diagnostics {
                     "shieldState": config.isEnabled ? "active" : "paused",
                     "protectionMode": config.protectionMode,
                     "walkAwayLockEnabled": config.walkAwayLockEnabled,
-                    "walkAwayIdleSeconds": config.walkAwayIdleSeconds
+                    "walkAwayIdleSeconds": config.walkAwayIdleSeconds,
+                    "lockOnWake": config.lockOnWake
                 ],
                 "camera": [
                     "authorization": camAuthStr,
@@ -155,6 +156,7 @@ public struct Diagnostics {
         print("  • Shield Status: \(config.isEnabled ? "ACTIVE 🛡️" : "PAUSED ⏸️")")
         print("  • Protection Mode: \(config.protectionMode) (\(config.protectedBundleIdentifiers.count) protected apps)")
         print("  • Walk-Away Detection: \(config.walkAwayLockEnabled ? "Enabled (\(Int(config.walkAwayIdleSeconds))s idle)" : "Disabled")")
+        print("  • Screen Wake Verification: \(config.lockOnWake ? "Enabled" : "Disabled")")
 
         print("\n[3] Camera Hardware & Permissions:")
         switch camAuth {

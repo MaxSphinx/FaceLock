@@ -20,7 +20,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --settings                 Open configuration and alert settings
               --gallery                  Open intruder incident log gallery
               --incidents [--json]       List logged intruder incident captures
+              --incident <filename>      Inspect a specific logged intruder incident
+              --delete-incident <file>   Delete a specific intruder incident photo from disk
               --latest-incident [--json] Inspect the most recent intruder photo capture
+              --export-latest-incident <p> Copy latest intruder photo capture to destination path
               --clear-incidents          Purge all saved intruder photo captures from disk
               --prune-incidents <count>  Prune intruder captures keeping latest N photos
               --verify-face [--timeout]  One-shot face biometric check without locking
@@ -30,6 +33,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --pause [mins]             Pause protection for N minutes (default: 15)
               --resume                   Resume protection immediately
               --config [--json]          Display active FaceLock configuration
+              --backup-config <path>     Export active FaceLock configuration to JSON file
+              --restore-config <path>    Import and apply FaceLock configuration from JSON file
               --apps [--json]            List protected and ignored application bundle IDs
               --protect-app <bundleId>   Add application bundle ID to protected list
               --unprotect-app <bundleId> Remove application bundle ID from protected list
@@ -37,6 +42,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --unignore-app <bundleId>  Remove application bundle ID from ignored list
               --set-liveness <on|off>    Enable or disable anti-spoofing liveness verification
               --set-touchid <on|off>     Enable or disable Touch ID fallback on lock screen
+              --set-lock-on-wake <on|off> Enable or disable lock verification upon Mac screen wake
               --export-vectors <path>    Export enrolled facial biometric vectors to JSON file
               --import-vectors <path>    Import facial biometric vectors from JSON file
               --health [--json]          Fast operational healthcheck (exit 0 if healthy)
@@ -94,6 +100,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     "similarityThreshold": Double(Config.shared.similarityThreshold),
                     "walkAwayLockEnabled": Config.shared.walkAwayLockEnabled,
                     "walkAwayIdleSeconds": Config.shared.walkAwayIdleSeconds,
+                    "lockOnWake": Config.shared.lockOnWake,
                     "telegramEnabled": Config.shared.telegramEnabled
                 ]
                 if let jsonData = try? JSONSerialization.data(withJSONObject: statusDict, options: [.prettyPrinted, .sortedKeys]),
@@ -111,6 +118,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               Intruder Captures: \(incidentCount) logged
               Decision Threshold: \(Config.shared.similarityThreshold)
               Walk-Away Auto Lock: \(Config.shared.walkAwayLockEnabled ? "Enabled (\(Int(Config.shared.walkAwayIdleSeconds))s)" : "Disabled")
+              Lock On Screen Wake: \(Config.shared.lockOnWake ? "Enabled" : "Disabled")
               Telegram Notifications: \(Config.shared.telegramEnabled ? "Configured" : "Disabled")
             """)
             exit(0)
@@ -168,6 +176,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     "telegramEnabled": config.telegramEnabled,
                     "livenessDetectionEnabled": config.livenessDetectionEnabled,
                     "autoTriggerTouchID": config.autoTriggerTouchID,
+                    "lockOnWake": config.lockOnWake,
                     "protectedAppsCount": config.protectedBundleIdentifiers.count,
                     "ignoredAppsCount": config.ignoredBundleIdentifiers.count,
                     "hasEnrolledFace": config.hasEnrolledFace
@@ -188,6 +197,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               Walk-Away Auto Lock: \(config.walkAwayLockEnabled ? "Enabled (\(Int(config.walkAwayIdleSeconds))s idle)" : "Disabled")
               Anti-Spoofing Liveness: \(config.livenessDetectionEnabled ? "Enabled" : "Disabled")
               Touch ID Fallback: \(config.autoTriggerTouchID ? "Enabled" : "Disabled")
+              Lock On Screen Wake: \(config.lockOnWake ? "Enabled" : "Disabled")
               Telegram Alerts: \(config.telegramEnabled ? "Enabled" : "Disabled")
               Protected Apps: \(config.protectedBundleIdentifiers.count) applications
               Enrolled Face Vectors: \(config.loadEnrolledVectors().count) templates
@@ -320,6 +330,67 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 print("✓ Touch ID fallback on lock screen \(enabled ? "enabled" : "disabled").")
             }
             exit(0)
+        }
+
+        if let idx = args.firstIndex(of: "--set-lock-on-wake"), idx + 1 < args.count {
+            let val = args[idx + 1].lowercased()
+            let enabled = (val == "on" || val == "true" || val == "1" || val == "enable" || val == "yes")
+            Config.shared.lockOnWake = enabled
+            Config.shared.save()
+            if args.contains("--json") {
+                print("{\"success\":true,\"lockOnWake\":\(enabled)}")
+            } else {
+                print("✓ Lock verification upon Mac screen wake \(enabled ? "enabled" : "disabled").")
+            }
+            exit(0)
+        }
+
+        if let idx = args.firstIndex(of: "--backup-config"), idx + 1 < args.count {
+            let path = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !path.isEmpty else {
+                print("Error: Usage: facelock --backup-config <path>")
+                exit(1)
+            }
+            do {
+                let savedPath = try Config.shared.backupConfig(to: path)
+                if args.contains("--json") {
+                    print("{\"success\":true,\"path\":\"\(savedPath)\"}")
+                } else {
+                    print("✓ Exported FaceLock configuration to '\(savedPath)'.")
+                }
+                exit(0)
+            } catch {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"\(error.localizedDescription)\"}")
+                } else {
+                    print("Error backing up config: \(error.localizedDescription)")
+                }
+                exit(1)
+            }
+        }
+
+        if let idx = args.firstIndex(of: "--restore-config"), idx + 1 < args.count {
+            let path = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !path.isEmpty else {
+                print("Error: Usage: facelock --restore-config <path>")
+                exit(1)
+            }
+            do {
+                try Config.shared.restoreConfig(from: path)
+                if args.contains("--json") {
+                    print("{\"success\":true,\"path\":\"\(path)\"}")
+                } else {
+                    print("✓ Restored and applied FaceLock configuration from '\(path)'.")
+                }
+                exit(0)
+            } catch {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"\(error.localizedDescription)\"}")
+                } else {
+                    print("Error restoring config: \(error.localizedDescription)")
+                }
+                exit(1)
+            }
         }
 
         if let idx = args.firstIndex(of: "--export-vectors"), idx + 1 < args.count {
@@ -683,6 +754,133 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     print("✓ No intruder incidents logged in \(dir.path).")
                 }
                 exit(0)
+            }
+        }
+
+        if let idx = args.firstIndex(of: "--export-latest-incident"), idx + 1 < args.count {
+            let destPath = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !destPath.isEmpty else {
+                print("Error: Usage: facelock --export-latest-incident <path>")
+                exit(1)
+            }
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
+            let files = ((try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? [])
+                .filter { $0.hasSuffix(".jpg") || $0.hasSuffix(".jpeg") }
+                .sorted(by: >)
+
+            guard let latest = files.first else {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"No intruder incident captures available to export\"}")
+                } else {
+                    print("Error: No intruder captures found to export.")
+                }
+                exit(1)
+            }
+
+            let srcURL = dir.appendingPathComponent(latest)
+            let expandedDest = NSString(string: destPath).expandingTildeInPath
+            let destURL = URL(fileURLWithPath: expandedDest)
+
+            do {
+                if FileManager.default.fileExists(atPath: destURL.path) {
+                    try FileManager.default.removeItem(at: destURL)
+                }
+                try FileManager.default.copyItem(at: srcURL, to: destURL)
+                if args.contains("--json") {
+                    print("{\"success\":true,\"source\":\"\(latest)\",\"destination\":\"\(destURL.path)\"}")
+                } else {
+                    print("✓ Exported latest incident (\(latest)) to '\(destURL.path)'.")
+                }
+                exit(0)
+            } catch {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"\(error.localizedDescription)\"}")
+                } else {
+                    print("Error exporting incident photo: \(error.localizedDescription)")
+                }
+                exit(1)
+            }
+        }
+
+        if let idx = args.firstIndex(of: "--incident"), idx + 1 < args.count {
+            let filename = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
+            let path = dir.appendingPathComponent(filename).path
+
+            guard FileManager.default.fileExists(atPath: path) else {
+                if args.contains("--json") {
+                    print("{\"found\":false,\"error\":\"Incident '\(filename)' not found\"}")
+                } else {
+                    print("Error: Incident capture '\(filename)' not found in \(dir.path).")
+                }
+                exit(1)
+            }
+
+            var sz: UInt64 = 0
+            var modDate: Date? = nil
+            if let attrs = try? FileManager.default.attributesOfItem(atPath: path) {
+                sz = (attrs[.size] as? UInt64) ?? 0
+                modDate = attrs[.modificationDate] as? Date
+            }
+            let dateStr = modDate != nil ? ISO8601DateFormatter().string(from: modDate!) : ""
+
+            if args.contains("--json") {
+                let out: [String: Any] = [
+                    "found": true,
+                    "filename": filename,
+                    "path": path,
+                    "sizeBytes": sz,
+                    "timestamp": dateStr
+                ]
+                if let d = try? JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys]),
+                   let s = String(data: d, encoding: .utf8) {
+                    print(s)
+                }
+            } else {
+                let sizeKB = Double(sz) / 1024.0
+                print("""
+                FaceLock Intruder Incident:
+                  Filename: \(filename)
+                  Timestamp: \(dateStr.isEmpty ? "Unknown" : dateStr)
+                  Size: \(String(format: "%.1f", sizeKB)) KB
+                  Path: \(path)
+                """)
+            }
+            exit(0)
+        }
+
+        if let idx = args.firstIndex(of: "--delete-incident"), idx + 1 < args.count {
+            let filename = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
+            let path = dir.appendingPathComponent(filename).path
+
+            guard FileManager.default.fileExists(atPath: path) else {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"Incident '\(filename)' not found\"}")
+                } else {
+                    print("Error: Incident capture '\(filename)' not found.")
+                }
+                exit(1)
+            }
+
+            do {
+                try FileManager.default.removeItem(atPath: path)
+                if args.contains("--json") {
+                    print("{\"success\":true,\"deleted\":\"\(filename)\"}")
+                } else {
+                    print("✓ Deleted intruder incident capture '\(filename)'.")
+                }
+                exit(0)
+            } catch {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"\(error.localizedDescription)\"}")
+                } else {
+                    print("Error deleting incident: \(error.localizedDescription)")
+                }
+                exit(1)
             }
         }
 

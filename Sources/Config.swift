@@ -25,6 +25,7 @@ public final class Config: Codable {
 
     public var walkAwayLockEnabled: Bool
     public var walkAwayIdleSeconds: Double
+    public var lockOnWake: Bool
 
     public init(
         pin: String = "0000",
@@ -66,7 +67,8 @@ public final class Config: Codable {
         ],
         livenessDetectionEnabled: Bool = true,
         walkAwayLockEnabled: Bool = true,
-        walkAwayIdleSeconds: Double = 45.0
+        walkAwayIdleSeconds: Double = 45.0,
+        lockOnWake: Bool = false
     ) {
         self.pin = pin
         self.similarityThreshold = similarityThreshold
@@ -85,6 +87,73 @@ public final class Config: Codable {
         self.livenessDetectionEnabled = livenessDetectionEnabled
         self.walkAwayLockEnabled = walkAwayLockEnabled
         self.walkAwayIdleSeconds = walkAwayIdleSeconds
+        self.lockOnWake = lockOnWake
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case pin
+        case similarityThreshold
+        case verificationTimeout
+        case debounceSeconds
+        case isEnabled
+        case strictFaceMatch
+        case showHUD
+        case autoTriggerTouchID
+        case ignoredBundleIdentifiers
+        case telegramBotToken
+        case telegramChatId
+        case telegramEnabled
+        case protectionMode
+        case protectedBundleIdentifiers
+        case livenessDetectionEnabled
+        case walkAwayLockEnabled
+        case walkAwayIdleSeconds
+        case lockOnWake
+    }
+
+    public required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.pin = try container.decodeIfPresent(String.self, forKey: .pin) ?? "0000"
+        self.similarityThreshold = try container.decodeIfPresent(Float.self, forKey: .similarityThreshold) ?? 0.22
+        self.verificationTimeout = try container.decodeIfPresent(Double.self, forKey: .verificationTimeout) ?? 2.0
+        self.debounceSeconds = try container.decodeIfPresent(Double.self, forKey: .debounceSeconds) ?? 2.0
+        self.isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
+        self.strictFaceMatch = try container.decodeIfPresent(Bool.self, forKey: .strictFaceMatch) ?? true
+        self.showHUD = try container.decodeIfPresent(Bool.self, forKey: .showHUD) ?? true
+        self.autoTriggerTouchID = try container.decodeIfPresent(Bool.self, forKey: .autoTriggerTouchID) ?? true
+        self.ignoredBundleIdentifiers = try container.decodeIfPresent([String].self, forKey: .ignoredBundleIdentifiers) ?? [
+            "io.github.facelock",
+            "com.apple.controlcenter",
+            "com.apple.notificationcenterui",
+            "com.apple.Spotlight",
+            "com.apple.WindowManager",
+            "com.apple.loginwindow",
+            "com.apple.ScreenSaver.Engine",
+            "com.apple.systemuiserver",
+            "com.apple.dock"
+        ]
+        self.telegramBotToken = try container.decodeIfPresent(String.self, forKey: .telegramBotToken) ?? ""
+        self.telegramChatId = try container.decodeIfPresent(String.self, forKey: .telegramChatId) ?? ""
+        self.telegramEnabled = try container.decodeIfPresent(Bool.self, forKey: .telegramEnabled) ?? false
+        self.protectionMode = try container.decodeIfPresent(String.self, forKey: .protectionMode) ?? "all"
+        self.protectedBundleIdentifiers = try container.decodeIfPresent([String].self, forKey: .protectedBundleIdentifiers) ?? [
+            "ru.keepcoder.Telegram",
+            "com.apple.Safari",
+            "com.google.Chrome",
+            "com.apple.mobilesms",
+            "com.apple.Notes",
+            "com.apple.Photos",
+            "com.apple.mail",
+            "com.apple.Terminal",
+            "com.googlecode.iterm2",
+            "net.whatsapp.WhatsApp",
+            "com.apple.keychainaccess",
+            "com.apple.systempreferences"
+        ]
+        self.livenessDetectionEnabled = try container.decodeIfPresent(Bool.self, forKey: .livenessDetectionEnabled) ?? true
+        self.walkAwayLockEnabled = try container.decodeIfPresent(Bool.self, forKey: .walkAwayLockEnabled) ?? true
+        self.walkAwayIdleSeconds = try container.decodeIfPresent(Double.self, forKey: .walkAwayIdleSeconds) ?? 45.0
+        self.lockOnWake = try container.decodeIfPresent(Bool.self, forKey: .lockOnWake) ?? false
     }
 
     private static var configURL: URL {
@@ -147,7 +216,44 @@ public final class Config: Codable {
             self.livenessDetectionEnabled = fresh.livenessDetectionEnabled
             self.walkAwayLockEnabled = fresh.walkAwayLockEnabled
             self.walkAwayIdleSeconds = fresh.walkAwayIdleSeconds
+            self.lockOnWake = fresh.lockOnWake
         }
+    }
+
+    public func backupConfig(to destinationPath: String) throws -> String {
+        let expanded = NSString(string: destinationPath).expandingTildeInPath
+        let destURL = URL(fileURLWithPath: expanded)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .prettyPrinted
+        let data = try encoder.encode(self)
+        try data.write(to: destURL, options: .atomic)
+        return destURL.path
+    }
+
+    public func restoreConfig(from sourcePath: String) throws {
+        let expanded = NSString(string: sourcePath).expandingTildeInPath
+        let sourceURL = URL(fileURLWithPath: expanded)
+        let data = try Data(contentsOf: sourceURL)
+        let imported = try JSONDecoder().decode(Config.self, from: data)
+        self.pin = imported.pin
+        self.similarityThreshold = imported.similarityThreshold
+        self.verificationTimeout = imported.verificationTimeout
+        self.debounceSeconds = imported.debounceSeconds
+        self.isEnabled = imported.isEnabled
+        self.strictFaceMatch = imported.strictFaceMatch
+        self.showHUD = imported.showHUD
+        self.autoTriggerTouchID = imported.autoTriggerTouchID
+        self.ignoredBundleIdentifiers = imported.ignoredBundleIdentifiers
+        self.telegramBotToken = imported.telegramBotToken
+        self.telegramChatId = imported.telegramChatId
+        self.telegramEnabled = imported.telegramEnabled
+        self.protectionMode = imported.protectionMode
+        self.protectedBundleIdentifiers = imported.protectedBundleIdentifiers
+        self.livenessDetectionEnabled = imported.livenessDetectionEnabled
+        self.walkAwayLockEnabled = imported.walkAwayLockEnabled
+        self.walkAwayIdleSeconds = imported.walkAwayIdleSeconds
+        self.lockOnWake = imported.lockOnWake
+        self.save()
     }
 
     public var hasEnrolledFace: Bool {

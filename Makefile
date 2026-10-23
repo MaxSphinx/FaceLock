@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock settings gallery status config apps diagnostics toggle install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents test-telegram incidents latest-incident verify-face verify-pin
+.PHONY: all build run enroll test-lock lock settings gallery status config apps diagnostics health toggle install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents test-telegram incidents latest-incident verify-face verify-pin status-json diagnostics-json
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -24,6 +24,8 @@ help:
 	@echo "  make lock           - Trigger lock screen via daemon or standalone"
 	@echo "  make toggle         - Toggle protection between ACTIVE and PAUSED"
 	@echo "  make status         - Display current protection & biometric status"
+	@echo "  make status-json    - Display status in JSON format"
+	@echo "  make health         - Fast operational healthcheck (exit 0 if healthy)"
 	@echo "  make config         - Display active FaceLock configuration settings"
 	@echo "  make apps           - List protected and ignored application bundle IDs"
 	@echo "  make incidents      - List logged intruder incident captures"
@@ -33,6 +35,7 @@ help:
 	@echo "  make verify-face    - One-shot biometric face verification via camera"
 	@echo "  make test-telegram  - Dispatch test notification to Telegram chat"
 	@echo "  make diagnostics    - Run full biometric, hardware & storage diagnostics"
+	@echo "  make diagnostics-json - Run diagnostics in JSON format"
 	@echo "  make stop           - Terminate running FaceLock instance"
 	@echo "  make uninstall      - Remove application and CLI symlink"
 	@echo "  make clean          - Remove build artifacts"
@@ -69,6 +72,12 @@ gallery: build
 
 status: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --status
+
+status-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --status --json
+
+health: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --health || true
 
 config: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --config
@@ -113,16 +122,22 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --latest-incident --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --diagnostics --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-walkaway 45 --json > /dev/null
-	@build/FaceLock.app/Contents/MacOS/FaceLock --verify-pin 0000 --json > /dev/null
+	@CUR_PIN=$$(python3 -c "import json, os; print(json.load(open(os.path.expanduser('~/.facelock/config.json'))).get('pin', '0000'))" 2>/dev/null || echo "0000"); \
+	build/FaceLock.app/Contents/MacOS/FaceLock --verify-pin "$$CUR_PIN" --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --enable-telegram --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-liveness on --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-touchid on --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-lock-on-wake off --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --ignore-app com.apple.calculator --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --unignore-app com.apple.calculator --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --health --json > /dev/null || true
 	@echo "✓ All CLI tests passed!"
 
 diagnostics: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --diagnostics
+
+diagnostics-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --diagnostics --json
 
 commit:
 	@./scripts/autocommit.sh

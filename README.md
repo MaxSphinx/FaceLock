@@ -182,6 +182,9 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --disable-telegram` | Disable Telegram intruder alerts |
 | `facelock --set-liveness <on\|off>` | Toggle anti-spoofing 3D liveness detection |
 | `facelock --set-touchid <on\|off>` | Toggle Touch ID fallback on lock screen |
+| `facelock --set-lock-on-wake <on\|off>` | Toggle biometric verification upon screen wake |
+| `facelock --backup-config <path>` | Backup active FaceLock configuration to JSON |
+| `facelock --restore-config <path>` | Restore FaceLock configuration from JSON |
 | `facelock --export-vectors <path>` | Backup enrolled face vectors to JSON file |
 | `facelock --import-vectors <path>` | Restore or merge face vectors from JSON file |
 | `facelock --health [--json]` | Operational healthcheck (exit 0 if healthy) |
@@ -194,7 +197,10 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --test-lock` | Trigger fullscreen security shield test |
 | `facelock --status` | Display daemon status and biometric template metrics |
 | `facelock --incidents [--json]` | List logged intruder incident captures and disk usage |
+| `facelock --incident <filename>` | Inspect details of a specific intruder incident photo |
+| `facelock --delete-incident <file>` | Delete a specific intruder incident photo from disk |
 | `facelock --latest-incident [--json]` | Inspect details of the most recent intruder capture |
+| `facelock --export-latest-incident <p>` | Copy latest intruder photo capture to destination path |
 | `facelock --clear-incidents` | Purge all saved intruder photo captures from disk |
 | `facelock --prune-incidents <n>` | Prune intruder captures keeping latest N photos |
 | `facelock --verify-face [--timeout]` | Instant one-shot facial biometric check without locking |
