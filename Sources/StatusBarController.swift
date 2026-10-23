@@ -27,18 +27,10 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
     }
 
     @objc private func statusBarButtonClicked(_ sender: NSStatusBarButton) {
-        guard let event = NSApp.currentEvent else { return }
-
-        // Right-click or Control+Click opens the context menu
-        if event.type == .rightMouseUp || event.modifierFlags.contains(.control) {
-            let menu = buildMenu()
-            menu.delegate = self
-            statusItem?.menu = menu
-            sender.performClick(nil)
-        } else {
-            // Left-click: 1-click INSTANT TOGGLE!
-            toggleEnabled()
-        }
+        let menu = buildMenu()
+        menu.delegate = self
+        statusItem?.menu = menu
+        sender.performClick(nil)
     }
 
     public func menuDidClose(_ menu: NSMenu) {

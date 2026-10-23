@@ -5,6 +5,9 @@ public final class SettingsController: NSObject {
 
     private var window: NSWindow?
 
+    private var masterSwitch: NSButton?
+    private var masterStatusLabel: NSTextField?
+
     private var tokenField: NSTextField?
     private var chatIdField: NSTextField?
     private var telegramSwitch: NSButton?
@@ -39,7 +42,7 @@ public final class SettingsController: NSObject {
         guard window == nil else { return }
 
         let width: CGFloat = 520
-        let height: CGFloat = 620
+        let height: CGFloat = 680
 
         let win = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: width, height: height),
@@ -54,9 +57,28 @@ public final class SettingsController: NSObject {
         let root = NSView(frame: win.contentView!.bounds)
         root.wantsLayer = true
 
-        var currentY: CGFloat = height - 45
+        var currentY: CGFloat = height - 42
 
-        let tgHeader = makeSectionHeader(title: "1. Telegram-оповещения с фото", originY: currentY, width: width)
+        let masterHeader = makeSectionHeader(title: "1. Статус защиты FaceLock", originY: currentY, width: width)
+        root.addSubview(masterHeader)
+        currentY -= 32
+
+        let mSwitch = NSButton(checkboxWithTitle: "Защита активна (Face ID при открытии приложений)", target: self, action: #selector(onMasterSwitchChanged))
+        mSwitch.frame = NSRect(x: 25, y: currentY, width: 360, height: 22)
+        mSwitch.font = .systemFont(ofSize: 13, weight: .semibold)
+        root.addSubview(mSwitch)
+        self.masterSwitch = mSwitch
+
+        let statusLbl = NSTextField(frame: NSRect(x: 390, y: currentY, width: 110, height: 20))
+        statusLbl.isEditable = false
+        statusLbl.isBordered = false
+        statusLbl.backgroundColor = .clear
+        statusLbl.font = .systemFont(ofSize: 12, weight: .bold)
+        root.addSubview(statusLbl)
+        self.masterStatusLabel = statusLbl
+        currentY -= 36
+
+        let tgHeader = makeSectionHeader(title: "2. Telegram-оповещения с фото", originY: currentY, width: width)
         root.addSubview(tgHeader)
         currentY -= 35
 
@@ -109,7 +131,7 @@ public final class SettingsController: NSObject {
         self.telegramTestStatusLabel = tgStatus
         currentY -= 36
 
-        let modeHeader = makeSectionHeader(title: "2. Режим проверки приложений", originY: currentY, width: width)
+        let modeHeader = makeSectionHeader(title: "3. Режим проверки приложений", originY: currentY, width: width)
         root.addSubview(modeHeader)
         currentY -= 32
 
@@ -125,7 +147,7 @@ public final class SettingsController: NSObject {
         self.modeRadioSelective = radioSelective
         currentY -= 38
 
-        let walkHeader = makeSectionHeader(title: "3. Авто-замок при уходе от Mac (Walk-away)", originY: currentY, width: width)
+        let walkHeader = makeSectionHeader(title: "4. Авто-замок при уходе от Mac (Walk-away)", originY: currentY, width: width)
         root.addSubview(walkHeader)
         currentY -= 32
 
@@ -152,7 +174,7 @@ public final class SettingsController: NSObject {
         self.idleLabel = sliderVal
         currentY -= 38
 
-        let secHeader = makeSectionHeader(title: "4. Безопасность и пароль", originY: currentY, width: width)
+        let secHeader = makeSectionHeader(title: "5. Безопасность и пароль", originY: currentY, width: width)
         root.addSubview(secHeader)
         currentY -= 32
 
@@ -197,8 +219,21 @@ public final class SettingsController: NSObject {
         return container
     }
 
+    private func updateStatusLabel(isEnabled: Bool) {
+        if isEnabled {
+            masterStatusLabel?.stringValue = "● АКТИВНО"
+            masterStatusLabel?.textColor = .systemGreen
+        } else {
+            masterStatusLabel?.stringValue = "○ НА ПАУЗЕ"
+            masterStatusLabel?.textColor = .systemOrange
+        }
+    }
+
     private func loadCurrentConfig() {
         let config = Config.shared
+        masterSwitch?.state = config.isEnabled ? .on : .off
+        updateStatusLabel(isEnabled: config.isEnabled)
+
         tokenField?.stringValue = config.telegramBotToken
         chatIdField?.stringValue = config.telegramChatId
         telegramSwitch?.state = config.telegramEnabled ? .on : .off
@@ -218,6 +253,15 @@ public final class SettingsController: NSObject {
 
         livenessSwitch?.state = config.livenessDetectionEnabled ? .on : .off
         pinField?.stringValue = config.pin
+    }
+
+    @objc private func onMasterSwitchChanged() {
+        let isEnabled = (masterSwitch?.state == .on)
+        Config.shared.isEnabled = isEnabled
+        Config.shared.save()
+        StatusBarController.shared.updateIcon()
+        HUDController.shared.showToggleStatus(isEnabled: isEnabled)
+        updateStatusLabel(isEnabled: isEnabled)
     }
 
     @objc private func onSliderChanged() {
@@ -242,6 +286,10 @@ public final class SettingsController: NSObject {
 
     private func saveSettingsToConfig() {
         let config = Config.shared
+        config.isEnabled = (masterSwitch?.state == .on)
+        updateStatusLabel(isEnabled: config.isEnabled)
+        StatusBarController.shared.updateIcon()
+
         config.telegramBotToken = tokenField?.stringValue.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         config.telegramChatId = chatIdField?.stringValue.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         config.telegramEnabled = (telegramSwitch?.state == .on)

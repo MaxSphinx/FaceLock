@@ -963,8 +963,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 print("[FaceLock] Dispatched gallery command to running instance.")
                 exit(0)
             } else if !args.contains("--reset") {
+                DistributedNotificationCenter.default().postNotificationName(
+                    AppDelegate.commandNotificationName,
+                    object: nil,
+                    userInfo: ["action": "settings"],
+                    deliverImmediately: true
+                )
                 print("[FaceLock] Instance is already running in background (PID: \(runningApps.first?.processIdentifier ?? 0)).")
-                print("Use 'facelock --settings' to configure or 'facelock --diagnostics' for checks.")
+                print("[FaceLock] Dispatched settings command to running instance.")
                 exit(0)
             }
         }
@@ -1010,10 +1016,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 IncidentGalleryController.shared.show()
             }
         } else {
-            // First run check
             if !Config.shared.hasEnrolledFace {
                 print("[FaceLock] Note: No face enrolled yet. Running in face detection mode.")
                 print("[FaceLock] Open Menu Bar icon -> «Запомнить моё лицо» to train your specific face.")
+            }
+            if !args.contains("--daemon") && !args.contains("--background") {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    SettingsController.shared.show()
+                }
             }
         }
     }
