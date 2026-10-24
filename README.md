@@ -170,6 +170,8 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --toggle` | Toggle protection between ACTIVE and PAUSED |
 | `facelock --pause [mins]` | Pause protection for N minutes (default: 15) |
 | `facelock --resume` | Resume protection immediately |
+| `facelock --reload` | Hot-reload active configuration in running background daemon |
+| `facelock --check-app <bundleId>` | Inspect whether bundle ID triggers biometric shield |
 | `facelock --config [--json]` | Display active FaceLock configuration settings |
 | `facelock --apps [--json]` | List protected and ignored application bundle IDs |
 | `facelock --protect-app <id>` | Add application bundle ID to protected list |

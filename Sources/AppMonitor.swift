@@ -5,6 +5,8 @@ public final class AppMonitor {
 
     private var lastVerifiedPID: pid_t = 0
     private var lastVerifiedTime: Date = .distantPast
+    private var isVerifying = false
+    private var lastWakeHandledTime: Date = .distantPast
     private var observer: NSObjectProtocol?
     private var wakeObserver: NSObjectProtocol?
     private var screenWakeObserver: NSObjectProtocol?
@@ -82,6 +84,7 @@ public final class AppMonitor {
             DistributedNotificationCenter.default().removeObserver(suObs)
             screenUnlockObserver = nil
         }
+        isVerifying = false
     }
 
     public func resetVerificationSession() {
@@ -106,12 +109,19 @@ public final class AppMonitor {
         guard Config.shared.isEnabled, Config.shared.lockOnWake else { return }
         guard !LockScreenController.shared.isLocked else { return }
 
+        let now = Date()
+        guard now.timeIntervalSince(lastWakeHandledTime) >= 3.0 else { return }
+        guard !isVerifying else { return }
+        lastWakeHandledTime = now
+        isVerifying = true
+
         print("[AppMonitor] System/screen wake event detected with lockOnWake active. Verifying owner...")
         HUDController.shared.showScanning(appName: "Wake Verification")
 
         CameraScanner.shared.scanFace(timeout: Config.shared.verificationTimeout) { [weak self] (success, distance, intruderImage) in
             DispatchQueue.main.async {
                 guard let self = self else { return }
+                self.isVerifying = false
                 if success {
                     self.lastVerifiedTime = Date()
                     HUDController.shared.showSuccess()
@@ -163,12 +173,16 @@ public final class AppMonitor {
             return
         }
 
+        guard !isVerifying else { return }
+        isVerifying = true
+
         let appName = app.localizedName ?? bundleId
         HUDController.shared.showScanning(appName: appName)
 
         CameraScanner.shared.scanFace(timeout: Config.shared.verificationTimeout) { [weak self] (success, distance, intruderImage) in
             DispatchQueue.main.async {
                 guard let self = self else { return }
+                self.isVerifying = false
 
                 if success {
                     self.lastVerifiedPID = pid

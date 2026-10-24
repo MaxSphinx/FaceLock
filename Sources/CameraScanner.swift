@@ -89,6 +89,14 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
                 return
             }
 
+            if self.isScanning {
+                let prev = self.scanCompletion
+                self.scanCompletion = nil
+                DispatchQueue.main.async {
+                    prev?(false, nil, nil)
+                }
+            }
+
             self.isScanning = true
             self.scanCompletion = completion
             self.latestIntruderPhoto = nil

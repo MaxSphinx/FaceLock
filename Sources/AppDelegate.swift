@@ -4,6 +4,15 @@ import AVFoundation
 public final class AppDelegate: NSObject, NSApplicationDelegate {
     public static let commandNotificationName = NSNotification.Name("io.github.facelock.command")
 
+    public static func notifyDaemonReload() {
+        DistributedNotificationCenter.default().postNotificationName(
+            AppDelegate.commandNotificationName,
+            object: nil,
+            userInfo: ["action": "reload-config"],
+            deliverImmediately: true
+        )
+    }
+
     public func applicationDidFinishLaunching(_ notification: Notification) {
         // Handle command-line arguments
         let args = CommandLine.arguments
@@ -32,6 +41,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --toggle                   Toggle protection between ACTIVE and PAUSED
               --pause [mins]             Pause protection for N minutes (default: 15)
               --resume                   Resume protection immediately
+              --reload, --reload-config  Hot-reload active configuration in running daemon
+              --check-app <bundleId>     Inspect whether bundle ID triggers biometric shield
               --config [--json]          Display active FaceLock configuration
               --backup-config <path>     Export active FaceLock configuration to JSON file
               --restore-config <path>    Import and apply FaceLock configuration from JSON file
@@ -67,7 +78,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if args.contains("--version") || args.contains("-v") {
-            print("FaceLock v1.0.4 (darwin-arm64)")
+            print("FaceLock v1.0.5 (darwin-arm64)")
             exit(0)
         }
 
@@ -81,6 +92,76 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
         let isAlreadyRunning = !runningApps.isEmpty
 
+        if args.contains("--reload") || args.contains("--reload-config") {
+            if isAlreadyRunning {
+                AppDelegate.notifyDaemonReload()
+                if args.contains("--json") {
+                    print("{\"success\":true,\"daemonRunning\":true,\"message\":\"Dispatched reload signal to daemon\"}")
+                } else {
+                    print("✓ Dispatched configuration reload signal to running FaceLock daemon.")
+                }
+            } else {
+                Config.shared.reload()
+                if args.contains("--json") {
+                    print("{\"success\":true,\"daemonRunning\":false,\"message\":\"Config on disk reloaded\"}")
+                } else {
+                    print("✓ FaceLock daemon is not running; configuration reloaded from disk.")
+                }
+            }
+            exit(0)
+        }
+
+        if let idx = args.firstIndex(of: "--check-app"), idx + 1 < args.count {
+            let bundleId = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !bundleId.isEmpty else {
+                print("Error: Missing bundle identifier. Usage: facelock --check-app <bundleId>")
+                exit(1)
+            }
+            let config = Config.shared
+            let isIgnored = config.ignoredBundleIdentifiers.contains(bundleId)
+            let isSelf = (bundleId == "io.github.facelock" || bundleId == Bundle.main.bundleIdentifier)
+            let isProtected: Bool
+            let willTrigger: Bool
+
+            if isSelf || isIgnored {
+                isProtected = false
+                willTrigger = false
+            } else if config.protectionMode == "selective" {
+                isProtected = config.protectedBundleIdentifiers.contains(bundleId)
+                willTrigger = isProtected && config.isEnabled
+            } else {
+                isProtected = true
+                willTrigger = config.isEnabled
+            }
+
+            if args.contains("--json") {
+                let dict: [String: Any] = [
+                    "bundleId": bundleId,
+                    "shieldActive": config.isEnabled,
+                    "mode": config.protectionMode,
+                    "isIgnored": isIgnored || isSelf,
+                    "isProtected": isProtected,
+                    "willLockOnSwitch": willTrigger
+                ]
+                if let d = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
+                   let s = String(data: d, encoding: .utf8) {
+                    print(s)
+                }
+            } else {
+                let statusEmoji = willTrigger ? "🛡️ ACTIVE (Will verify)" : "⚪ PASS (Bypassed)"
+                print("""
+                FaceLock App Security Inspection:
+                  Bundle ID: \(bundleId)
+                  Status: \(statusEmoji)
+                  Shield Enabled: \(config.isEnabled ? "Yes" : "No")
+                  Protection Mode: \(config.protectionMode)
+                  Ignored List: \(isIgnored ? "Yes (Ignored)" : "No")
+                  Protected List: \(config.protectedBundleIdentifiers.contains(bundleId) ? "Yes" : "No")
+                """)
+            }
+            exit(0)
+        }
+
         if args.contains("--status") {
             let enrolledCount = Config.shared.loadEnrolledVectors().count
             let home = FileManager.default.homeDirectoryForCurrentUser
@@ -91,7 +172,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
             if args.contains("--json") {
                 let statusDict: [String: Any] = [
-                    "version": "1.0.4",
+                    "version": "1.0.5",
                     "daemon": isAlreadyRunning ? "running" : "stopped",
                     "shieldState": Config.shared.isEnabled ? "active" : "paused",
                     "protectionMode": Config.shared.protectionMode,
@@ -230,6 +311,12 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(0)
         }
 
+        let notifyDaemonIfRunning = {
+            if isAlreadyRunning {
+                AppDelegate.notifyDaemonReload()
+            }
+        }
+
         if let idx = args.firstIndex(of: "--protect-app"), idx + 1 < args.count {
             let bundleId = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
             guard !bundleId.isEmpty else {
@@ -237,6 +324,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 exit(1)
             }
             let added = Config.shared.addProtectedApp(bundleId)
+            if added {
+                notifyDaemonIfRunning()
+            }
             if args.contains("--json") {
                 print("{\"success\":true,\"action\":\"\(added ? "added" : "already_present")\",\"bundleId\":\"\(bundleId)\"}")
             } else {
@@ -256,6 +346,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 exit(1)
             }
             let removed = Config.shared.removeProtectedApp(bundleId)
+            if removed {
+                notifyDaemonIfRunning()
+            }
             if args.contains("--json") {
                 print("{\"success\":true,\"action\":\"\(removed ? "removed" : "not_found")\",\"bundleId\":\"\(bundleId)\"}")
             } else {
@@ -275,6 +368,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 exit(1)
             }
             let added = Config.shared.addIgnoredApp(bundleId)
+            if added {
+                notifyDaemonIfRunning()
+            }
             if args.contains("--json") {
                 print("{\"success\":true,\"action\":\"\(added ? "added" : "already_present")\",\"bundleId\":\"\(bundleId)\"}")
             } else {
@@ -294,6 +390,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 exit(1)
             }
             let removed = Config.shared.removeIgnoredApp(bundleId)
+            if removed {
+                notifyDaemonIfRunning()
+            }
             if args.contains("--json") {
                 print("{\"success\":true,\"action\":\"\(removed ? "removed" : "not_found")\",\"bundleId\":\"\(bundleId)\"}")
             } else {
@@ -311,6 +410,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             let enabled = (val == "on" || val == "true" || val == "1" || val == "enable" || val == "yes")
             Config.shared.livenessDetectionEnabled = enabled
             Config.shared.save()
+            notifyDaemonIfRunning()
             if args.contains("--json") {
                 print("{\"success\":true,\"livenessDetectionEnabled\":\(enabled)}")
             } else {
@@ -324,6 +424,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             let enabled = (val == "on" || val == "true" || val == "1" || val == "enable" || val == "yes")
             Config.shared.autoTriggerTouchID = enabled
             Config.shared.save()
+            notifyDaemonIfRunning()
             if args.contains("--json") {
                 print("{\"success\":true,\"autoTriggerTouchID\":\(enabled)}")
             } else {
@@ -346,6 +447,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             Config.shared.lockOnWake = enabled
             Config.shared.save()
+            notifyDaemonIfRunning()
             if args.contains("--json") {
                 print("{\"success\":true,\"lockOnWake\":\(enabled)}")
             } else {
@@ -386,6 +488,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             do {
                 try Config.shared.restoreConfig(from: path)
+                notifyDaemonIfRunning()
                 if args.contains("--json") {
                     print("{\"success\":true,\"path\":\"\(path)\"}")
                 } else {
@@ -435,6 +538,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             let replace = args.contains("--replace")
             do {
                 let total = try Config.shared.importVectors(from: path, merge: !replace)
+                notifyDaemonIfRunning()
                 if args.contains("--json") {
                     print("{\"success\":true,\"totalVectors\":\(total),\"path\":\"\(path)\",\"merged\":\(!replace)}")
                 } else {
@@ -455,6 +559,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             if let val = Float(args[idx + 1]), val >= 0.05 && val <= 0.60 {
                 Config.shared.similarityThreshold = val
                 Config.shared.save()
+                notifyDaemonIfRunning()
                 print("✓ Similarity decision threshold updated to \(val).")
                 exit(0)
             } else {
@@ -467,6 +572,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             if let val = Double(args[idx + 1]), val >= 0.5 && val <= 10.0 {
                 Config.shared.verificationTimeout = val
                 Config.shared.save()
+                notifyDaemonIfRunning()
                 if args.contains("--json") {
                     print("{\"success\":true,\"verificationTimeout\":\(val)}")
                 } else {
@@ -483,6 +589,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             if let val = Double(args[idx + 1]), val >= 0.5 && val <= 30.0 {
                 Config.shared.debounceSeconds = val
                 Config.shared.save()
+                notifyDaemonIfRunning()
                 if args.contains("--json") {
                     print("{\"success\":true,\"debounceSeconds\":\(val)}")
                 } else {
@@ -500,6 +607,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             if mode == "all" || mode == "selective" {
                 Config.shared.protectionMode = mode
                 Config.shared.save()
+                notifyDaemonIfRunning()
                 print("✓ Protection mode updated to '\(mode)'.")
                 exit(0)
             } else {
@@ -516,6 +624,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             Config.shared.pin = newPin
             Config.shared.save()
+            notifyDaemonIfRunning()
             if args.contains("--json") {
                 print("{\"success\":true,\"message\":\"Lock screen PIN updated\"}")
             } else {
@@ -550,6 +659,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             Config.shared.telegramChatId = chatId
             Config.shared.telegramEnabled = true
             Config.shared.save()
+            notifyDaemonIfRunning()
             if args.contains("--json") {
                 print("{\"success\":true,\"chatId\":\"\(chatId)\",\"telegramEnabled\":true}")
             } else {
@@ -561,6 +671,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         if args.contains("--enable-telegram") {
             Config.shared.telegramEnabled = true
             Config.shared.save()
+            notifyDaemonIfRunning()
             if args.contains("--json") {
                 print("{\"success\":true,\"telegramEnabled\":true}")
             } else {
@@ -572,6 +683,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         if args.contains("--disable-telegram") {
             Config.shared.telegramEnabled = false
             Config.shared.save()
+            notifyDaemonIfRunning()
             if args.contains("--json") {
                 print("{\"success\":true,\"telegramEnabled\":false}")
             } else {
@@ -585,6 +697,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             if val == "off" || val == "disable" || val == "0" {
                 Config.shared.walkAwayLockEnabled = false
                 Config.shared.save()
+                notifyDaemonIfRunning()
                 if args.contains("--json") {
                     print("{\"success\":true,\"walkAwayLockEnabled\":false}")
                 } else {
@@ -594,6 +707,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 Config.shared.walkAwayLockEnabled = true
                 Config.shared.walkAwayIdleSeconds = secs
                 Config.shared.save()
+                notifyDaemonIfRunning()
                 if args.contains("--json") {
                     print("{\"success\":true,\"walkAwayLockEnabled\":true,\"walkAwayIdleSeconds\":\(secs)}")
                 } else {
@@ -1082,6 +1196,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if args.contains("--reset") {
             Config.shared.clearEnrolledVectors()
+            notifyDaemonIfRunning()
             print("[FaceLock] Cleared all enrolled faces.")
         }
 
@@ -1263,6 +1378,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 StatusBarController.shared.pauseFor(minutes: minutes)
             case "resume":
                 StatusBarController.shared.resumeProtection()
+            case "reload-config":
+                Config.shared.reload()
+                StatusBarController.shared.updateIcon()
+                print("[FaceLock] Distributed reload signal received: Configuration refreshed.")
             default:
                 break
             }
