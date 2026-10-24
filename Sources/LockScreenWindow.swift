@@ -12,6 +12,8 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
     private var headerContainer: NSView?
     private var pinField: NSSecureTextField?
     private var errorLabel: NSTextField?
+    private var faceRetryBtn: NSButton?
+    private var isFaceRetrying = false
     private var targetApp: NSRunningApplication?
     private var intruderImage: NSImage?
     private var onUnlockCallback: (() -> Void)?
@@ -97,7 +99,7 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
     private func makeCardView(screenSize: CGSize) -> NSView {
         let hasIntruder = (self.intruderImage != nil)
         let cardW: CGFloat = hasIntruder ? 460 : 440
-        let cardH: CGFloat = hasIntruder ? 590 : 480
+        let cardH: CGFloat = hasIntruder ? 620 : 520
         let cardX = (screenSize.width - cardW) / 2
         let cardY = (screenSize.height - cardH) / 2 - 40
 
@@ -233,8 +235,8 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
         effect.addSubview(errLabel)
         self.errorLabel = errLabel
 
-        let btnY = errY - 48
-        let unlockBtn = NSButton(frame: NSRect(x: (cardW - pinContainerW) / 2, y: btnY, width: pinContainerW, height: 40))
+        let btnY = errY - 46
+        let unlockBtn = NSButton(frame: NSRect(x: (cardW - pinContainerW) / 2, y: btnY, width: pinContainerW, height: 38))
         unlockBtn.title = "Разблокировать"
         unlockBtn.bezelStyle = .rounded
         unlockBtn.keyEquivalent = "\r"
@@ -242,8 +244,21 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
         unlockBtn.action = #selector(onPinSubmitted)
         effect.addSubview(unlockBtn)
 
-        let touchY = btnY - 48
-        let touchBtn = NSButton(frame: NSRect(x: (cardW - pinContainerW) / 2, y: touchY, width: pinContainerW, height: 36))
+        let faceRetryY = btnY - 42
+        let faceRetry = NSButton(frame: NSRect(x: (cardW - pinContainerW) / 2, y: faceRetryY, width: pinContainerW, height: 34))
+        faceRetry.bezelStyle = .inline
+        faceRetry.title = " Повторить Face ID"
+        let faceConfig = NSImage.SymbolConfiguration(pointSize: 15, weight: .medium)
+        faceRetry.image = NSImage(systemSymbolName: "faceid", accessibilityDescription: "Face ID")?.withSymbolConfiguration(faceConfig)
+        faceRetry.imagePosition = .imageLeading
+        faceRetry.contentTintColor = .labelColor
+        faceRetry.target = self
+        faceRetry.action = #selector(onFaceRetryClicked)
+        effect.addSubview(faceRetry)
+        self.faceRetryBtn = faceRetry
+
+        let touchY = faceRetryY - 38
+        let touchBtn = NSButton(frame: NSRect(x: (cardW - pinContainerW) / 2, y: touchY, width: pinContainerW, height: 34))
         touchBtn.bezelStyle = .inline
         touchBtn.title = " Использовать Touch ID"
         let touchConfig = NSImage.SymbolConfiguration(pointSize: 16, weight: .medium)
@@ -319,6 +334,39 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
         triggerTouchID()
     }
 
+    @objc private func onFaceRetryClicked() {
+        guard !isFaceRetrying else { return }
+        guard Config.shared.hasEnrolledFace else {
+            errorLabel?.stringValue = "Слепки лица не обучены"
+            errorLabel?.isHidden = false
+            return
+        }
+
+        isFaceRetrying = true
+        faceRetryBtn?.isEnabled = false
+        faceRetryBtn?.title = " Сканирование лица..."
+        errorLabel?.isHidden = true
+
+        CameraScanner.shared.scanFace(timeout: Config.shared.verificationTimeout) { [weak self] (success, _, _) in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.isFaceRetrying = false
+                self.faceRetryBtn?.isEnabled = true
+                self.faceRetryBtn?.title = " Повторить Face ID"
+
+                if success {
+                    self.unlock()
+                } else {
+                    NSSound.beep()
+                    self.shakeCard()
+                    self.errorLabel?.stringValue = "Лицо не распознано"
+                    self.errorLabel?.isHidden = false
+                    self.pinField?.becomeFirstResponder()
+                }
+            }
+        }
+    }
+
     public func triggerTouchID() {
         let context = LAContext()
         context.localizedFallbackTitle = "Ввести PIN"
@@ -386,6 +434,8 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
 
                 self.lockWindows.removeAll()
                 self.isLocked = false
+                self.isFaceRetrying = false
+                self.faceRetryBtn = nil
                 self.errorLabel?.isHidden = true
                 self.pinField?.stringValue = ""
                 self.intruderImage = nil

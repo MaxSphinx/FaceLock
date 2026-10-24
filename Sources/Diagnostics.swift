@@ -65,6 +65,7 @@ public struct Diagnostics {
         let intrudersDir = facelockDir.appendingPathComponent("intruders", isDirectory: true)
         let configExists = FileManager.default.fileExists(atPath: configPath)
         let vectors = config.loadEnrolledVectors()
+        let vectorMetrics = config.getVectorMetrics()
 
         var intruderCount = 0
         var totalBytes: UInt64 = 0
@@ -120,6 +121,7 @@ public struct Diagnostics {
                     "configExists": configExists,
                     "vectorsPath": vectorsPath,
                     "enrolledVectors": vectors.count,
+                    "vectorMetrics": vectorMetrics,
                     "intrudersDir": intrudersDir.path,
                     "intruderCaptures": intruderCount,
                     "intruderSizeBytes": totalBytes
@@ -193,7 +195,16 @@ public struct Diagnostics {
 
         print("\n[6] Storage & Datasets:")
         print("  • Config File: \(configExists ? "Valid (\(configPath)) ✅" : "Missing ⚠️")")
-        print("  • Enrolled Face Templates: \(vectors.count) vectors (\(vectors.isEmpty ? "None - run 'facelock --enroll'" : "Calibrated at \(vectorsPath) ✅"))")
+        if vectors.isEmpty {
+            print("  • Enrolled Face Templates: None - run 'facelock --enroll' ⚠️")
+        } else if vectors.count == 1 {
+            print("  • Enrolled Face Templates: 1 vector (128-d) calibrated at \(vectorsPath) ✅")
+        } else {
+            let avg = vectorMetrics["avgPairwiseDistance"] as? Double ?? 0.0
+            let quality = vectorMetrics["quality"] as? String ?? "N/A"
+            print("  • Enrolled Face Templates: \(vectors.count) vectors (128-d, avg distance: \(String(format: "%.3f", avg))) at \(vectorsPath) ✅")
+            print("  • Biometric Cluster Quality: \(quality)")
+        }
 
         let sizeMB = Double(totalBytes) / (1024.0 * 1024.0)
         print("  • Intruder Incident Log: \(intruderCount) captures (\(String(format: "%.2f", sizeMB)) MB) in \(intrudersDir.path)")

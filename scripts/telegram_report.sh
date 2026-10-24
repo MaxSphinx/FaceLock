@@ -56,12 +56,14 @@ format_pr_status() {
     local repo="$1"
     local pr_num="$2"
     local raw
-    raw=$(gh pr view "$pr_num" --repo "$repo" --json state,mergeable 2>/dev/null || echo "{}")
+    raw=$(gh pr view "$pr_num" --repo "$repo" --json state,mergeable,comments 2>/dev/null || echo "{}")
     echo "$raw" | python3 -c "import sys, json
 try:
     d = json.load(sys.stdin)
     s = d.get('state', 'PENDING')
     m = d.get('mergeable', '')
+    comments = d.get('comments', [])
+    comment_text = ' '.join([c.get('body', '') for c in comments])
     if s == 'MERGED':
         print('MERGED 🎉')
     elif s == 'OPEN':
@@ -72,7 +74,10 @@ try:
         else:
             print('OPEN ⏳ (на ревью)')
     elif s == 'CLOSED':
-        print('CLOSED 🛑')
+        if '15-star minimum' in comment_text or '15 stars' in comment_text:
+            print('CLOSED 🛑 (лимит 15★ для reopen)')
+        else:
+            print('CLOSED 🛑')
     else:
         print(s)
 except Exception:

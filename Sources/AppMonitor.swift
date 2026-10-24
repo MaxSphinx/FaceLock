@@ -12,6 +12,8 @@ public final class AppMonitor {
     private var screenWakeObserver: NSObjectProtocol?
     private var screenLockObserver: NSObjectProtocol?
     private var screenUnlockObserver: NSObjectProtocol?
+    private var sessionResignObserver: NSObjectProtocol?
+    private var sessionActiveObserver: NSObjectProtocol?
 
     private init() {}
 
@@ -60,6 +62,22 @@ public final class AppMonitor {
             self?.handleScreenUnlocked()
         }
 
+        sessionResignObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.sessionDidResignActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.handleSessionResigned()
+        }
+
+        sessionActiveObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.sessionDidBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.handleSessionActivated()
+        }
+
         print("[AppMonitor] Started monitoring application switches, lock events, and wake events.")
     }
 
@@ -84,6 +102,14 @@ public final class AppMonitor {
             DistributedNotificationCenter.default().removeObserver(suObs)
             screenUnlockObserver = nil
         }
+        if let srObs = sessionResignObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(srObs)
+            sessionResignObserver = nil
+        }
+        if let saObs = sessionActiveObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(saObs)
+            sessionActiveObserver = nil
+        }
         isVerifying = false
     }
 
@@ -99,6 +125,19 @@ public final class AppMonitor {
 
     private func handleScreenUnlocked() {
         print("[AppMonitor] Screen unlocked event received.")
+        if Config.shared.lockOnWake {
+            handleSystemWake()
+        }
+    }
+
+    private func handleSessionResigned() {
+        print("[AppMonitor] User session resigned active (Fast User Switch / Inactive). Invalidating session.")
+        resetVerificationSession()
+    }
+
+    private func handleSessionActivated() {
+        print("[AppMonitor] User session became active.")
+        resetVerificationSession()
         if Config.shared.lockOnWake {
             handleSystemWake()
         }

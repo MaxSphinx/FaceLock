@@ -4,6 +4,17 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] - 2026-10-24
+
+### Added
+- **Lock Screen Face ID Retry Button**: Added an on-demand "Повторить Face ID" biometric retry button on the fullscreen lock shield in `LockScreenController`, enabling instant camera facial verification without requiring Touch ID hardware or manual PIN typing.
+- **Fast User Switching & macOS Session Security Hardening**: Added `NSWorkspace.sessionDidResignActiveNotification` and `NSWorkspace.sessionDidBecomeActiveNotification` observers in `AppMonitor` to immediately invalidate active verification sessions upon user switching or logout.
+- **Session Cache Invalidation CLI & Distributed IPC (`--reset-session`)**: Added `--reset-session` CLI flag (with `--json` support) and distributed IPC broadcast (`reset-session`) to clear verification debounce caches in running daemons.
+- **Biometric Template Cluster Metrics CLI (`--vectors`)**: Added `--vectors` (and `--vectors --json`) CLI flags to inspect enrolled facial template vectors, embedding dimensionality (128-d Apple Neural Vision faceprints), pairwise cosine distance distribution (min, avg, max, standard deviation), cluster tightness score, and dataset file metadata.
+- **Diagnostics Suite Vector Clustering**: Integrated detailed vector cluster statistics into `Diagnostics.run()` (and `--diagnostics --json`).
+- **Autonomous Catalog Watcher & PR Status Tracking**: Enhanced `telegram_report.sh` to extract comments on closed catalog PRs (detecting 15-star minimum requirements on `awesome-swift` PR #2007) with automated REST API fallback on GraphQL timeouts and added notification in `autonomous_worker.sh` when the repository reaches 15 stars.
+- **Makefile Enhancements**: Added `make vectors`, `make vectors-json`, and `make reset-session` targets, along with automated CLI tests in `make test`.
+
 ## [1.0.5] - 2026-10-24
 
 ### Added

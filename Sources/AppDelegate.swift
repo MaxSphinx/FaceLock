@@ -42,6 +42,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --pause [mins]             Pause protection for N minutes (default: 15)
               --resume                   Resume protection immediately
               --reload, --reload-config  Hot-reload active configuration in running daemon
+              --reset-session            Invalidate active biometric session and force re-authentication
               --check-app <bundleId>     Inspect whether bundle ID triggers biometric shield
               --config [--json]          Display active FaceLock configuration
               --backup-config <path>     Export active FaceLock configuration to JSON file
@@ -54,6 +55,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --set-liveness <on|off>    Enable or disable anti-spoofing liveness verification
               --set-touchid <on|off>     Enable or disable Touch ID fallback on lock screen
               --set-lock-on-wake <on|off|toggle> Enable, disable or toggle lock verification upon Mac screen wake
+              --vectors [--json]         Inspect enrolled biometric facial vectors & cluster metrics
               --export-vectors <path>    Export enrolled facial biometric vectors to JSON file
               --import-vectors <path>    Import facial biometric vectors from JSON file
               --health [--json]          Fast operational healthcheck (exit 0 if healthy)
@@ -78,7 +80,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if args.contains("--version") || args.contains("-v") {
-            print("FaceLock v1.0.5 (darwin-arm64)")
+            print("FaceLock v1.0.6 (darwin-arm64)")
             exit(0)
         }
 
@@ -106,6 +108,30 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     print("{\"success\":true,\"daemonRunning\":false,\"message\":\"Config on disk reloaded\"}")
                 } else {
                     print("✓ FaceLock daemon is not running; configuration reloaded from disk.")
+                }
+            }
+            exit(0)
+        }
+
+        if args.contains("--reset-session") {
+            if isAlreadyRunning {
+                DistributedNotificationCenter.default().postNotificationName(
+                    AppDelegate.commandNotificationName,
+                    object: nil,
+                    userInfo: ["action": "reset-session"],
+                    deliverImmediately: true
+                )
+                if args.contains("--json") {
+                    print("{\"success\":true,\"daemonRunning\":true,\"message\":\"Dispatched reset-session signal to daemon\"}")
+                } else {
+                    print("✓ Dispatched verification session reset signal to running FaceLock daemon.")
+                }
+            } else {
+                AppMonitor.shared.resetVerificationSession()
+                if args.contains("--json") {
+                    print("{\"success\":true,\"daemonRunning\":false,\"message\":\"Verification session cache cleared\"}")
+                } else {
+                    print("✓ Verification session cache cleared offline.")
                 }
             }
             exit(0)
@@ -172,7 +198,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
             if args.contains("--json") {
                 let statusDict: [String: Any] = [
-                    "version": "1.0.5",
+                    "version": "1.0.6",
                     "daemon": isAlreadyRunning ? "running" : "stopped",
                     "shieldState": Config.shared.isEnabled ? "active" : "paused",
                     "protectionMode": Config.shared.protectionMode,
@@ -503,6 +529,46 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 exit(1)
             }
+        }
+
+        if args.contains("--vectors") || args.contains("--vector-metrics") {
+            let metrics = Config.shared.getVectorMetrics()
+            if args.contains("--json") {
+                if let jsonData = try? JSONSerialization.data(withJSONObject: metrics, options: [.prettyPrinted, .sortedKeys]),
+                   let jsonStr = String(data: jsonData, encoding: .utf8) {
+                    print(jsonStr)
+                }
+            } else {
+                let count = metrics["count"] as? Int ?? 0
+                let dims = metrics["dimensions"] as? Int ?? 0
+                let quality = metrics["quality"] as? String ?? "N/A"
+                let filePath = metrics["filePath"] as? String ?? ""
+                let fileSizeBytes = metrics["fileSizeBytes"] as? UInt64 ?? 0
+                let lastMod = metrics["lastModified"] as? String ?? "N/A"
+
+                print("""
+                FaceLock Biometric Face Vectors:
+                  Enrolled Templates: \(count)
+                  Embedding Dimension: \(dims > 0 ? "\(dims)-d (Apple Neural Vision Faceprint)" : "None")
+                  Cluster Quality: \(quality)
+                  Storage Location: \(filePath) (\(fileSizeBytes) bytes)
+                  Last Modified: \(lastMod)
+                """)
+                if count >= 2,
+                   let minVal = metrics["minPairwiseDistance"] as? Double,
+                   let avgVal = metrics["avgPairwiseDistance"] as? Double,
+                   let maxVal = metrics["maxPairwiseDistance"] as? Double,
+                   let stdDev = metrics["standardDeviation"] as? Double {
+                    print("""
+                  Pairwise Cosine Distances:
+                    • Minimum: \(String(format: "%.4f", minVal))
+                    • Average: \(String(format: "%.4f", avgVal))
+                    • Maximum: \(String(format: "%.4f", maxVal))
+                    • Std Dev: \(String(format: "%.4f", stdDev))
+                """)
+                }
+            }
+            exit(0)
         }
 
         if let idx = args.firstIndex(of: "--export-vectors"), idx + 1 < args.count {
@@ -1382,6 +1448,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 Config.shared.reload()
                 StatusBarController.shared.updateIcon()
                 print("[FaceLock] Distributed reload signal received: Configuration refreshed.")
+            case "reset-session":
+                AppMonitor.shared.resetVerificationSession()
+                print("[FaceLock] Distributed signal received: Verification session reset.")
             default:
                 break
             }

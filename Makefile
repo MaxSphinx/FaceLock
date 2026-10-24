@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock settings gallery status config apps diagnostics health toggle toggle-wake wake reload check-app install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents test-telegram incidents latest-incident verify-face verify-pin status-json diagnostics-json
+.PHONY: all build run enroll test-lock lock settings gallery status config apps diagnostics health toggle toggle-wake wake reload reset-session check-app vectors vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents test-telegram incidents latest-incident verify-face verify-pin status-json diagnostics-json
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -25,12 +25,14 @@ help:
 	@echo "  make toggle         - Toggle protection between ACTIVE and PAUSED"
 	@echo "  make toggle-wake    - Toggle lock verification upon Mac screen wake"
 	@echo "  make reload         - Hot-reload active configuration in running daemon"
+	@echo "  make reset-session  - Invalidate active biometric verification session cache"
 	@echo "  make check-app APP= - Inspect if bundle ID triggers biometric shield"
 	@echo "  make status         - Display current protection & biometric status"
 	@echo "  make status-json    - Display status in JSON format"
 	@echo "  make health         - Fast operational healthcheck (exit 0 if healthy)"
 	@echo "  make config         - Display active FaceLock configuration settings"
 	@echo "  make apps           - List protected and ignored application bundle IDs"
+	@echo "  make vectors        - Inspect enrolled facial templates and cluster metrics"
 	@echo "  make incidents      - List logged intruder incident captures"
 	@echo "  make latest-incident- Display most recent intruder incident capture"
 	@echo "  make clear-incidents- Purge all saved intruder captures from disk"
@@ -73,6 +75,9 @@ wake: toggle-wake
 reload: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --reload
 
+reset-session: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --reset-session
+
 check-app: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --check-app $(APP)
 
@@ -98,6 +103,12 @@ config: build
 
 apps: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --apps
+
+vectors: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --vectors
+
+vectors-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --vectors --json
 
 incidents: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents
@@ -130,6 +141,8 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --config --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --apps > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --apps --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --vectors > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --vectors --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --latest-incident > /dev/null
@@ -146,6 +159,8 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --ignore-app com.apple.calculator --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --unignore-app com.apple.calculator --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --reload --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --reset-session --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --reset-session --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --check-app com.apple.Safari --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --check-app com.apple.dock --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --health --json > /dev/null || true

@@ -370,4 +370,85 @@ public final class Config: Codable {
         saveEnrolledVectors(combined)
         return combined.count
     }
+
+    public func getVectorMetrics() -> [String: Any] {
+        let vectors = loadEnrolledVectors()
+        let count = vectors.count
+        let dims = vectors.first?.count ?? 0
+        let url = Config.vectorsURL
+
+        var fileSizeBytes: UInt64 = 0
+        var modDateStr = "N/A"
+        var isoModDate: String? = nil
+
+        if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path) {
+            fileSizeBytes = attrs[.size] as? UInt64 ?? 0
+            if let date = attrs[.modificationDate] as? Date {
+                let fmt = DateFormatter()
+                fmt.dateFormat = "yyyy-MM-dd HH:mm:ss"
+                modDateStr = fmt.string(from: date)
+                isoModDate = ISO8601DateFormatter().string(from: date)
+            }
+        }
+
+        var minPairwise: Float = 0
+        var maxPairwise: Float = 0
+        var avgPairwise: Float = 0
+        var stdDevPairwise: Float = 0
+        var qualityStr = "None"
+
+        if count >= 2 {
+            var distances: [Float] = []
+            for i in 0..<count {
+                for j in (i + 1)..<count {
+                    distances.append(FaceprintExtractor.cosineDistance(vectors[i], vectors[j]))
+                }
+            }
+            if !distances.isEmpty {
+                let sum = distances.reduce(0, +)
+                let avg = sum / Float(distances.count)
+                let sorted = distances.sorted()
+                let minVal = sorted.first ?? 0
+                let maxVal = sorted.last ?? 0
+                let variance = distances.map { pow($0 - avg, 2) }.reduce(0, +) / Float(distances.count)
+                let stdDev = sqrt(variance)
+
+                minPairwise = minVal
+                maxPairwise = maxVal
+                avgPairwise = avg
+                stdDevPairwise = stdDev
+
+                if avg <= 0.12 {
+                    qualityStr = "Optimal (Excellent cluster tightness)"
+                } else if avg <= 0.20 {
+                    qualityStr = "Good (Solid biometric consistency)"
+                } else {
+                    qualityStr = "Fair (High template variance)"
+                }
+            }
+        } else if count == 1 {
+            qualityStr = "Single Sample (Calibration recommended for multi-angle robustness)"
+        } else {
+            qualityStr = "No Templates Enrolled"
+        }
+
+        var result: [String: Any] = [
+            "count": count,
+            "dimensions": dims,
+            "quality": qualityStr,
+            "filePath": url.path,
+            "fileSizeBytes": fileSizeBytes,
+            "lastModified": modDateStr
+        ]
+        if let iso = isoModDate {
+            result["lastModifiedISO"] = iso
+        }
+        if count >= 2 {
+            result["minPairwiseDistance"] = Double(minPairwise)
+            result["maxPairwiseDistance"] = Double(maxPairwise)
+            result["avgPairwiseDistance"] = Double(avgPairwise)
+            result["standardDeviation"] = Double(stdDevPairwise)
+        }
+        return result
+    }
 }

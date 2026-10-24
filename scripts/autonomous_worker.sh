@@ -39,6 +39,12 @@ while true; do
         EVENT_MSG="${EVENT_MSG} 🎉 PR #2007 в awesome-swift успешно смерджен!"
     fi
     
+    # Check if awesome-swift 15-star threshold is met to reopen PR #2007
+    STARS_COUNT=$(gh api repos/MaxSphinx/FaceLock --jq .stargazers_count 2>/dev/null || echo "0")
+    if [[ "$STARS_COUNT" =~ ^[0-9]+$ ]] && [[ "$STARS_COUNT" -ge 15 && "$PR_2007_STATE" == "CLOSED" ]]; then
+        EVENT_MSG="${EVENT_MSG} 🌟 FaceLock набрал 15+ звёзд ($STARS_COUNT★)! Можно переоткрыть PR #2007 в awesome-swift!"
+    fi
+    
     # 3. Check for open issues to notify
     ISSUES_COUNT=$(gh issue list --repo MaxSphinx/FaceLock --json number --jq '. | length' 2>/dev/null || echo "0")
     if [[ "$ISSUES_COUNT" -gt 0 ]]; then
