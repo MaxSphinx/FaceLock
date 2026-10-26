@@ -234,6 +234,7 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --optimize-vectors --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-pin-attempts 3 --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-pin-lockout 5 --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --prune-audit 1000 --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --export-audit /tmp/facelock_audit_test.jsonl --json > /dev/null && rm -f /tmp/facelock_audit_test.jsonl
 	@mkdir -p /tmp/facelock_test_export && build/FaceLock.app/Contents/MacOS/FaceLock --export-incidents /tmp/facelock_test_export --json > /dev/null && rm -rf /tmp/facelock_test_export
 	@build/FaceLock.app/Contents/MacOS/FaceLock --health --json > /dev/null || true

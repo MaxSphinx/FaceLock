@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.7] - 2026-10-26
 
 ### Added
+- **Interactive Security Audit Log GUI Window (`AuditLogWindow.swift`)**: Built a full macOS desktop window (`--audit-gui`, `--audit-ui`, `--audit-window`, `make audit-gui`) with real-time event cards, event categorization filter (All, Biometrics, Intruders, PIN, Touch ID, Shield), live refresh, `NSSavePanel` JSON export, Finder reveal, and quick photo inspection.
+- **Audit Log Retention Pruning (`--prune-audit <count>`, `make prune-audit`)**: Added thread-safe retention pruning in `SecurityAuditLogger.swift` to prune older log events while keeping the latest $N$ entries with atomic writes and freed storage reporting.
+- **Status Bar Audit Trail Integration**: Added "Журнал аудита безопасности (Audit Log)..." (shortcut `a`) to the status bar menu in `StatusBarController` for instant GUI inspection.
+- **Settings GUI Controls for PIN Protection & Audit Log**: Added interactive sliders for failed PIN attempt limits (1-10) and cooldown delays (1-60s) in Section 5 of `SettingsWindow`, along with Section 6 providing real-time audit event telemetry, storage footprint metrics, and one-click navigation to both the Audit Log and Incident Gallery.
+- **Dynamic Multi-Display Reconfiguration Security Hardening**: Added `NSApplication.didChangeScreenParametersNotification` listener in `LockScreenController` to dynamically adapt, re-anchor, and cover all displays with `FullscreenLockWindow`s when external monitors are connected, disconnected, or screen resolutions change while locked.
+- **Complete Incident Dataset Archival & Manifest Export (`--export-incidents <dir>`)**: Added `--export-incidents <dir>` CLI command and `make export-incidents DIR=...` to export all captured intruder incident photos to a destination directory alongside an automated JSON manifest file (`incidents_manifest.json`) containing timestamps, file sizes, and counts.
 - **Biometric Security Audit Logger (`SecurityAuditLogger.swift`)**: Built-in persistent structured audit trail (`~/.facelock/audit_log.jsonl`) recording biometric verifications, intruder alerts, PIN unlock attempts, Touch ID authorizations, walk-away locks, and protection toggles.
 - **Audit Log CLI Management (`--audit`, `--audit-stats`, `--clear-audit`, `--export-audit`)**: Added comprehensive CLI commands and JSON export tools to inspect, monitor, export, and purge security audit events.
 - **PIN Brute-force Defense & Temporary Lockout**: Implemented consecutive failed PIN attempt tracking with configurable cooldown lockout in `LockScreenController` to prevent brute-force attacks.
@@ -14,12 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Settings GUI Controls for PIN Protection & Audit Log**: Added interactive sliders for failed PIN attempt limits (1-10) and cooldown delays (1-60s) in Section 5 of `SettingsWindow`, along with direct navigation to the Security Audit Log and Incident Gallery.
 - **Atomic Persistence & Daemon Live Synchronization**: Enforced atomic writes across facial vector saves and audit log exports, with automatic distributed IPC reload signals to ensure background daemons instantly reflect changes.
 - **Biometric Vector Dataset Optimization (`--optimize-vectors`)**: Implemented statistical outlier filtering and redundancy pruning to optimize facial template cluster compactness while preserving biometric accuracy.
-- **Lock Screen State Telemetry (`--is-locked`)**: Added CLI command to query active lock shield state offline or via daemon.
+- **Lock Screen State Telemetry (`--is-locked`)**: Added CLI command to query active lock shield state offline or via daemon with `--json` support and shell exit codes (0 = locked, 1 = unlocked).
 - **Incident Telemetry & Summary CLI (`--incidents-summary`, `--incident-summary`)**: Added telemetry CLI with full `--json` support displaying total captures, storage footprint in MB, past 24-hour count, today's count, past 7-day count, and oldest/newest timestamps.
 - **Targeted Incident Export CLI (`--export-incident <filename> <destPath>`)**: Added CLI command to export any specific intruder incident photo to a destination path, complementing `--export-latest-incident`.
 - **Status & Diagnostics Security Metrics**: Enhanced `facelock --status` and `facelock --diagnostics` (including their `--json` modes) with past 24-hour incident counters, anti-spoofing liveness status, and latest incident timestamps.
 - **Telegram Reporter Audit & Telemetry**: Updated `scripts/telegram_report.sh` to include audit log volume and 24-hour incident statistics in automated Telegram status dispatches.
-- **Makefile Automation & Test Coverage**: Added `make audit`, `make audit-stats`, `make clear-audit`, `make incidents-summary`, and `make incidents-summary-json` targets, and expanded `make test` verification.
+- **Makefile Automation & Test Coverage**: Added `make is-locked`, `make optimize-vectors`, `make export-incidents`, `make audit`, `make audit-stats`, `make clear-audit`, `make incidents-summary`, and `make incidents-summary-json` targets, and expanded `make test` verification.
 
 ## [1.0.6] - 2026-10-24
 

@@ -179,6 +179,8 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --ignore-app <id>` | Add application bundle ID to ignored list |
 | `facelock --unignore-app <id>` | Remove application bundle ID from ignored list |
 | `facelock --set-pin <pin>` | Set lock screen unlock PIN from terminal |
+| `facelock --set-pin-attempts <count>` | Set max failed PIN attempts before lockout (1-10, default: 3) |
+| `facelock --set-pin-lockout <sec>` | Set cooling lockout delay after failed PIN attempts (1-60s, default: 5s) |
 | `facelock --set-telegram <tok> <id>` | Configure Telegram bot credentials and enable alerts |
 | `facelock --enable-telegram` | Enable Telegram intruder photo alerts |
 | `facelock --disable-telegram` | Disable Telegram intruder alerts |
@@ -189,9 +191,11 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --backup-config <path>` | Backup active FaceLock configuration to JSON |
 | `facelock --restore-config <path>` | Restore FaceLock configuration from JSON |
 | `facelock --vectors [--json]` | Inspect enrolled biometric facial vectors & cluster metrics |
+| `facelock --optimize-vectors [--json]` | Prune redundant face vectors & outliers to optimize cluster compactness |
 | `facelock --export-vectors <path>` | Backup enrolled face vectors to JSON file |
 | `facelock --import-vectors <path>` | Restore or merge face vectors from JSON file |
 | `facelock --health [--json]` | Operational healthcheck (exit 0 if healthy) |
+| `facelock --is-locked [--json]` | Check whether screen lock shield is currently engaged |
 | `facelock --set-walkaway <sec\|off>` | Configure walk-away timeout (10-600s) or disable ('off') |
 | `facelock --set-threshold <val>` | Set similarity threshold (0.05 - 0.60, default: 0.22) |
 | `facelock --set-timeout <sec>` | Set camera verification timeout (0.5 - 10.0s, default: 2.0s) |
@@ -207,6 +211,7 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --latest-incident [--json]` | Inspect details of the most recent intruder capture |
 | `facelock --export-latest-incident <p>` | Copy latest intruder photo capture to destination path |
 | `facelock --export-incident <f> <p>` | Copy specific intruder photo capture to destination path |
+| `facelock --export-incidents <dir>` | Export all captured intruder photos and JSON manifest to directory |
 | `facelock --clear-incidents` | Purge all saved intruder photo captures from disk |
 | `facelock --prune-incidents <n>` | Prune intruder captures keeping latest N photos |
 | `facelock --audit [--tail N] [--type T]` | View security audit log trail of biometrics, unlocks & alarms |
