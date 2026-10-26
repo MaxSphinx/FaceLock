@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock settings gallery status config apps diagnostics health toggle toggle-wake wake reload reset-session check-app vectors vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats clear-audit
+.PHONY: all build run enroll test-lock lock settings gallery status config apps diagnostics health toggle toggle-wake wake reload reset-session check-app vectors vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats clear-audit pin-attempts pin-lockout
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -45,6 +45,8 @@ help:
 	@echo "  make clear-incidents- Purge all saved intruder captures from disk"
 	@echo "  make prune-incidents- Prune older intruder captures (keep latest 30)"
 	@echo "  make verify-face    - One-shot biometric face verification via camera"
+	@echo "  make pin-attempts ATTEMPTS= - Set max failed PIN attempts before lockout"
+	@echo "  make pin-lockout SECONDS= - Set cooling lockout delay after failed PINs"
 	@echo "  make test-telegram  - Dispatch test notification to Telegram chat"
 	@echo "  make diagnostics    - Run full biometric, hardware & storage diagnostics"
 	@echo "  make diagnostics-json - Run diagnostics in JSON format"
@@ -70,6 +72,12 @@ test-lock: build
 lock: build
 	@echo "Triggering Lock Screen..."
 	@build/FaceLock.app/Contents/MacOS/FaceLock --lock
+
+is-locked: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --is-locked || true
+
+is-locked-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --is-locked --json || true
 
 toggle: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle
@@ -117,6 +125,12 @@ vectors: build
 vectors-json: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --vectors --json
 
+optimize-vectors: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --optimize-vectors
+
+optimize-vectors-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --optimize-vectors --json
+
 incidents: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents
 
@@ -126,6 +140,13 @@ incidents-summary: build
 incidents-summary-json: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents-summary --json
 
+export-incidents: build
+	@if [ -z "$(DIR)" ]; then \
+		echo "Usage: make export-incidents DIR=/path/to/destination"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --export-incidents "$(DIR)"
+
 latest-incident: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --latest-incident
 
@@ -134,6 +155,12 @@ verify-face: build
 
 verify-pin: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --verify-pin $(PIN)
+
+pin-attempts: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-pin-attempts $(ATTEMPTS)
+
+pin-lockout: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-pin-lockout $(SECONDS)
 
 clear-incidents: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --clear-incidents
@@ -194,6 +221,12 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --reset-session --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --check-app com.apple.Safari --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --check-app com.apple.dock --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --is-locked --json > /dev/null || true
+	@build/FaceLock.app/Contents/MacOS/FaceLock --optimize-vectors --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-pin-attempts 3 --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-pin-lockout 5 --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --export-audit /tmp/facelock_audit_test.jsonl --json > /dev/null && rm -f /tmp/facelock_audit_test.jsonl
+	@mkdir -p /tmp/facelock_test_export && build/FaceLock.app/Contents/MacOS/FaceLock --export-incidents /tmp/facelock_test_export --json > /dev/null && rm -rf /tmp/facelock_test_export
 	@build/FaceLock.app/Contents/MacOS/FaceLock --health --json > /dev/null || true
 	@echo "✓ All CLI tests passed!"
 
