@@ -180,6 +180,10 @@ audit-json: build
 audit-stats: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-stats
 
+audit-gui: build
+	@echo "Opening Security Audit Log..."
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-gui
+
 clear-audit: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --clear-audit
 

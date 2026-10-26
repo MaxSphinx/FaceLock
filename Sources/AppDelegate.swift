@@ -1483,6 +1483,30 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(0)
         }
 
+        if let idx = (args.firstIndex(of: "--prune-logs") ?? args.firstIndex(of: "--prune-audit")), idx + 1 < args.count {
+            guard let keep = Int(args[idx + 1]), keep >= 0 else {
+                print("Error: Keep count must be a non-negative integer.")
+                exit(1)
+            }
+            let res = SecurityAuditLogger.shared.pruneLogs(keeping: keep)
+            if args.contains("--json") {
+                let dict: [String: Any] = [
+                    "success": true,
+                    "prunedCount": res.prunedCount,
+                    "remainingCount": res.remainingCount,
+                    "freedSizeBytes": res.freedBytes
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                let freedKB = Double(res.freedBytes) / 1024.0
+                print("✓ Pruned \(res.prunedCount) older audit log events (kept latest \(res.remainingCount), \(String(format: "%.2f", freedKB)) KB freed).")
+            }
+            exit(0)
+        }
+
         if let idx = (args.firstIndex(of: "--export-logs") ?? args.firstIndex(of: "--export-audit")), idx + 1 < args.count {
             let destPath = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
             guard !destPath.isEmpty else {
@@ -1849,6 +1873,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 IncidentGalleryController.shared.show()
             }
+        } else if args.contains("--audit-gui") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                AuditLogController.shared.show()
+            }
         } else {
             if !Config.shared.hasEnrolledFace {
                 print("[FaceLock] Note: No face enrolled yet. Running in face detection mode.")
@@ -1879,6 +1907,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 EnrollmentController.shared.show()
             case "gallery":
                 IncidentGalleryController.shared.show()
+            case "audit-log", "audit":
+                AuditLogController.shared.show()
             case "lock", "test-lock":
                 LockScreenController.shared.showLock()
             case "toggle":
