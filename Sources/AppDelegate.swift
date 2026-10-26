@@ -38,8 +38,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --clear-incidents          Purge all saved intruder photo captures from disk
               --prune-incidents <count>  Prune intruder captures keeping latest N photos
               --logs, --audit [--tail N] [--type T] [--json] View security audit event log
-              --clear-logs               Purge all recorded security audit log events
-              --export-logs <path>       Export security audit log to file
+              --audit-ui, --audit-window Open security audit log viewer window
+              --clear-logs, --clear-audit Purge all recorded security audit log events
+              --prune-logs, --prune-audit <count> Prune older audit events keeping latest N
+              --export-logs, --export-audit <path> Export security audit log to file
               --verify-face [--timeout]  One-shot face biometric check without locking
               --verify-pin <pin>         Verify whether given PIN matches lock screen PIN
               --lock, --test-lock        Trigger immediate fullscreen lock screen
@@ -1783,6 +1785,15 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     deliverImmediately: true
                 )
                 print("[FaceLock] Dispatched gallery command to running instance.")
+                exit(0)
+            } else if args.contains("--audit-gui") {
+                DistributedNotificationCenter.default().postNotificationName(
+                    AppDelegate.commandNotificationName,
+                    object: nil,
+                    userInfo: ["action": "audit-log"],
+                    deliverImmediately: true
+                )
+                print("[FaceLock] Dispatched audit log command to running instance.")
                 exit(0)
             } else if !args.contains("--reset") {
                 DistributedNotificationCenter.default().postNotificationName(

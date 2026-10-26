@@ -110,6 +110,10 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         galleryItem.target = self
         menu.addItem(galleryItem)
 
+        let auditItem = NSMenuItem(title: "Журнал аудита безопасности (Audit Log)...", action: #selector(openAuditLog), keyEquivalent: "a")
+        auditItem.target = self
+        menu.addItem(auditItem)
+
         let enrollItem = NSMenuItem(title: "Запомнить моё лицо (Калибровка 3D Face ID)...", action: #selector(openEnrollment), keyEquivalent: "e")
         enrollItem.target = self
         menu.addItem(enrollItem)
@@ -171,6 +175,10 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
 
     @objc private func openGallery() {
         IncidentGalleryController.shared.show()
+    }
+
+    @objc private func openAuditLog() {
+        AuditLogController.shared.show()
     }
 
     @objc private func openSettings() {
