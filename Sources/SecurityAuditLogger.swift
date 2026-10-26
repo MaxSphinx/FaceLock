@@ -218,8 +218,30 @@ public final class SecurityAuditLogger {
             for line in lines.reversed() {
                 if let data = line.data(using: .utf8),
                    let event = try? decoder.decode(AuditEvent.self, from: data) {
-                    if let filter = filterType, !filter.isEmpty {
-                        if event.eventType.lowercased() != filter.lowercased() {
+                    if let filter = filterType?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), !filter.isEmpty && filter != "all" {
+                        let evType = event.eventType.lowercased()
+                        let match: Bool
+                        switch filter {
+                        case "face", "biometric", "biometrics":
+                            match = evType.contains("face") || evType.contains("wake_verified")
+                        case "intruder", "intruders", "alert", "alerts":
+                            match = evType.contains("intruder") || evType.contains("wake_locked")
+                        case "lock", "locks":
+                            match = evType.contains("lock") || evType.contains("intruder")
+                        case "pin":
+                            match = evType.contains("pin")
+                        case "touchid", "touch_id":
+                            match = evType.contains("touchid")
+                        case "shield":
+                            match = evType.contains("shield")
+                        case "success":
+                            match = event.isSuccess
+                        case "failure", "failed":
+                            match = !event.isSuccess
+                        default:
+                            match = evType == filter || evType.contains(filter)
+                        }
+                        if !match {
                             continue
                         }
                     }
@@ -231,6 +253,38 @@ public final class SecurityAuditLogger {
             }
         }
         return results
+    }
+
+    public func pruneLogs(keeping: Int) -> (prunedCount: Int, remainingCount: Int, freedBytes: UInt64) {
+        var pruned = 0
+        var remaining = 0
+        var freed: UInt64 = 0
+
+        logQueue.sync {
+            guard let content = try? String(contentsOf: self.logFileURL, encoding: .utf8) else {
+                return
+            }
+            let lines = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            let initialCount = lines.count
+            let initialSize = (try? FileManager.default.attributesOfItem(atPath: self.logFileURL.path)[.size] as? UInt64) ?? 0
+
+            if initialCount <= keeping {
+                remaining = initialCount
+                return
+            }
+
+            let keptLines = Array(lines.suffix(keeping))
+            let newContent = keptLines.joined(separator: "\n") + "\n"
+
+            if let data = newContent.data(using: .utf8) {
+                try? data.write(to: self.logFileURL, options: .atomic)
+                let newSize = (try? FileManager.default.attributesOfItem(atPath: self.logFileURL.path)[.size] as? UInt64) ?? 0
+                freed = (initialSize > newSize) ? (initialSize - newSize) : 0
+                pruned = initialCount - keptLines.count
+                remaining = keptLines.count
+            }
+        }
+        return (pruned, remaining, freed)
     }
 
     public func clearLogs() -> (deletedCount: Int, freedBytes: UInt64) {
@@ -279,7 +333,9 @@ public final class SecurityAuditLogger {
 
         try logQueue.sync {
             guard FileManager.default.fileExists(atPath: self.logFileURL.path) else {
-                throw NSError(domain: "io.github.facelock", code: 404, userInfo: [NSLocalizedDescriptionKey: "No audit logs have been recorded yet."])
+                try Data().write(to: destURL, options: .atomic)
+                count = 0
+                return
             }
             let data = try Data(contentsOf: self.logFileURL)
             try data.write(to: destURL, options: .atomic)
