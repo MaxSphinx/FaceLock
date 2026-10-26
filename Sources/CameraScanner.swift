@@ -19,11 +19,13 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
     private var lastFrameSnapshot: NSImage?
     public private(set) var lastCandidateVector: [Float]?
     public private(set) var latestBestDistance: Float?
+    public private(set) var latestSavedIntruderURL: URL?
     public var autoSaveIntruders: Bool = true
 
     public func clearCandidateFaceprint() {
         self.lastCandidateVector = nil
         self.latestBestDistance = nil
+        self.latestSavedIntruderURL = nil
     }
 
     // Enrollment support
@@ -133,7 +135,9 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         // If no face was seen (e.g. user walked away), do not treat empty frame as intruder.
         let intruderImage = self.latestIntruderPhoto
         if let photo = intruderImage, autoSaveIntruders {
-            self.saveIntruderPhoto(photo)
+            self.latestSavedIntruderURL = self.saveIntruderPhoto(photo)
+        } else {
+            self.latestSavedIntruderURL = nil
         }
 
         let bestDist = self.latestBestDistance
@@ -152,6 +156,7 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         latestIntruderPhoto = nil
         lastFrameSnapshot = nil
         latestBestDistance = nil
+        latestSavedIntruderURL = nil
 
         if session.isRunning {
             session.stopRunning()
@@ -370,6 +375,77 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         let home = FileManager.default.homeDirectoryForCurrentUser
         let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
         return pruneOldIntruderPhotos(in: dir, maxRetained: maxRetained)
+    }
+
+    public func exportIncidents(to destinationPath: String) throws -> [String: Any] {
+        let expanded = NSString(string: destinationPath).expandingTildeInPath
+        let destURL = URL(fileURLWithPath: expanded)
+
+        let fileManager = FileManager.default
+        if !fileManager.fileExists(atPath: destURL.path) {
+            try fileManager.createDirectory(at: destURL, withIntermediateDirectories: true)
+        }
+
+        let home = fileManager.homeDirectoryForCurrentUser
+        let sourceDir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
+
+        guard let files = try? fileManager.contentsOfDirectory(atPath: sourceDir.path) else {
+            return [
+                "count": 0,
+                "totalBytes": UInt64(0),
+                "destination": destURL.path,
+                "manifestPath": ""
+            ]
+        }
+
+        let jpegFiles = files.filter { $0.hasSuffix(".jpg") || $0.hasSuffix(".jpeg") }.sorted()
+        var manifestEntries: [[String: Any]] = []
+        var totalBytes: UInt64 = 0
+        var exportedCount = 0
+
+        for file in jpegFiles {
+            let srcFile = sourceDir.appendingPathComponent(file)
+            let dstFile = destURL.appendingPathComponent(file)
+
+            if fileManager.fileExists(atPath: dstFile.path) {
+                try? fileManager.removeItem(at: dstFile)
+            }
+
+            try fileManager.copyItem(at: srcFile, to: dstFile)
+            exportedCount += 1
+
+            var size: UInt64 = 0
+            var modDate = ""
+            if let attrs = try? fileManager.attributesOfItem(atPath: dstFile.path) {
+                size = attrs[.size] as? UInt64 ?? 0
+                totalBytes += size
+                if let date = attrs[.modificationDate] as? Date {
+                    modDate = ISO8601DateFormatter().string(from: date)
+                }
+            }
+            manifestEntries.append([
+                "filename": file,
+                "sizeBytes": size,
+                "modified": modDate
+            ])
+        }
+
+        let manifestURL = destURL.appendingPathComponent("incidents_manifest.json")
+        let manifestData: [String: Any] = [
+            "exportDate": ISO8601DateFormatter().string(from: Date()),
+            "totalCount": exportedCount,
+            "totalBytes": totalBytes,
+            "incidents": manifestEntries
+        ]
+        let jsonData = try JSONSerialization.data(withJSONObject: manifestData, options: [.prettyPrinted])
+        try jsonData.write(to: manifestURL, options: .atomic)
+
+        return [
+            "count": exportedCount,
+            "totalBytes": totalBytes,
+            "destination": destURL.path,
+            "manifestPath": manifestURL.path
+        ]
     }
 
     @discardableResult

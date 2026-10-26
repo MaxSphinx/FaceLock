@@ -60,6 +60,8 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         pauseTimer?.invalidate()
         pauseTimer = nil
 
+        SecurityAuditLogger.shared.logShieldStateChanged(enabled: Config.shared.isEnabled, reason: "Toggled via menu bar icon")
+
         updateIcon()
 
         // Visual HUD feedback
@@ -184,6 +186,7 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         Config.shared.save()
         updateIcon()
         HUDController.shared.showToggleStatus(isEnabled: false)
+        SecurityAuditLogger.shared.logShieldStateChanged(enabled: false, reason: "Paused protection for \(Int(minutes)) minutes")
 
         pauseTimer?.invalidate()
         pauseTimer = Timer.scheduledTimer(withTimeInterval: max(1.0, minutes * 60), repeats: false) { [weak self] _ in
@@ -199,6 +202,7 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         updateIcon()
         HUDController.shared.showToggleStatus(isEnabled: true)
         NSSound(named: "Tink")?.play()
+        SecurityAuditLogger.shared.logShieldStateChanged(enabled: true, reason: "Resumed protection")
     }
 
     @objc private func pauseFor15Min() {

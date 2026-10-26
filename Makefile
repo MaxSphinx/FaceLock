@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock settings gallery status config apps diagnostics health toggle toggle-wake wake reload reset-session check-app vectors vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents test-telegram incidents latest-incident verify-face verify-pin status-json diagnostics-json
+.PHONY: all build run enroll test-lock lock settings gallery status config apps diagnostics health toggle toggle-wake wake reload reset-session check-app vectors vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats clear-audit
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -22,6 +22,7 @@ help:
 	@echo "  make gallery        - Open intruder incident log"
 	@echo "  make test-lock      - Trigger immediate fullscreen lock test"
 	@echo "  make lock           - Trigger lock screen via daemon or standalone"
+	@echo "  make is-locked      - Check if screen lock is currently active"
 	@echo "  make toggle         - Toggle protection between ACTIVE and PAUSED"
 	@echo "  make toggle-wake    - Toggle lock verification upon Mac screen wake"
 	@echo "  make reload         - Hot-reload active configuration in running daemon"
@@ -33,7 +34,13 @@ help:
 	@echo "  make config         - Display active FaceLock configuration settings"
 	@echo "  make apps           - List protected and ignored application bundle IDs"
 	@echo "  make vectors        - Inspect enrolled facial templates and cluster metrics"
+	@echo "  make optimize-vectors - Prune redundant vectors and outliers to optimize cluster"
+	@echo "  make audit          - View security audit event log"
+	@echo "  make audit-stats    - View security audit statistics"
+	@echo "  make clear-audit    - Purge security audit event log"
 	@echo "  make incidents      - List logged intruder incident captures"
+	@echo "  make incidents-summary - Intruder telemetry (total, 24h, 7d, timestamps)"
+	@echo "  make export-incidents DIR= - Export all intruder incident photos & manifest"
 	@echo "  make latest-incident- Display most recent intruder incident capture"
 	@echo "  make clear-incidents- Purge all saved intruder captures from disk"
 	@echo "  make prune-incidents- Prune older intruder captures (keep latest 30)"
@@ -113,6 +120,12 @@ vectors-json: build
 incidents: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents
 
+incidents-summary: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents-summary
+
+incidents-summary-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents-summary --json
+
 latest-incident: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --latest-incident
 
@@ -131,6 +144,18 @@ prune-incidents: build
 test-telegram: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --test-telegram
 
+audit: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit
+
+audit-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit --json
+
+audit-stats: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-stats
+
+clear-audit: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --clear-audit
+
 test: build
 	@echo "==> Running CLI verification tests..."
 	@build/FaceLock.app/Contents/MacOS/FaceLock --help > /dev/null
@@ -145,8 +170,14 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --vectors --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents-summary > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents-summary --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --latest-incident > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --latest-incident --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-stats > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-stats --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --diagnostics --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-walkaway 45 --json > /dev/null
 	@CUR_PIN=$$(python3 -c "import json, os; print(json.load(open(os.path.expanduser('~/.facelock/config.json'))).get('pin', '0000'))" 2>/dev/null || echo "0000"); \

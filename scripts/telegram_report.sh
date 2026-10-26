@@ -121,13 +121,29 @@ else:
     print('0')
 " 2>/dev/null || echo "0")
 
-INTRUDER_COUNT=$(python3 -c "import os
+INTRUDER_COUNT=$(python3 -c "import os, time
 p = os.path.expanduser('~/.facelock/intruders')
 if os.path.exists(p):
-    print(f'{len([f for f in os.listdir(p) if f.endswith(\".jpg\") or f.endswith(\".jpeg\")])} инцидентов')
+    files = [os.path.join(p, f) for f in os.listdir(p) if f.endswith('.jpg') or f.endswith('.jpeg')]
+    now = time.time()
+    past24 = sum(1 for f in files if (now - os.path.getmtime(f)) <= 86400)
+    total = len(files)
+    if past24 > 0:
+        print(f'{total} инцидентов ({past24} за 24ч)')
+    else:
+        print(f'{total} инцидентов')
 else:
     print('0')
 " 2>/dev/null || echo "0")
+
+AUDIT_COUNT=$(python3 -c "import os
+p = os.path.expanduser('~/.facelock/audit_log.jsonl')
+if os.path.exists(p):
+    lines = [l for l in open(p).read().splitlines() if l.strip()]
+    print(f'{len(lines)} записей')
+else:
+    print('0 записей')
+" 2>/dev/null || echo "0 записей")
 
 # Latest commit info
 if [[ -d "$REPO_DIR/.git" ]]; then
@@ -161,6 +177,7 @@ MESSAGE="🛡️ <b>FaceLock Status Report</b>
 • Защита: <b>$SHIELD_STATUS</b>
 • Слепки лица: <b>$ENROLLED_COUNT</b>
 • Нарушители: <b>$INTRUDER_COUNT</b>
+• Аудит безопасности: <b>$AUDIT_COUNT</b>
 
 💻 <b>Последний коммит:</b>
 <code>$SAFE_LATEST_COMMIT</code>"

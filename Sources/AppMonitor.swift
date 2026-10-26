@@ -164,6 +164,7 @@ public final class AppMonitor {
                 if success {
                     self.lastVerifiedTime = Date()
                     HUDController.shared.showSuccess()
+                    SecurityAuditLogger.shared.logWakeVerified(distance: distance, threshold: Config.shared.similarityThreshold)
                     if let d = distance {
                         print("[AppMonitor] Face verified on wake (distance: \(String(format: "%.3f", d)))")
                     } else {
@@ -171,6 +172,8 @@ public final class AppMonitor {
                     }
                 } else {
                     HUDController.shared.hide()
+                    let photoName = CameraScanner.shared.latestSavedIntruderURL?.lastPathComponent
+                    SecurityAuditLogger.shared.logWakeLocked(intruderPhoto: photoName)
                     print("[AppMonitor] Wake verification failed! Locking screen...")
                     if let photo = intruderImage {
                         TelegramNotifier.shared.sendIntruderAlert(photo: photo, appName: "Wake From Sleep")
@@ -227,6 +230,7 @@ public final class AppMonitor {
                     self.lastVerifiedPID = pid
                     self.lastVerifiedTime = Date()
                     HUDController.shared.showSuccess()
+                    SecurityAuditLogger.shared.logFaceVerified(appName: appName, bundleId: bundleId, distance: distance, threshold: Config.shared.similarityThreshold)
                     if let d = distance {
                         print("[AppMonitor] Face verified for \(appName) (similarity distance: \(String(format: "%.3f", d)))")
                     } else {
@@ -234,6 +238,8 @@ public final class AppMonitor {
                     }
                 } else {
                     HUDController.shared.hide()
+                    let photoName = CameraScanner.shared.latestSavedIntruderURL?.lastPathComponent
+                    SecurityAuditLogger.shared.logIntruderDetected(appName: appName, bundleId: bundleId, distance: distance, threshold: Config.shared.similarityThreshold, intruderPhoto: photoName)
                     print("[AppMonitor] Face NOT verified for \(appName)! Locking with intruder photo: \(intruderImage != nil)...")
 
                     if let photo = intruderImage {

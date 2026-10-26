@@ -26,6 +26,8 @@ public final class Config: Codable {
     public var walkAwayLockEnabled: Bool
     public var walkAwayIdleSeconds: Double
     public var lockOnWake: Bool
+    public var maxFailedPinAttempts: Int
+    public var pinLockoutSeconds: Double
 
     public init(
         pin: String = "0000",
@@ -68,7 +70,9 @@ public final class Config: Codable {
         livenessDetectionEnabled: Bool = true,
         walkAwayLockEnabled: Bool = true,
         walkAwayIdleSeconds: Double = 45.0,
-        lockOnWake: Bool = false
+        lockOnWake: Bool = false,
+        maxFailedPinAttempts: Int = 3,
+        pinLockoutSeconds: Double = 5.0
     ) {
         self.pin = pin
         self.similarityThreshold = similarityThreshold
@@ -88,6 +92,8 @@ public final class Config: Codable {
         self.walkAwayLockEnabled = walkAwayLockEnabled
         self.walkAwayIdleSeconds = walkAwayIdleSeconds
         self.lockOnWake = lockOnWake
+        self.maxFailedPinAttempts = maxFailedPinAttempts
+        self.pinLockoutSeconds = pinLockoutSeconds
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -109,6 +115,8 @@ public final class Config: Codable {
         case walkAwayLockEnabled
         case walkAwayIdleSeconds
         case lockOnWake
+        case maxFailedPinAttempts
+        case pinLockoutSeconds
     }
 
     public required init(from decoder: Decoder) throws {
@@ -154,6 +162,8 @@ public final class Config: Codable {
         self.walkAwayLockEnabled = try container.decodeIfPresent(Bool.self, forKey: .walkAwayLockEnabled) ?? true
         self.walkAwayIdleSeconds = try container.decodeIfPresent(Double.self, forKey: .walkAwayIdleSeconds) ?? 45.0
         self.lockOnWake = try container.decodeIfPresent(Bool.self, forKey: .lockOnWake) ?? false
+        self.maxFailedPinAttempts = try container.decodeIfPresent(Int.self, forKey: .maxFailedPinAttempts) ?? 3
+        self.pinLockoutSeconds = try container.decodeIfPresent(Double.self, forKey: .pinLockoutSeconds) ?? 5.0
     }
 
     private static var configURL: URL {
@@ -169,6 +179,32 @@ public final class Config: Codable {
         let home = FileManager.default.homeDirectoryForCurrentUser
         let dir = home.appendingPathComponent(".facelock", isDirectory: true)
         return dir.appendingPathComponent("owner_face_vectors.json")
+    }
+
+    private static var lockStateURL: URL {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let dir = home.appendingPathComponent(".facelock", isDirectory: true)
+        return dir.appendingPathComponent("lock_state.json")
+    }
+
+    public static func saveLockState(isLocked: Bool) {
+        let url = lockStateURL
+        let dict: [String: Any] = [
+            "isLocked": isLocked,
+            "timestamp": ISO8601DateFormatter().string(from: Date())
+        ]
+        if let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted]) {
+            try? data.write(to: url)
+        }
+    }
+
+    public static func getLockState() -> [String: Any] {
+        let url = lockStateURL
+        if let data = try? Data(contentsOf: url),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            return json
+        }
+        return ["isLocked": false, "timestamp": "N/A"]
     }
 
     public static func load() -> Config {
@@ -192,7 +228,7 @@ public final class Config: Codable {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
         if let data = try? encoder.encode(self) {
-            try? data.write(to: url)
+            try? data.write(to: url, options: .atomic)
         }
     }
 
@@ -217,6 +253,8 @@ public final class Config: Codable {
             self.walkAwayLockEnabled = fresh.walkAwayLockEnabled
             self.walkAwayIdleSeconds = fresh.walkAwayIdleSeconds
             self.lockOnWake = fresh.lockOnWake
+            self.maxFailedPinAttempts = fresh.maxFailedPinAttempts
+            self.pinLockoutSeconds = fresh.pinLockoutSeconds
         }
     }
 
@@ -253,6 +291,8 @@ public final class Config: Codable {
         self.walkAwayLockEnabled = imported.walkAwayLockEnabled
         self.walkAwayIdleSeconds = imported.walkAwayIdleSeconds
         self.lockOnWake = imported.lockOnWake
+        self.maxFailedPinAttempts = imported.maxFailedPinAttempts
+        self.pinLockoutSeconds = imported.pinLockoutSeconds
         self.save()
     }
 
@@ -272,7 +312,8 @@ public final class Config: Codable {
     public func saveEnrolledVectors(_ vectors: [[Float]]) {
         let url = Config.vectorsURL
         if let data = try? JSONEncoder().encode(vectors) {
-            try? data.write(to: url)
+            try? data.write(to: url, options: .atomic)
+            AppDelegate.notifyDaemonReload()
         }
     }
 
@@ -331,6 +372,7 @@ public final class Config: Codable {
     public func clearEnrolledVectors() {
         let url = Config.vectorsURL
         try? FileManager.default.removeItem(at: url)
+        AppDelegate.notifyDaemonReload()
     }
 
     public func exportVectors(to destinationPath: String) throws -> Int {
@@ -450,5 +492,108 @@ public final class Config: Codable {
             result["standardDeviation"] = Double(stdDevPairwise)
         }
         return result
+    }
+
+    public func optimizeVectors(maxVectors: Int = 12) -> [String: Any] {
+        let originalVectors = loadEnrolledVectors()
+        let initialCount = originalVectors.count
+        guard initialCount > 1 else {
+            let metrics = getVectorMetrics()
+            return [
+                "initialCount": initialCount,
+                "optimizedCount": initialCount,
+                "prunedRedundant": 0,
+                "prunedOutliers": 0,
+                "initialQuality": metrics["quality"] as? String ?? "N/A",
+                "optimizedQuality": metrics["quality"] as? String ?? "N/A",
+                "initialAvgDistance": metrics["avgPairwiseDistance"] as? Double ?? 0.0,
+                "optimizedAvgDistance": metrics["avgPairwiseDistance"] as? Double ?? 0.0
+            ]
+        }
+
+        let initialMetrics = getVectorMetrics()
+        let initialAvgDist = initialMetrics["avgPairwiseDistance"] as? Double ?? 0.0
+        let initialQuality = initialMetrics["quality"] as? String ?? "N/A"
+
+        // 1. Redundancy filter: drop vectors that are nearly identical (cosine dist < 0.035)
+        var deduped: [[Float]] = []
+        var prunedRedundant = 0
+
+        for vec in originalVectors {
+            let isTooClose = deduped.contains { existing in
+                FaceprintExtractor.cosineDistance(vec, existing) < 0.035
+            }
+            if isTooClose {
+                prunedRedundant += 1
+            } else {
+                deduped.append(vec)
+            }
+        }
+
+        // 2. Outlier filtering
+        var filtered = deduped
+        var prunedOutliers = 0
+
+        if deduped.count >= 3 {
+            let dim = deduped[0].count
+            var centroid = [Float](repeating: 0.0, count: dim)
+            for vec in deduped {
+                for i in 0..<dim {
+                    centroid[i] += vec[i]
+                }
+            }
+            for i in 0..<dim {
+                centroid[i] /= Float(deduped.count)
+            }
+            let norm = sqrt(centroid.reduce(0) { $0 + $1 * $1 })
+            if norm > 0.0001 {
+                for i in 0..<dim {
+                    centroid[i] /= norm
+                }
+            }
+
+            let distsToCentroid = deduped.map { FaceprintExtractor.cosineDistance($0, centroid) }
+            let meanDist = distsToCentroid.reduce(0, +) / Float(distsToCentroid.count)
+            let variance = distsToCentroid.map { pow($0 - meanDist, 2) }.reduce(0, +) / Float(distsToCentroid.count)
+            let stdDev = sqrt(variance)
+
+            var nonOutliers: [[Float]] = []
+            for (idx, vec) in deduped.enumerated() {
+                let d = distsToCentroid[idx]
+                if d > (meanDist + 1.8 * stdDev) && d > 0.22 {
+                    prunedOutliers += 1
+                } else {
+                    nonOutliers.append(vec)
+                }
+            }
+            if nonOutliers.count >= 2 {
+                filtered = nonOutliers
+            }
+        }
+
+        // 3. Bound to maxVectors if needed
+        if filtered.count > maxVectors {
+            filtered = Array(filtered.suffix(maxVectors))
+        }
+
+        // Save optimized vectors if any were removed
+        if filtered.count != initialCount {
+            saveEnrolledVectors(filtered)
+        }
+
+        let finalMetrics = getVectorMetrics()
+        let finalAvgDist = finalMetrics["avgPairwiseDistance"] as? Double ?? 0.0
+        let finalQuality = finalMetrics["quality"] as? String ?? "N/A"
+
+        return [
+            "initialCount": initialCount,
+            "optimizedCount": filtered.count,
+            "prunedRedundant": prunedRedundant,
+            "prunedOutliers": prunedOutliers,
+            "initialQuality": initialQuality,
+            "optimizedQuality": finalQuality,
+            "initialAvgDistance": initialAvgDist,
+            "optimizedAvgDistance": finalAvgDist
+        ]
     }
 }

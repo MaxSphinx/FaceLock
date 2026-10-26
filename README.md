@@ -201,12 +201,18 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --test-lock` | Trigger fullscreen security shield test |
 | `facelock --status` | Display daemon status and biometric template metrics |
 | `facelock --incidents [--json]` | List logged intruder incident captures and disk usage |
+| `facelock --incidents-summary [--json]` | Telemetry summary: total, 24h & 7d counts, size, timestamps |
 | `facelock --incident <filename>` | Inspect details of a specific intruder incident photo |
 | `facelock --delete-incident <file>` | Delete a specific intruder incident photo from disk |
 | `facelock --latest-incident [--json]` | Inspect details of the most recent intruder capture |
 | `facelock --export-latest-incident <p>` | Copy latest intruder photo capture to destination path |
+| `facelock --export-incident <f> <p>` | Copy specific intruder photo capture to destination path |
 | `facelock --clear-incidents` | Purge all saved intruder photo captures from disk |
 | `facelock --prune-incidents <n>` | Prune intruder captures keeping latest N photos |
+| `facelock --audit [--tail N] [--type T]` | View security audit log trail of biometrics, unlocks & alarms |
+| `facelock --audit-stats [--json]` | Show security audit statistics and total events count |
+| `facelock --clear-audit` | Purge all security audit log events from disk |
+| `facelock --export-audit <path>` | Export security audit log events to destination JSONL file |
 | `facelock --verify-face [--timeout]` | Instant one-shot facial biometric check without locking |
 | `facelock --verify-pin <pin>` | Verify candidate PIN against active lock screen PIN |
 | `facelock --test-telegram` | Dispatch verification alert to configured Telegram chat |

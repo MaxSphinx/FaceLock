@@ -69,14 +69,20 @@ public struct Diagnostics {
 
         var intruderCount = 0
         var totalBytes: UInt64 = 0
+        var recent24hCount = 0
+        let oneDayAgo = Date().addingTimeInterval(-86400)
         if let files = try? FileManager.default.contentsOfDirectory(atPath: intrudersDir.path) {
             let jpegs = files.filter { $0.hasSuffix(".jpg") || $0.hasSuffix(".jpeg") }
             intruderCount = jpegs.count
             for f in jpegs {
                 let p = intrudersDir.appendingPathComponent(f).path
-                if let attrs = try? FileManager.default.attributesOfItem(atPath: p),
-                   let sz = attrs[.size] as? UInt64 {
-                    totalBytes += sz
+                if let attrs = try? FileManager.default.attributesOfItem(atPath: p) {
+                    if let sz = attrs[.size] as? UInt64 {
+                        totalBytes += sz
+                    }
+                    if let modDate = attrs[.modificationDate] as? Date, modDate >= oneDayAgo {
+                        recent24hCount += 1
+                    }
                 }
             }
         }
@@ -85,6 +91,7 @@ public struct Diagnostics {
         let tgConfigured = !config.telegramBotToken.isEmpty && !config.telegramChatId.isEmpty
         let launchAgentPath = home.appendingPathComponent("Library/LaunchAgents/io.github.facelock.maintainer.plist").path
         let agentInstalled = FileManager.default.fileExists(atPath: launchAgentPath)
+        let logStats = SecurityAuditLogger.shared.getLogStats()
 
         if jsonOutput {
             let diagDict: [String: Any] = [
@@ -124,7 +131,11 @@ public struct Diagnostics {
                     "vectorMetrics": vectorMetrics,
                     "intrudersDir": intrudersDir.path,
                     "intruderCaptures": intruderCount,
-                    "intruderSizeBytes": totalBytes
+                    "recent24hCaptures": recent24hCount,
+                    "intruderSizeBytes": totalBytes,
+                    "auditLogEvents": logStats.totalCount,
+                    "auditLogSizeBytes": logStats.fileSizeBytes,
+                    "auditLogLastEvent": logStats.lastEventTime ?? ""
                 ],
                 "integrations": [
                     "telegramConfigured": tgConfigured,
@@ -207,7 +218,11 @@ public struct Diagnostics {
         }
 
         let sizeMB = Double(totalBytes) / (1024.0 * 1024.0)
-        print("  • Intruder Incident Log: \(intruderCount) captures (\(String(format: "%.2f", sizeMB)) MB) in \(intrudersDir.path)")
+        let recentStr = recent24hCount > 0 ? " (\(recent24hCount) in past 24h)" : ""
+        print("  • Intruder Incident Log: \(intruderCount) captures\(recentStr) (\(String(format: "%.2f", sizeMB)) MB) in \(intrudersDir.path)")
+        let auditMB = Double(logStats.fileSizeBytes) / (1024.0 * 1024.0)
+        let auditLast = logStats.lastEventTime ?? "None"
+        print("  • Security Audit Log: \(logStats.totalCount) events (\(String(format: "%.2f", auditMB)) MB), last: \(auditLast)")
 
         print("\n[7] Integrations & Automation:")
         print("  • Telegram Bot Alerts: \(tgConfigured ? "Configured (Active: \(config.telegramEnabled ? "YES ✅" : "NO ⏸️"))" : "Not configured ℹ️")")

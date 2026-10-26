@@ -17,6 +17,9 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
     private var targetApp: NSRunningApplication?
     private var intruderImage: NSImage?
     private var onUnlockCallback: (() -> Void)?
+    private var failedPinAttempts = 0
+    private var lockoutTimer: Timer?
+    private var lockoutSecondsRemaining = 0
 
     private override init() {
         super.init()
@@ -25,9 +28,20 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
     public func showLock(targetApp: NSRunningApplication? = nil, intruderImage: NSImage? = nil, onUnlock: (() -> Void)? = nil) {
         guard !isLocked else { return }
         isLocked = true
+        failedPinAttempts = 0
+        lockoutTimer?.invalidate()
+        lockoutTimer = nil
+        Config.saveLockState(isLocked: true)
         self.targetApp = targetApp
         self.intruderImage = intruderImage
         self.onUnlockCallback = onUnlock
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleScreenParametersChanged),
+            name: NSApplication.didChangeScreenParametersNotification,
+            object: nil
+        )
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
@@ -59,6 +73,37 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
                     self.triggerTouchID()
                 }
             }
+        }
+    }
+
+    @objc private func handleScreenParametersChanged() {
+        guard isLocked else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, self.isLocked else { return }
+            print("[LockScreenController] Display configuration change detected while locked. Re-anchoring full-screen shield...")
+            self.reconfigureLockWindows()
+        }
+    }
+
+    private func reconfigureLockWindows() {
+        guard isLocked else { return }
+        let currentPin = pinField?.stringValue ?? ""
+        for win in lockWindows {
+            win.orderOut(nil)
+        }
+        lockWindows.removeAll()
+
+        createLockWindows()
+
+        for win in lockWindows {
+            win.alphaValue = 1.0
+            win.orderFrontRegardless()
+        }
+
+        if let mainWin = lockWindows.first {
+            mainWin.makeKey()
+            pinField?.stringValue = currentPin
+            pinField?.becomeFirstResponder()
         }
     }
 
@@ -307,26 +352,97 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
 
     // MARK: - Actions
     public func controlTextDidChange(_ obj: Notification) {
+        guard lockoutTimer == nil else { return }
         errorLabel?.isHidden = true
         pinField?.layer?.borderColor = NSColor.white.withAlphaComponent(0.2).cgColor
         pinField?.layer?.borderWidth = 1.0
 
         guard let entered = pinField?.stringValue else { return }
         if entered == Config.shared.pin {
+            failedPinAttempts = 0
+            SecurityAuditLogger.shared.logPINUnlocked(targetApp: targetApp?.localizedName)
             unlock()
         }
     }
 
     @objc private func onPinSubmitted() {
-        guard let entered = pinField?.stringValue else { return }
+        guard lockoutTimer == nil else { return }
+        guard let entered = pinField?.stringValue, !entered.isEmpty else { return }
 
         if entered == Config.shared.pin {
+            failedPinAttempts = 0
+            SecurityAuditLogger.shared.logPINUnlocked(targetApp: targetApp?.localizedName)
             unlock()
         } else {
+            failedPinAttempts += 1
+            SecurityAuditLogger.shared.logPINFailed(targetApp: targetApp?.localizedName)
             NSSound.beep()
             shakeCard()
-            errorLabel?.isHidden = false
             pinField?.stringValue = ""
+
+            let maxAttempts = max(1, Config.shared.maxFailedPinAttempts)
+            if failedPinAttempts >= maxAttempts {
+                handlePinBruteForceDetected()
+            } else {
+                errorLabel?.stringValue = "Неверный PIN-код (\(failedPinAttempts)/\(maxAttempts))"
+                errorLabel?.isHidden = false
+            }
+        }
+    }
+
+    private func handlePinBruteForceDetected() {
+        let attempts = failedPinAttempts
+        SecurityAuditLogger.shared.log(
+            eventType: "pin_bruteforce_attempt",
+            appName: targetApp?.localizedName ?? "Lock Screen",
+            details: "\(attempts) consecutive failed PIN attempts detected",
+            isSuccess: false
+        )
+
+        // Capture intruder snapshot via camera immediately
+        CameraScanner.shared.scanFace(timeout: 1.5) { [weak self] (_, _, intruderPhoto) in
+            DispatchQueue.main.async {
+                if let photo = intruderPhoto {
+                    let photoURL = CameraScanner.shared.saveIntruderPhoto(photo)
+                    let photoName = photoURL?.lastPathComponent
+                    TelegramNotifier.shared.sendIntruderAlert(
+                        photo: photo,
+                        appName: "Lock Screen PIN Brute Force (\(attempts) attempts)"
+                    )
+                    SecurityAuditLogger.shared.log(
+                        eventType: "pin_bruteforce_intruder",
+                        appName: self?.targetApp?.localizedName ?? "Lock Screen",
+                        intruderPhoto: photoName,
+                        details: "Intruder snapshot captured after \(attempts) failed PIN attempts",
+                        isSuccess: false
+                    )
+                }
+            }
+        }
+
+        // Apply temporary lockout
+        let lockoutSecs = max(1, Int(Config.shared.pinLockoutSeconds))
+        lockoutSecondsRemaining = lockoutSecs
+        pinField?.isEnabled = false
+        errorLabel?.stringValue = "Слишком много попыток. Заблокировано на \(lockoutSecondsRemaining) сек..."
+        errorLabel?.isHidden = false
+
+        lockoutTimer?.invalidate()
+        lockoutTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] t in
+            guard let self = self else {
+                t.invalidate()
+                return
+            }
+            self.lockoutSecondsRemaining -= 1
+            if self.lockoutSecondsRemaining <= 0 {
+                t.invalidate()
+                self.lockoutTimer = nil
+                self.pinField?.isEnabled = true
+                self.pinField?.becomeFirstResponder()
+                self.errorLabel?.stringValue = "Повторите ввод PIN"
+            } else {
+                self.errorLabel?.stringValue = "Слишком много попыток. Заблокировано на \(self.lockoutSecondsRemaining) сек..."
+            }
         }
     }
 
@@ -355,8 +471,13 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
                 self.faceRetryBtn?.title = " Повторить Face ID"
 
                 if success {
+                    self.failedPinAttempts = 0
+                    self.lockoutTimer?.invalidate()
+                    self.lockoutTimer = nil
+                    SecurityAuditLogger.shared.logFaceRetrySuccess(targetApp: self.targetApp?.localizedName)
                     self.unlock()
                 } else {
+                    SecurityAuditLogger.shared.logFaceRetryFailed(targetApp: self.targetApp?.localizedName)
                     NSSound.beep()
                     self.shakeCard()
                     self.errorLabel?.stringValue = "Лицо не распознано"
@@ -376,6 +497,10 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
             context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: "разблокировать экран") { [weak self] success, evalError in
                 DispatchQueue.main.async {
                     if success {
+                        self?.failedPinAttempts = 0
+                        self?.lockoutTimer?.invalidate()
+                        self?.lockoutTimer = nil
+                        SecurityAuditLogger.shared.logTouchIDUnlocked(targetApp: self?.targetApp?.localizedName)
                         self?.unlock()
                     } else {
                         // User cancelled or failed Touch ID, focus PIN
@@ -426,6 +551,9 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
                     win.animator().alphaValue = 0.0
                 }
             }, completionHandler: {
+                NotificationCenter.default.removeObserver(self, name: NSApplication.didChangeScreenParametersNotification, object: nil)
+                Config.saveLockState(isLocked: false)
+
                 for win in self.lockWindows {
                     win.orderOut(nil)
                 }
@@ -435,6 +563,9 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
                 self.lockWindows.removeAll()
                 self.isLocked = false
                 self.isFaceRetrying = false
+                self.failedPinAttempts = 0
+                self.lockoutTimer?.invalidate()
+                self.lockoutTimer = nil
                 self.faceRetryBtn = nil
                 self.errorLabel?.isHidden = true
                 self.pinField?.stringValue = ""
