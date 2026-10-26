@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock settings gallery status config apps diagnostics health toggle toggle-wake wake reload reset-session check-app vectors vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-gui clear-audit pin-attempts pin-lockout
+.PHONY: all build run enroll test-lock lock is-locked is-locked-json settings gallery status config apps diagnostics health toggle toggle-wake wake reload reset-session check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents export-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-gui prune-audit clear-audit pin-attempts pin-lockout test
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -38,6 +38,7 @@ help:
 	@echo "  make audit          - View security audit event log"
 	@echo "  make audit-gui      - Open security audit log GUI window"
 	@echo "  make audit-stats    - View security audit statistics"
+	@echo "  make prune-audit KEEP= - Prune older audit events keeping latest N (default: 100)"
 	@echo "  make clear-audit    - Purge security audit event log"
 	@echo "  make incidents      - List logged intruder incident captures"
 	@echo "  make incidents-summary - Intruder telemetry (total, 24h, 7d, timestamps)"
@@ -184,6 +185,9 @@ audit-stats: build
 audit-gui: build
 	@echo "Opening Security Audit Log..."
 	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-gui
+
+prune-audit: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --prune-audit $(or $(KEEP),100)
 
 clear-audit: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --clear-audit
