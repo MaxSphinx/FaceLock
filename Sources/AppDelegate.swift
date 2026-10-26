@@ -1810,7 +1810,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 )
                 print("[FaceLock] Dispatched gallery command to running instance.")
                 exit(0)
-            } else if args.contains("--audit-gui") {
+            } else if args.contains("--audit-gui") || args.contains("--audit-ui") || args.contains("--audit-window") {
                 DistributedNotificationCenter.default().postNotificationName(
                     AppDelegate.commandNotificationName,
                     object: nil,
@@ -1873,7 +1873,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 IncidentGalleryController.shared.show()
             }
-        } else if args.contains("--audit-gui") {
+        } else if args.contains("--audit-gui") || args.contains("--audit-ui") || args.contains("--audit-window") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 AuditLogController.shared.show()
             }
@@ -1907,7 +1907,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 EnrollmentController.shared.show()
             case "gallery":
                 IncidentGalleryController.shared.show()
-            case "audit-log", "audit":
+            case "audit-log", "audit", "audit-window", "audit-ui":
                 AuditLogController.shared.show()
             case "lock", "test-lock":
                 LockScreenController.shared.showLock()

@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock settings gallery status config apps diagnostics health toggle toggle-wake wake reload reset-session check-app vectors vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats clear-audit pin-attempts pin-lockout
+.PHONY: all build run enroll test-lock lock settings gallery status config apps diagnostics health toggle toggle-wake wake reload reset-session check-app vectors vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-gui clear-audit pin-attempts pin-lockout
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -36,6 +36,7 @@ help:
 	@echo "  make vectors        - Inspect enrolled facial templates and cluster metrics"
 	@echo "  make optimize-vectors - Prune redundant vectors and outliers to optimize cluster"
 	@echo "  make audit          - View security audit event log"
+	@echo "  make audit-gui      - Open security audit log GUI window"
 	@echo "  make audit-stats    - View security audit statistics"
 	@echo "  make clear-audit    - Purge security audit event log"
 	@echo "  make incidents      - List logged intruder incident captures"
