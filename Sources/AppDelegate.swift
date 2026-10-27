@@ -92,7 +92,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if args.contains("--version") || args.contains("-v") {
-            print("FaceLock v1.0.7 (darwin-arm64)")
+            print("FaceLock v1.0.8 (darwin-arm64)")
             exit(0)
         }
 
@@ -246,7 +246,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
             if args.contains("--json") {
                 let statusDict: [String: Any] = [
-                    "version": "1.0.7",
+                    "version": "1.0.8",
                     "daemon": isAlreadyRunning ? "running" : "stopped",
                     "shieldState": Config.shared.isEnabled ? "active" : "paused",
                     "protectionMode": Config.shared.protectionMode,
@@ -412,6 +412,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             let added = Config.shared.addProtectedApp(bundleId)
             if added {
+                SecurityAuditLogger.shared.logPolicyChanged(action: "Added protected application", bundleId: bundleId)
                 notifyDaemonIfRunning()
             }
             if args.contains("--json") {
@@ -434,6 +435,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             let removed = Config.shared.removeProtectedApp(bundleId)
             if removed {
+                SecurityAuditLogger.shared.logPolicyChanged(action: "Removed protected application", bundleId: bundleId)
                 notifyDaemonIfRunning()
             }
             if args.contains("--json") {
@@ -456,6 +458,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             let added = Config.shared.addIgnoredApp(bundleId)
             if added {
+                SecurityAuditLogger.shared.logPolicyChanged(action: "Added ignored application", bundleId: bundleId)
                 notifyDaemonIfRunning()
             }
             if args.contains("--json") {
@@ -478,6 +481,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             let removed = Config.shared.removeIgnoredApp(bundleId)
             if removed {
+                SecurityAuditLogger.shared.logPolicyChanged(action: "Removed ignored application", bundleId: bundleId)
                 notifyDaemonIfRunning()
             }
             if args.contains("--json") {
@@ -497,6 +501,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             let enabled = (val == "on" || val == "true" || val == "1" || val == "enable" || val == "yes")
             Config.shared.livenessDetectionEnabled = enabled
             Config.shared.save()
+            SecurityAuditLogger.shared.logConfigChanged(setting: "livenessDetectionEnabled", value: "\(enabled)")
             notifyDaemonIfRunning()
             if args.contains("--json") {
                 print("{\"success\":true,\"livenessDetectionEnabled\":\(enabled)}")
@@ -511,6 +516,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             let enabled = (val == "on" || val == "true" || val == "1" || val == "enable" || val == "yes")
             Config.shared.autoTriggerTouchID = enabled
             Config.shared.save()
+            SecurityAuditLogger.shared.logConfigChanged(setting: "autoTriggerTouchID", value: "\(enabled)")
             notifyDaemonIfRunning()
             if args.contains("--json") {
                 print("{\"success\":true,\"autoTriggerTouchID\":\(enabled)}")
@@ -534,6 +540,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             Config.shared.lockOnWake = enabled
             Config.shared.save()
+            SecurityAuditLogger.shared.logConfigChanged(setting: "lockOnWake", value: "\(enabled)")
             notifyDaemonIfRunning()
             if args.contains("--json") {
                 print("{\"success\":true,\"lockOnWake\":\(enabled)}")
@@ -665,6 +672,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             let replace = args.contains("--replace")
             do {
                 let total = try Config.shared.importVectors(from: path, merge: !replace)
+                SecurityAuditLogger.shared.logVectorsModified(action: "Imported facial vectors", count: total, details: "Imported from \(path)")
                 notifyDaemonIfRunning()
                 if args.contains("--json") {
                     print("{\"success\":true,\"totalVectors\":\(total),\"path\":\"\(path)\",\"merged\":\(!replace)}")
@@ -684,6 +692,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if args.contains("--optimize-vectors") || args.contains("--prune-vectors") {
             let result = Config.shared.optimizeVectors(maxVectors: 15)
+            SecurityAuditLogger.shared.logVectorsModified(
+                action: "Optimized facial vectors cluster",
+                count: result["optimizedCount"] as? Int ?? 0,
+                details: "Pruned \(result["prunedRedundant"] as? Int ?? 0) redundant vectors and \(result["prunedOutliers"] as? Int ?? 0) outliers"
+            )
             notifyDaemonIfRunning()
             if args.contains("--json") {
                 if let data = try? JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys]),
@@ -717,6 +730,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             if let val = Float(args[idx + 1]), val >= 0.05 && val <= 0.60 {
                 Config.shared.similarityThreshold = val
                 Config.shared.save()
+                SecurityAuditLogger.shared.logConfigChanged(setting: "similarityThreshold", value: "\(val)")
                 notifyDaemonIfRunning()
                 print("✓ Similarity decision threshold updated to \(val).")
                 exit(0)
@@ -730,6 +744,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             if let val = Double(args[idx + 1]), val >= 0.5 && val <= 10.0 {
                 Config.shared.verificationTimeout = val
                 Config.shared.save()
+                SecurityAuditLogger.shared.logConfigChanged(setting: "verificationTimeout", value: "\(val)s")
                 notifyDaemonIfRunning()
                 if args.contains("--json") {
                     print("{\"success\":true,\"verificationTimeout\":\(val)}")
@@ -747,6 +762,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             if let val = Double(args[idx + 1]), val >= 0.5 && val <= 30.0 {
                 Config.shared.debounceSeconds = val
                 Config.shared.save()
+                SecurityAuditLogger.shared.logConfigChanged(setting: "debounceSeconds", value: "\(val)s")
                 notifyDaemonIfRunning()
                 if args.contains("--json") {
                     print("{\"success\":true,\"debounceSeconds\":\(val)}")
@@ -765,6 +781,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             if mode == "all" || mode == "selective" {
                 Config.shared.protectionMode = mode
                 Config.shared.save()
+                SecurityAuditLogger.shared.logConfigChanged(setting: "protectionMode", value: mode)
                 notifyDaemonIfRunning()
                 print("✓ Protection mode updated to '\(mode)'.")
                 exit(0)
@@ -782,6 +799,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             Config.shared.pin = newPin
             Config.shared.save()
+            SecurityAuditLogger.shared.logConfigChanged(setting: "pin", value: "****", details: "Lock screen unlock PIN updated")
             notifyDaemonIfRunning()
             if args.contains("--json") {
                 print("{\"success\":true,\"message\":\"Lock screen PIN updated\"}")
@@ -798,6 +816,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             Config.shared.maxFailedPinAttempts = count
             Config.shared.save()
+            SecurityAuditLogger.shared.logConfigChanged(setting: "maxFailedPinAttempts", value: "\(count)")
             notifyDaemonIfRunning()
             if args.contains("--json") {
                 print("{\"success\":true,\"maxFailedPinAttempts\":\(count)}")
@@ -814,6 +833,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             Config.shared.pinLockoutSeconds = secs
             Config.shared.save()
+            SecurityAuditLogger.shared.logConfigChanged(setting: "pinLockoutSeconds", value: "\(Int(secs))s")
             notifyDaemonIfRunning()
             if args.contains("--json") {
                 print("{\"success\":true,\"pinLockoutSeconds\":\(secs)}")
@@ -826,6 +846,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         if let idx = args.firstIndex(of: "--verify-pin"), idx + 1 < args.count {
             let candidatePin = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
             let isValid = (candidatePin == Config.shared.pin)
+            SecurityAuditLogger.shared.logVerificationCheck(type: "pin_verification", success: isValid, details: "CLI PIN verification test: \(isValid ? "Match" : "Mismatch")")
             if args.contains("--json") {
                 print("{\"valid\":\(isValid),\"length\":\(candidatePin.count)}")
             } else {
@@ -1065,6 +1086,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
 
+            SecurityAuditLogger.shared.logIncidentsAction(action: "Purged all intruder incident captures via CLI", count: deletedCount)
+
             if args.contains("--json") {
                 let outDict: [String: Any] = [
                     "success": true,
@@ -1087,6 +1110,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         if let idx = args.firstIndex(of: "--prune-incidents"), idx + 1 < args.count {
             if let keepCount = Int(args[idx + 1]), keepCount >= 0 {
                 let removed = CameraScanner.shared.pruneIntruderPhotos(maxRetained: keepCount)
+                SecurityAuditLogger.shared.logIncidentsAction(action: "Pruned intruder incident captures via CLI", count: removed, details: "Kept latest \(keepCount) photos")
                 if args.contains("--json") {
                     print("{\"success\":true,\"prunedCount\":\(removed),\"maxRetained\":\(keepCount)}")
                 } else {
@@ -1179,6 +1203,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     try FileManager.default.removeItem(at: destURL)
                 }
                 try FileManager.default.copyItem(at: srcURL, to: destURL)
+                SecurityAuditLogger.shared.logIncidentsAction(action: "Exported intruder incident capture via CLI", count: 1, details: "\(latest) exported to \(destURL.path)")
                 if args.contains("--json") {
                     print("{\"success\":true,\"source\":\"\(latest)\",\"destination\":\"\(destURL.path)\"}")
                 } else {
@@ -1225,6 +1250,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     try FileManager.default.removeItem(at: destURL)
                 }
                 try FileManager.default.copyItem(at: srcURL, to: destURL)
+                SecurityAuditLogger.shared.logIncidentsAction(action: "Exported intruder incident capture via CLI", count: 1, details: "\(filename) exported to \(destURL.path)")
                 if args.contains("--json") {
                     print("{\"success\":true,\"source\":\"\(filename)\",\"destination\":\"\(destURL.path)\"}")
                 } else {
@@ -1252,6 +1278,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             do {
                 let res = try CameraScanner.shared.exportIncidents(to: dest)
+                let count = res["count"] as? Int ?? 0
+                SecurityAuditLogger.shared.logIncidentsAction(action: "Exported intruder incident archive via CLI", count: count, details: "Exported to \(dest)")
                 if args.contains("--json") {
                     if let d = try? JSONSerialization.data(withJSONObject: res, options: [.prettyPrinted, .sortedKeys]),
                        let s = String(data: d, encoding: .utf8) {
@@ -1343,6 +1371,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
             do {
                 try FileManager.default.removeItem(atPath: path)
+                SecurityAuditLogger.shared.logIncidentsAction(action: "Deleted intruder capture via CLI", count: 1, details: "Deleted \(filename)")
                 if args.contains("--json") {
                     print("{\"success\":true,\"deleted\":\"\(filename)\"}")
                 } else {
@@ -1466,6 +1495,12 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if args.contains("--clear-logs") || args.contains("--clear-audit") {
             let result = SecurityAuditLogger.shared.clearLogs()
+            SecurityAuditLogger.shared.log(
+                eventType: "audit_cleared",
+                appName: "FaceLock CLI",
+                details: "Purged security audit event log (\(result.deletedCount) events)",
+                isSuccess: true
+            )
             if args.contains("--json") {
                 let dict: [String: Any] = [
                     "success": true,
@@ -1489,6 +1524,12 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 exit(1)
             }
             let res = SecurityAuditLogger.shared.pruneLogs(keeping: keep)
+            SecurityAuditLogger.shared.log(
+                eventType: "audit_pruned",
+                appName: "FaceLock CLI",
+                details: "Pruned \(res.prunedCount) older audit events (kept \(res.remainingCount))",
+                isSuccess: true
+            )
             if args.contains("--json") {
                 let dict: [String: Any] = [
                     "success": true,
@@ -1515,6 +1556,12 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             do {
                 let count = try SecurityAuditLogger.shared.exportLogs(to: destPath)
+                SecurityAuditLogger.shared.log(
+                    eventType: "audit_exported",
+                    appName: "FaceLock CLI",
+                    details: "Exported \(count) security audit log events to \(destPath)",
+                    isSuccess: true
+                )
                 if args.contains("--json") {
                     print("{\"success\":true,\"exportedCount\":\(count),\"path\":\"\(destPath)\"}")
                 } else {
@@ -1643,6 +1690,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             let threshold = Config.shared.similarityThreshold
 
             if matchSuccess {
+                SecurityAuditLogger.shared.logVerificationCheck(type: "face_verification", success: true, distance: matchDistance, details: "CLI face check: Owner recognized (dist: \(matchDistance != nil ? String(format: "%.4f", matchDistance!) : "0.0000"), threshold: \(threshold))")
                 let distStr = matchDistance != nil ? String(format: "%.4f", matchDistance!) : "0.0000"
                 if args.contains("--json") {
                     let out: [String: Any] = [
@@ -1663,6 +1711,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 exit(0)
             } else if faceDetected {
+                SecurityAuditLogger.shared.logVerificationCheck(type: "face_verification", success: false, distance: matchDistance, details: "CLI face check: Face does not match enrolled owner (dist: \(matchDistance != nil ? String(format: "%.4f", matchDistance!) : "N/A"), threshold: \(threshold))")
                 let distStr = matchDistance != nil ? String(format: "%.4f", matchDistance!) : "N/A"
                 if args.contains("--json") {
                     let out: [String: Any] = [
@@ -1683,6 +1732,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 exit(1)
             } else {
+                SecurityAuditLogger.shared.logVerificationCheck(type: "face_verification", success: false, details: "CLI face check timed out: No face detected in camera field of view")
                 if args.contains("--json") {
                     let out: [String: Any] = [
                         "success": false,
@@ -1720,6 +1770,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if args.contains("--reset") {
             Config.shared.clearEnrolledVectors()
+            SecurityAuditLogger.shared.logVectorsModified(action: "Purged facial vectors", count: 0, details: "Reset via CLI")
             notifyDaemonIfRunning()
             print("[FaceLock] Cleared all enrolled faces.")
         }

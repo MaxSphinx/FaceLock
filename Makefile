@@ -212,6 +212,9 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --latest-incident --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --audit > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --audit --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit --type config --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit --type policy --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit --type vectors --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-stats > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-stats --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --diagnostics --json > /dev/null

@@ -207,6 +207,53 @@ public final class SecurityAuditLogger {
         )
     }
 
+    public func logConfigChanged(setting: String, value: String, details: String? = nil) {
+        log(
+            eventType: "config_changed",
+            appName: "FaceLock",
+            details: details ?? "Updated configuration '\(setting)' to '\(value)'",
+            isSuccess: true
+        )
+    }
+
+    public func logPolicyChanged(action: String, bundleId: String, details: String? = nil) {
+        log(
+            eventType: "policy_changed",
+            appName: bundleId,
+            bundleId: bundleId,
+            details: details ?? "\(action): \(bundleId)",
+            isSuccess: true
+        )
+    }
+
+    public func logVectorsModified(action: String, count: Int, details: String? = nil) {
+        log(
+            eventType: "vectors_modified",
+            appName: "FaceLock",
+            details: details ?? "\(action) (\(count) facial templates)",
+            isSuccess: true
+        )
+    }
+
+    public func logIncidentsAction(action: String, count: Int, details: String? = nil) {
+        log(
+            eventType: "incidents_action",
+            appName: "FaceLock",
+            details: details ?? "\(action) (\(count) records affected)",
+            isSuccess: true
+        )
+    }
+
+    public func logVerificationCheck(type: String, success: Bool, distance: Float? = nil, details: String? = nil) {
+        log(
+            eventType: "\(type)_check",
+            appName: "FaceLock CLI",
+            distance: distance,
+            details: details ?? "\(type) verification check \(success ? "passed" : "failed")",
+            isSuccess: success
+        )
+    }
+
     public func fetchRecentEvents(tail: Int = 20, filterType: String? = nil) -> [AuditEvent] {
         var results: [AuditEvent] = []
         logQueue.sync {
@@ -225,7 +272,7 @@ public final class SecurityAuditLogger {
                         case "face", "biometric", "biometrics":
                             match = evType.contains("face") || evType.contains("wake_verified")
                         case "intruder", "intruders", "alert", "alerts":
-                            match = evType.contains("intruder") || evType.contains("wake_locked")
+                            match = evType.contains("intruder") || evType.contains("wake_locked") || evType.contains("incidents")
                         case "lock", "locks":
                             match = evType.contains("lock") || evType.contains("intruder")
                         case "pin":
@@ -234,6 +281,10 @@ public final class SecurityAuditLogger {
                             match = evType.contains("touchid")
                         case "shield":
                             match = evType.contains("shield")
+                        case "config", "policy", "settings":
+                            match = evType.contains("config") || evType.contains("policy")
+                        case "vectors":
+                            match = evType.contains("vector")
                         case "success":
                             match = event.isSuccess
                         case "failure", "failed":

@@ -4,6 +4,24 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.8] - 2026-10-27
+
+### Added
+- **Incident Gallery GUI Archive Export & Single Photo Save (`IncidentGalleryWindow.swift`)**:
+  - Added "Экспорт архива..." button with native `NSOpenPanel` folder selection allowing one-click export of all intruder snapshots with automatic JSON manifest generation (`incidents_manifest.json`) and Finder reveal.
+  - Added per-incident "Экспорт..." button with `NSSavePanel` sheet on each incident card for direct single-photo extraction.
+  - Integrated real-time incident telemetry status bar inside the gallery window displaying total incident count, past 24-hour frequency, and disk space usage.
+- **Dynamic Status Bar Badge Counts (`StatusBarController.swift`)**:
+  - Dynamically displays real-time item counts for both incidents ("Журнал инцидентов (Галерея: N фото)...") and audit logs ("Журнал аудита безопасности (Audit Log: N)...") in the menu bar dropdown.
+- **Deep Security Audit Trail Coverage (`SecurityAuditLogger.swift` & `AppDelegate.swift`)**:
+  - Added audit events for policy rule modifications (`logPolicyChanged`): adding/removing protected applications, adding/removing ignored applications.
+  - Added audit events for security configuration updates (`logConfigChanged`): anti-spoofing liveness toggle, Touch ID auto-trigger, screen wake lock verification, and PIN brute-force defense limits and cooldowns.
+  - Added audit events for facial vector database operations (`logVectorsModified`): vector imports, clustering optimizations, and database resets.
+  - Added audit events for incident capture lifecycle (`logIncidentsAction`): bulk archive exports, single image exports, individual deletions, and database purges.
+  - Added audit events for verification tests (`logVerificationCheck`) across CLI face checks and PIN verification.
+  - Added audit events for security audit log lifecycle: log exports, retention pruning, and purges.
+  - Extended audit log query filtering to support `config`, `policy`, `settings`, and `vectors` categories.
+
 ## [1.0.7] - 2026-10-26
 
 ### Added

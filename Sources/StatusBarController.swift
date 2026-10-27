@@ -106,11 +106,23 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
-        let galleryItem = NSMenuItem(title: "Журнал инцидентов (Галерея фото)...", action: #selector(openGallery), keyEquivalent: "g")
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let intrudersDir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
+        let incidentCount = ((try? FileManager.default.contentsOfDirectory(atPath: intrudersDir.path)) ?? [])
+            .filter { $0.hasSuffix(".jpg") || $0.hasSuffix(".jpeg") }.count
+        let (auditCount, _, _) = SecurityAuditLogger.shared.getLogStats()
+
+        let galleryTitle = incidentCount > 0
+            ? "Журнал инцидентов (Галерея: \(incidentCount) фото)..."
+            : "Журнал инцидентов (Галерея фото)..."
+        let galleryItem = NSMenuItem(title: galleryTitle, action: #selector(openGallery), keyEquivalent: "g")
         galleryItem.target = self
         menu.addItem(galleryItem)
 
-        let auditItem = NSMenuItem(title: "Журнал аудита безопасности (Audit Log)...", action: #selector(openAuditLog), keyEquivalent: "a")
+        let auditTitle = auditCount > 0
+            ? "Журнал аудита безопасности (Audit Log: \(auditCount))..."
+            : "Журнал аудита безопасности (Audit Log)..."
+        let auditItem = NSMenuItem(title: auditTitle, action: #selector(openAuditLog), keyEquivalent: "a")
         auditItem.target = self
         menu.addItem(auditItem)
 
