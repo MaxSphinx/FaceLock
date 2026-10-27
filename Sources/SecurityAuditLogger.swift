@@ -49,6 +49,30 @@ public final class SecurityAuditLogger {
         let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
         try? FileManager.default.createDirectory(at: facelockDir, withIntermediateDirectories: true)
         self.logFileURL = facelockDir.appendingPathComponent("audit_log.jsonl")
+        recoverAndCleanupOrphanedTempFiles(in: facelockDir)
+    }
+
+    private func recoverAndCleanupOrphanedTempFiles(in dir: URL) {
+        guard let files = try? FileManager.default.contentsOfDirectory(atPath: dir.path) else { return }
+        let orphans = files.filter { $0.hasPrefix("audit_log.jsonl.sb-") }
+        guard !orphans.isEmpty else { return }
+
+        for file in orphans {
+            let path = dir.appendingPathComponent(file).path
+            if let content = try? String(contentsOfFile: path, encoding: .utf8), !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                // If the main audit log doesn't exist or is empty, try recovering valid line
+                if !FileManager.default.fileExists(atPath: self.logFileURL.path) {
+                    try? content.write(to: self.logFileURL, atomically: false, encoding: .utf8)
+                } else if let fileHandle = try? FileHandle(forWritingTo: self.logFileURL) {
+                    fileHandle.seekToEndOfFile()
+                    if let data = content.data(using: .utf8) {
+                        fileHandle.write(data)
+                    }
+                    try? fileHandle.close()
+                }
+            }
+            try? FileManager.default.removeItem(atPath: path)
+        }
     }
 
     public func log(
@@ -75,21 +99,23 @@ public final class SecurityAuditLogger {
     }
 
     public func record(_ event: AuditEvent) {
-        logQueue.async { [weak self] in
+        logQueue.sync { [weak self] in
             guard let self = self else { return }
             guard let data = try? JSONEncoder().encode(event),
                   var jsonString = String(data: data, encoding: .utf8) else {
                 return
             }
             jsonString.append("\n")
-            if let fileHandle = try? FileHandle(forWritingTo: self.logFileURL) {
-                fileHandle.seekToEndOfFile()
-                if let lineData = jsonString.data(using: .utf8) {
+            guard let lineData = jsonString.data(using: .utf8) else { return }
+
+            if FileManager.default.fileExists(atPath: self.logFileURL.path) {
+                if let fileHandle = try? FileHandle(forWritingTo: self.logFileURL) {
+                    fileHandle.seekToEndOfFile()
                     fileHandle.write(lineData)
+                    try? fileHandle.close()
                 }
-                try? fileHandle.close()
             } else {
-                try? jsonString.write(to: self.logFileURL, atomically: true, encoding: .utf8)
+                FileManager.default.createFile(atPath: self.logFileURL.path, contents: lineData, attributes: nil)
             }
         }
     }
@@ -273,18 +299,22 @@ public final class SecurityAuditLogger {
                             match = evType.contains("face") || evType.contains("wake_verified")
                         case "intruder", "intruders", "alert", "alerts":
                             match = evType.contains("intruder") || evType.contains("wake_locked") || evType.contains("incidents")
-                        case "lock", "locks":
-                            match = evType.contains("lock") || evType.contains("intruder")
+                        case "lock", "locks", "lockout", "lockouts", "bruteforce":
+                            match = evType.contains("lock") || evType.contains("intruder") || evType.contains("bruteforce")
                         case "pin":
                             match = evType.contains("pin")
                         case "touchid", "touch_id":
                             match = evType.contains("touchid")
                         case "shield":
                             match = evType.contains("shield")
-                        case "config", "policy", "settings":
-                            match = evType.contains("config") || evType.contains("policy")
-                        case "vectors":
+                        case "policy":
+                            match = evType.contains("policy")
+                        case "config", "settings":
+                            match = evType.contains("config") || evType.contains("settings")
+                        case "vectors", "vector":
                             match = evType.contains("vector")
+                        case "incidents", "incident":
+                            match = evType.contains("incident") || evType.contains("intruder")
                         case "success":
                             match = event.isSuccess
                         case "failure", "failed":

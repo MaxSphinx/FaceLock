@@ -4,6 +4,23 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.9] - 2026-10-27
+
+### Added
+- **Interactive Audit Log GUI Categories & Visual Badging (`AuditLogWindow.swift`)**:
+  - Expanded filter popup with 4 dedicated categories: "Политика приложений (Policy)", "Настройки и конфигурация (Config)", "Векторы биометрии (Vectors)", and "Brute-force и блокировки (Lockouts)".
+  - Added specialized badge titles, color coding, and critical alert styling for configuration modifications (⚙️ purple), application policy alterations (📋 indigo), biometric vector updates (🧬 teal), incident operations (📸 brown), brute-force defense events (🚫 red), and verification tests (🧪 green/red).
+- **Settings GUI Audit Trail & Live Metrics (`SettingsWindow.swift`)**:
+  - Integrated dual telemetry status displaying both audit log entries (count & KB size) and captured intruder snapshots.
+  - Automatically records security audit events and dispatches distributed IPC reload signals to active background daemons whenever preferences or master shield toggles are modified via the Settings window.
+
+### Fixed
+- **Synchronous Audit Log Persistence & Orphaned File Cleanup (`SecurityAuditLogger.swift`)**:
+  - Eliminated race condition where CLI commands exited before asynchronous log writes flushed to disk, ensuring all audit records are immediately committed to `audit_log.jsonl`.
+  - Added automatic recovery of orphaned temporary file records (`audit_log.jsonl.sb-*`) on startup and sanitized temporary working files.
+  - Granular filter matching across policy, configuration, vectors, and lockout events.
+  - Extended CLI `--audit` output with contextual emojis for faster visual inspection in terminal workflows.
+
 ## [1.0.8] - 2026-10-27
 
 ### Added

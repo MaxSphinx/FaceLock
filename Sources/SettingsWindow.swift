@@ -350,16 +350,22 @@ public final class SettingsController: NSObject {
 
         let auditStats = SecurityAuditLogger.shared.getLogStats()
         let sizeKB = Double(auditStats.fileSizeBytes) / 1024.0
-        auditStatsLabel?.stringValue = "Записано событий: \(auditStats.totalCount)  •  Объём: \(String(format: "%.2f", sizeKB)) KB"
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
+        let incidentCount = ((try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? [])
+            .filter { $0.hasSuffix(".jpg") || $0.hasSuffix(".jpeg") }.count
+        auditStatsLabel?.stringValue = "Аудит: \(auditStats.totalCount) событий (\(String(format: "%.2f", sizeKB)) KB)  •  Инциденты: \(incidentCount) фото"
     }
 
     @objc private func onMasterSwitchChanged() {
         let isEnabled = (masterSwitch?.state == .on)
         Config.shared.isEnabled = isEnabled
         Config.shared.save()
+        SecurityAuditLogger.shared.logShieldStateChanged(enabled: isEnabled, reason: "Toggled via Settings window")
         StatusBarController.shared.updateIcon()
         HUDController.shared.showToggleStatus(isEnabled: isEnabled)
         updateStatusLabel(isEnabled: isEnabled)
+        AppDelegate.notifyDaemonReload()
     }
 
     @objc private func onSliderChanged() {
@@ -418,6 +424,12 @@ public final class SettingsController: NSObject {
         config.pinLockoutSeconds = Double(lockoutSlider?.doubleValue ?? 5.0)
 
         config.save()
+        AppDelegate.notifyDaemonReload()
+        SecurityAuditLogger.shared.logConfigChanged(
+            setting: "GUI Settings",
+            value: "saved",
+            details: "Security preferences updated via Settings window"
+        )
     }
 
     @objc private func openAuditLogClicked() {

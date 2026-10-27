@@ -132,6 +132,10 @@ public final class AuditLogController: NSObject {
         popup.addItem(withTitle: "Ввод PIN-кода (PIN)")
         popup.addItem(withTitle: "Apple Touch ID")
         popup.addItem(withTitle: "Статус защиты (Shield)")
+        popup.addItem(withTitle: "Политика приложений (Policy)")
+        popup.addItem(withTitle: "Настройки и конфигурация (Config)")
+        popup.addItem(withTitle: "Векторы биометрии (Vectors)")
+        popup.addItem(withTitle: "Brute-force и блокировки (Lockouts)")
         popup.target = self
         popup.action = #selector(filterChanged(_:))
         header.addSubview(popup)
@@ -234,6 +238,10 @@ public final class AuditLogController: NSObject {
             badgeTitle = "❌ Неверный PIN-код"
             badgeColor = .systemRed
             isCritical = true
+        case "pin_bruteforce_attempt", "pin_bruteforce_intruder":
+            badgeTitle = "🚫 Brute-Force блокировка"
+            badgeColor = .systemRed
+            isCritical = true
         case "touchid_unlocked":
             badgeTitle = "👆 Вход по Touch ID"
             badgeColor = .systemPurple
@@ -254,6 +262,26 @@ public final class AuditLogController: NSObject {
             badgeTitle = "⏸️ Защита на паузе"
             badgeColor = .systemOrange
             isCritical = false
+        case "policy_changed":
+            badgeTitle = "📋 Политика приложений"
+            badgeColor = .systemIndigo
+            isCritical = false
+        case "config_changed":
+            badgeTitle = "⚙️ Настройки изменены"
+            badgeColor = .systemPurple
+            isCritical = false
+        case "vectors_modified":
+            badgeTitle = "🧬 Слепки лица обновлены"
+            badgeColor = .systemTeal
+            isCritical = false
+        case "incidents_action":
+            badgeTitle = "📸 Журнал инцидентов"
+            badgeColor = .systemBrown
+            isCritical = false
+        case "face_check", "pin_check":
+            badgeTitle = event.isSuccess ? "🧪 Проверка пройдена" : "🧪 Проверка отклонена"
+            badgeColor = event.isSuccess ? .systemGreen : .systemRed
+            isCritical = !event.isSuccess
         default:
             badgeTitle = event.isSuccess ? "✓ \(event.eventType.uppercased())" : "⚠️ \(event.eventType.uppercased())"
             badgeColor = event.isSuccess ? .systemGreen : .systemRed
@@ -343,6 +371,10 @@ public final class AuditLogController: NSObject {
         case 3: currentFilter = "pin"
         case 4: currentFilter = "touchid"
         case 5: currentFilter = "shield"
+        case 6: currentFilter = "policy"
+        case 7: currentFilter = "config"
+        case 8: currentFilter = "vectors"
+        case 9: currentFilter = "lock"
         default: currentFilter = nil
         }
         reloadLogs()

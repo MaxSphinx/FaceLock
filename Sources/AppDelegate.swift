@@ -92,7 +92,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if args.contains("--version") || args.contains("-v") {
-            print("FaceLock v1.0.8 (darwin-arm64)")
+            print("FaceLock v1.0.9 (darwin-arm64)")
             exit(0)
         }
 
@@ -246,7 +246,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
             if args.contains("--json") {
                 let statusDict: [String: Any] = [
-                    "version": "1.0.8",
+                    "version": "1.0.9",
                     "daemon": isAlreadyRunning ? "running" : "stopped",
                     "shieldState": Config.shared.isEnabled ? "active" : "paused",
                     "protectionMode": Config.shared.protectionMode,
@@ -1446,10 +1446,17 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     case "touchid_unlocked": icon = "👆"
                     case "pin_unlocked": icon = "🔑"
                     case "pin_failed": icon = "❌"
+                    case "pin_bruteforce_attempt", "pin_bruteforce_intruder": icon = "🚫"
                     case "face_retry_success": icon = "🔄✅"
                     case "face_retry_failed": icon = "🔄❌"
                     case "shield_enabled": icon = "🛡️"
                     case "shield_paused": icon = "⏸️"
+                    case "policy_changed": icon = "📋"
+                    case "config_changed": icon = "⚙️"
+                    case "vectors_modified": icon = "🧬"
+                    case "incidents_action": icon = "📸"
+                    case "pin_check": icon = "🔐"
+                    case "face_check": icon = "👤"
                     default: icon = event.isSuccess ? "✓" : "⚠️"
                     }
 
