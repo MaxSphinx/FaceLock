@@ -2,6 +2,7 @@ import Foundation
 import Vision
 
 public final class Config: Codable {
+    // Last maintenance check: 2026-10-28
     public static let shared = Config.load()
 
     public var pin: String
