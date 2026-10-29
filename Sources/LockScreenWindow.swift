@@ -421,10 +421,11 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
                     formatter.dateFormat = "HH:mm:ss (dd.MM.yyyy)"
                     let timeStr = formatter.string(from: Date())
                     let targetName = self?.targetApp?.localizedName ?? "Lock Screen"
+                    let safeTargetName = TelegramNotifier.escapeHTML(targetName)
                     let alertMsg = """
                     🚨 <b>FaceLock: Подозрительная активность!</b>
                     ⚠️ Зафиксировано <b>\(attempts)</b> неверных попыток ввода PIN подряд.
-                    💻 <b>Приложение:</b> \(targetName)
+                    💻 <b>Приложение:</b> \(safeTargetName)
                     🕒 <b>Время:</b> \(timeStr)
                     🔒 Введена временная блокировка клавиатуры.
                     """

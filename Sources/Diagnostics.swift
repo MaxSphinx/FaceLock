@@ -89,6 +89,27 @@ public struct Diagnostics {
 
         // 7. Telegram Integration & Autonomous Workers
         let tgConfigured = !config.telegramBotToken.isEmpty && !config.telegramChatId.isEmpty
+        var telegramReachable: Bool? = nil
+        if tgConfigured {
+            let sema = DispatchSemaphore(value: 0)
+            if let testUrl = URL(string: "https://api.telegram.org") {
+                var req = URLRequest(url: testUrl, timeoutInterval: 2.5)
+                req.httpMethod = "HEAD"
+                let task = URLSession.shared.dataTask(with: req) { _, response, error in
+                    if let http = response as? HTTPURLResponse, (200...399).contains(http.statusCode) {
+                        telegramReachable = true
+                    } else if error == nil {
+                        telegramReachable = true
+                    } else {
+                        telegramReachable = false
+                    }
+                    sema.signal()
+                }
+                task.resume()
+                _ = sema.wait(timeout: .now() + 2.7)
+            }
+        }
+
         let launchAgentPath = home.appendingPathComponent("Library/LaunchAgents/io.github.facelock.maintainer.plist").path
         let agentInstalled = FileManager.default.fileExists(atPath: launchAgentPath)
         let logStats = SecurityAuditLogger.shared.getLogStats()
@@ -140,6 +161,7 @@ public struct Diagnostics {
                 "integrations": [
                     "telegramConfigured": tgConfigured,
                     "telegramEnabled": config.telegramEnabled,
+                    "telegramReachable": telegramReachable ?? false,
                     "maintainerInstalled": agentInstalled
                 ]
             ]
@@ -224,8 +246,18 @@ public struct Diagnostics {
         let auditLast = logStats.lastEventTime ?? "None"
         print("  • Security Audit Log: \(logStats.totalCount) events (\(String(format: "%.2f", auditMB)) MB), last: \(auditLast)")
 
-        print("\n[7] Integrations & Automation:")
-        print("  • Telegram Bot Alerts: \(tgConfigured ? "Configured (Active: \(config.telegramEnabled ? "YES ✅" : "NO ⏸️"))" : "Not configured ℹ️")")
+        print("\n[7] Integrations & Cloud Connectivity:")
+        if tgConfigured {
+            let reachStr: String
+            if let r = telegramReachable {
+                reachStr = r ? " (Gateway Reachable ✅)" : " (Gateway Unreachable / DNS Error ❌)"
+            } else {
+                reachStr = ""
+            }
+            print("  • Telegram Bot Alerts: Configured (Active: \(config.telegramEnabled ? "YES ✅" : "NO ⏸️"))\(reachStr)")
+        } else {
+            print("  • Telegram Bot Alerts: Not configured ℹ️")
+        }
         print("  • 24/7 Autonomous Maintainer: \(agentInstalled ? "Installed & Active ✅" : "Not installed (Run 'make maintainer-install') ℹ️")")
 
         print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")

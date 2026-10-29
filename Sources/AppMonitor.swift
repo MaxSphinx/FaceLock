@@ -177,6 +177,17 @@ public final class AppMonitor {
                     print("[AppMonitor] Wake verification failed! Locking screen...")
                     if let photo = intruderImage {
                         TelegramNotifier.shared.sendIntruderAlert(photo: photo, appName: "Wake From Sleep")
+                    } else {
+                        let formatter = DateFormatter()
+                        formatter.dateFormat = "HH:mm:ss (dd.MM.yyyy)"
+                        let timeStr = formatter.string(from: Date())
+                        let alertMsg = """
+                        🚨 <b>FaceLock: Блокировка при выходе из сна</b>
+                        🕒 <b>Время:</b> \(timeStr)
+                        📷 <i>Фото недоступно (камера перекрыта или лицо не распознано).</i>
+                        🔒 Экран MacBook заблокирован защитным замком.
+                        """
+                        TelegramNotifier.shared.sendSecurityAlert(message: alertMsg)
                     }
                     LockScreenController.shared.showLock(targetApp: nil, intruderImage: intruderImage) { [weak self] in
                         self?.lastVerifiedTime = Date()
@@ -244,6 +255,19 @@ public final class AppMonitor {
 
                     if let photo = intruderImage {
                         TelegramNotifier.shared.sendIntruderAlert(photo: photo, appName: appName)
+                    } else {
+                        let formatter = DateFormatter()
+                        formatter.dateFormat = "HH:mm:ss (dd.MM.yyyy)"
+                        let timeStr = formatter.string(from: Date())
+                        let safeApp = TelegramNotifier.escapeHTML(appName)
+                        let alertMsg = """
+                        🚨 <b>FaceLock: Обнаружен посторонний!</b>
+                        💻 <b>Приложение:</b> \(safeApp)
+                        🕒 <b>Время:</b> \(timeStr)
+                        📷 <i>Фото недоступно (камера перекрыта или лицо не распознано).</i>
+                        🔒 Экран MacBook заблокирован защитным замком.
+                        """
+                        TelegramNotifier.shared.sendSecurityAlert(message: alertMsg)
                     }
 
                     LockScreenController.shared.showLock(targetApp: app, intruderImage: intruderImage) { [weak self] in

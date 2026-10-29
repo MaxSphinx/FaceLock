@@ -271,9 +271,13 @@ public final class AuditLogController: NSObject {
             badgeTitle = "⚙️ Настройки изменены"
             badgeColor = .systemPurple
             isCritical = false
-        case "vectors_modified":
-            badgeTitle = "🧬 Слепки лица обновлены"
+        case "vectors_modified", "vectors_enrolled":
+            badgeTitle = "🧬 Слепки лица обучены"
             badgeColor = .systemTeal
+            isCritical = false
+        case "enrollment_cancelled":
+            badgeTitle = "⚠️ Калибровка отменена"
+            badgeColor = .systemOrange
             isCritical = false
         case "incidents_action":
             badgeTitle = "📸 Журнал инцидентов"

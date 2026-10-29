@@ -125,9 +125,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if args.contains("--version") || args.contains("-v") {
             if args.contains("--json") {
-                print("{\"name\":\"FaceLock\",\"version\":\"1.0.10\",\"platform\":\"darwin-arm64\"}")
+                print("{\"name\":\"FaceLock\",\"version\":\"1.0.11\",\"platform\":\"darwin-arm64\"}")
             } else {
-                print("FaceLock v1.0.10 (darwin-arm64)")
+                print("FaceLock v1.0.11 (darwin-arm64)")
             }
             exit(0)
         }
@@ -282,7 +282,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
             if args.contains("--json") {
                 let statusDict: [String: Any] = [
-                    "version": "1.0.10",
+                    "version": "1.0.11",
                     "daemon": isAlreadyRunning ? "running" : "stopped",
                     "shieldState": Config.shared.isEnabled ? "active" : "paused",
                     "protectionMode": Config.shared.protectionMode,
@@ -1489,7 +1489,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     case "shield_paused": icon = "⏸️"
                     case "policy_changed": icon = "📋"
                     case "config_changed": icon = "⚙️"
-                    case "vectors_modified": icon = "🧬"
+                    case "vectors_modified", "vectors_enrolled": icon = "🧬"
+                    case "enrollment_cancelled": icon = "🧬⚠️"
+                    case "telegram_alert_sent": icon = "📲"
+                    case "telegram_alert_failed": icon = "⚠️📲"
                     case "incidents_action": icon = "📸"
                     case "pin_check": icon = "🔐"
                     case "face_check": icon = "👤"

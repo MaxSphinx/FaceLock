@@ -32,7 +32,7 @@ public final class TelegramNotifier {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm:ss (dd.MM.yyyy)"
         let timeStr = formatter.string(from: Date())
-        let safeAppName = escapeHTML(appName)
+        let safeAppName = TelegramNotifier.escapeHTML(appName)
 
         let caption = """
         🚨 <b>FaceLock: Обнаружен посторонний!</b>
@@ -44,7 +44,7 @@ public final class TelegramNotifier {
         sendPhotoRequest(token: token, chatId: chatId, photoData: jpegData, caption: caption, completion: completion)
     }
 
-    private func escapeHTML(_ text: String) -> String {
+    public static func escapeHTML(_ text: String) -> String {
         return text
             .replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")
@@ -131,6 +131,7 @@ public final class TelegramNotifier {
             DispatchQueue.main.async {
                 if let err = error {
                     print("[TelegramNotifier] Network error: \(err.localizedDescription)")
+                    SecurityAuditLogger.shared.logTelegramAlert(appName: nil, isSuccess: false, details: "Photo network error: \(err.localizedDescription)")
                     completion?(false, err.localizedDescription)
                     return
                 }
@@ -138,6 +139,7 @@ public final class TelegramNotifier {
                 guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
                     let responseBody = data.flatMap { String(data: $0, encoding: .utf8) } ?? "Unknown error"
                     print("[TelegramNotifier] API error: \(responseBody)")
+                    SecurityAuditLogger.shared.logTelegramAlert(appName: nil, isSuccess: false, details: "Photo API error: \(responseBody)")
                     completion?(false, responseBody)
                     return
                 }

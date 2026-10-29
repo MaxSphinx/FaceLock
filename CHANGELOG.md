@@ -4,6 +4,24 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.11] - 2026-10-29
+
+### Added
+- **Fallback Telegram Security Alerts on Camera-Obscured Lock Events (`AppMonitor.swift`, `WalkAwayMonitor.swift`)**:
+  - Automatically dispatches structured Telegram text alerts whenever an unauthorized app switch, screen wake verification failure, or Walk-Away lock triggers while face photo capture is unavailable or obscured (e.g., closed camera shutter, zero ambient illumination, or transient sensor delay).
+  - Guarantees immediate notification delivery to the owner regardless of physical camera obstructions.
+- **Biometric Calibration Audit Logging & Distributed IPC Sync (`EnrollmentWindow.swift`)**:
+  - Records structured security audit events (`vectors_enrolled` and `enrollment_cancelled`) upon successful 12-sample facial calibration or user cancellation.
+  - Automatically posts distributed IPC reload notification (`io.github.facelock.reloadConfig`), propagating newly calibrated face vectors to running background daemons without requiring manual daemon restarts.
+- **Cloud & Telegram Gateway Diagnostics (`Diagnostics.swift`)**:
+  - Integrated live network gateway verification for `api.telegram.org` within `facelock --diagnostics` and machine-readable JSON output (`--diagnostics --json`).
+  - Instantly surfaces DNS reachability status, connection timeouts, and proxy/firewall impediments.
+- **Complete Telegram Photo Dispatch Failure Audit Trail (`TelegramNotifier.swift`)**:
+  - Added audit logging (`telegram_alert_failed`) for multipart photo upload failures, capturing HTTP status codes and transport errors in `audit_log.jsonl`.
+- **Audit Viewer Badging for Face Calibration & Enrollment (`AuditLogWindow.swift`, `SecurityAuditLogger.swift`, `AppDelegate.swift`)**:
+  - Added dedicated visual badging and filter matching for biometric template enrollment events (`vectors_enrolled` 🧬, `enrollment_cancelled` 🧬⚠️).
+  - Extended CLI `--audit` log formatter with contextual emoji representations for Telegram alerts and calibration actions.
+
 ## [1.0.10] - 2026-10-29
 
 ### Added

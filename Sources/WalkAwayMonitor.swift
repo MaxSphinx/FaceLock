@@ -57,6 +57,17 @@ public final class WalkAwayMonitor {
                     SecurityAuditLogger.shared.logWalkAwayLock(intruderPhoto: photoName)
                     if let photo = intruderImage {
                         TelegramNotifier.shared.sendIntruderAlert(photo: photo, appName: "Walk-Away Auto-Lock")
+                    } else {
+                        let formatter = DateFormatter()
+                        formatter.dateFormat = "HH:mm:ss (dd.MM.yyyy)"
+                        let timeStr = formatter.string(from: Date())
+                        let alertMsg = """
+                        🛡️ <b>FaceLock: Walk-Away авто-блокировка</b>
+                        🕒 <b>Время:</b> \(timeStr)
+                        ⏳ Компьютер оставлен без присмотра (> \(Int(Config.shared.walkAwayIdleSeconds))с).
+                        🔒 Экран MacBook автоматически заблокирован.
+                        """
+                        TelegramNotifier.shared.sendSecurityAlert(message: alertMsg)
                     }
                     LockScreenController.shared.showLock(targetApp: nil, intruderImage: intruderImage)
                 }

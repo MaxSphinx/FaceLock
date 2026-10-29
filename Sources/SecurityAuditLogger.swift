@@ -320,8 +320,8 @@ public final class SecurityAuditLogger {
                             match = evType.contains("policy")
                         case "config", "settings":
                             match = evType.contains("config") || evType.contains("settings")
-                        case "vectors", "vector":
-                            match = evType.contains("vector")
+                        case "vectors", "vector", "enroll", "enrollment":
+                            match = evType.contains("vector") || evType.contains("enroll")
                         case "incidents", "incident":
                             match = evType.contains("incident") || evType.contains("intruder")
                         case "telegram", "tg":

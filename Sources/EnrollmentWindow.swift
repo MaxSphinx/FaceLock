@@ -44,11 +44,27 @@ public final class EnrollmentController: NSObject, NSWindowDelegate {
     }
 
     public func close() {
+        if isCapturing && capturedVectors.count < targetSampleCount {
+            SecurityAuditLogger.shared.log(
+                eventType: "enrollment_cancelled",
+                appName: "Face ID Enrollment",
+                details: "Enrollment wizard closed before completing 12 vectors (\(capturedVectors.count)/12 captured)",
+                isSuccess: false
+            )
+        }
         CameraScanner.shared.stop()
         window?.orderOut(nil)
     }
 
     public func windowWillClose(_ notification: Notification) {
+        if isCapturing && capturedVectors.count < targetSampleCount {
+            SecurityAuditLogger.shared.log(
+                eventType: "enrollment_cancelled",
+                appName: "Face ID Enrollment",
+                details: "Enrollment window closed before completing 12 vectors (\(capturedVectors.count)/12 captured)",
+                isSuccess: false
+            )
+        }
         CameraScanner.shared.stop()
     }
 
@@ -190,6 +206,14 @@ public final class EnrollmentController: NSObject, NSWindowDelegate {
                 Config.shared.saveEnrolledVectors(capturedVectors)
                 Config.shared.strictFaceMatch = true
                 Config.shared.save()
+
+                SecurityAuditLogger.shared.log(
+                    eventType: "vectors_enrolled",
+                    appName: "Face ID Enrollment",
+                    details: "Calibrated \(capturedVectors.count) facial vectors for owner profile",
+                    isSuccess: true
+                )
+                AppDelegate.notifyDaemonReload()
 
                 statusLabel?.stringValue = "✓ Откалибровано 12 ракурсов лица! Защита активна."
                 previewImageView?.layer?.borderColor = NSColor.systemGreen.cgColor
