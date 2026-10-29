@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock is-locked is-locked-json settings gallery status config apps diagnostics health toggle toggle-wake wake reload reset-session check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents export-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-gui prune-audit clear-audit export-audit pin-attempts pin-lockout test
+.PHONY: all build run enroll test-lock lock is-locked is-locked-json settings gallery status config apps diagnostics health toggle toggle-wake wake reload reset-session check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents export-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-gui prune-audit clear-audit export-audit pin-attempts pin-lockout cameras cameras-json set-camera backup-config restore-config test
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -33,6 +33,11 @@ help:
 	@echo "  make health         - Fast operational healthcheck (exit 0 if healthy)"
 	@echo "  make config         - Display active FaceLock configuration settings"
 	@echo "  make apps           - List protected and ignored application bundle IDs"
+	@echo "  make cameras        - List available video capture cameras and active selection"
+	@echo "  make cameras-json   - List video capture cameras in JSON format"
+	@echo "  make set-camera CAMERA= - Set preferred camera device by ID, name or 'default'"
+	@echo "  make backup-config DEST= - Backup FaceLock configuration to JSON file"
+	@echo "  make restore-config SRC= - Restore FaceLock configuration from JSON file"
 	@echo "  make vectors        - Inspect enrolled facial templates and cluster metrics"
 	@echo "  make optimize-vectors - Prune redundant vectors and outliers to optimize cluster"
 	@echo "  make audit          - View security audit event log"
@@ -121,6 +126,33 @@ config: build
 
 apps: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --apps
+
+cameras: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --cameras
+
+cameras-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --cameras --json
+
+set-camera: build
+	@if [ -z "$(CAMERA)" ]; then \
+		echo "Usage: make set-camera CAMERA=<id|name|default>"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-camera "$(CAMERA)"
+
+backup-config: build
+	@if [ -z "$(DEST)" ]; then \
+		echo "Usage: make backup-config DEST=/path/to/backup.json"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --backup-config "$(DEST)"
+
+restore-config: build
+	@if [ -z "$(SRC)" ]; then \
+		echo "Usage: make restore-config SRC=/path/to/backup.json"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --restore-config "$(SRC)"
 
 vectors: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --vectors
@@ -227,6 +259,10 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-stats > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-stats --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --diagnostics --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --cameras --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --cameras > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-camera default --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --backup-config /tmp/facelock_cfg_test.json > /dev/null && rm -f /tmp/facelock_cfg_test.json
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-walkaway 45 --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-walkaway --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-walkaway toggle --json > /dev/null

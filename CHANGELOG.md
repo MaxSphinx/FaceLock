@@ -4,6 +4,25 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.13] - 2026-10-29
+
+### Added
+- **Multi-Camera Device Selection & Dynamic Hot-Switching (`CameraScanner.swift`, `Config.swift`)**:
+  - Integrated hardware video capture discovery and selection supporting external webcams, Studio Displays, and Apple Continuity Camera (iPhone) alongside built-in FaceTime HD cameras.
+  - Added persistent `preferredCameraID` property in configuration with graceful fallback to system default camera if preferred device is detached or unavailable.
+  - Implemented dynamic video input re-anchoring (`reconfigureDeviceIfNeeded`) allowing background daemons to switch active capture streams seamlessly upon configuration reloads.
+- **Dedicated Camera CLI Management & JSON Ergonomics (`AppDelegate.swift`)**:
+  - Added `facelock --cameras` (`--cameras-json`) command listing all connected video capture devices, hardware IDs, and active/preferred badges (`[SELECTED & ACTIVE] ✅`, `[ACTIVE DEFAULT] 🎯`).
+  - Added `facelock --set-camera <id|name|default>` enabling instant camera switching by hardware UUID, device name substring, index, or `'default'`.
+  - Added structured audit trail event `preferredCameraID` in `audit_log.jsonl` whenever camera devices are changed.
+- **Interactive Camera Selection in Settings UI (`SettingsWindow.swift`)**:
+  - Added dedicated camera selection dropdown in Section 1 ("1. Статус защиты и камера FaceLock") displaying all detected cameras with device IDs.
+  - Dispatches immediate IPC reload signal to running daemons upon dropdown selection.
+- **Hardware Diagnostics & Makefile Targets Expansion (`Diagnostics.swift`, `Makefile`)**:
+  - Diagnostics suite (`--diagnostics`, `--diagnostics-json`) now displays preferred vs active camera device, connection status, and selection state.
+  - Added `make cameras`, `make cameras-json`, `make set-camera CAMERA=`, `make backup-config DEST=`, and `make restore-config SRC=` targets.
+  - Expanded `make test` CLI test suite with camera device listing and selection validations.
+
 ## [1.0.12] - 2026-10-29
 
 ### Added

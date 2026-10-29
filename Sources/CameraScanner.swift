@@ -11,6 +11,31 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
     private let cameraQueue = DispatchQueue(label: "io.github.facelock.cameraQueue", qos: .userInteractive)
     private var videoOutput: AVCaptureVideoDataOutput?
     private var isConfigured = false
+    public private(set) var currentDeviceID: String?
+
+    public static func availableCaptureDevices() -> [AVCaptureDevice] {
+        let discovery = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.builtInWideAngleCamera, .external],
+            mediaType: .video,
+            position: .unspecified
+        )
+        return discovery.devices
+    }
+
+    public static func selectDevice(preferredID: String) -> AVCaptureDevice? {
+        let devices = availableCaptureDevices()
+        let trimmed = preferredID.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty && trimmed.lowercased() != "default" && trimmed.lowercased() != "auto" {
+            if let matched = devices.first(where: { $0.uniqueID == trimmed }) {
+                return matched
+            }
+            if let matchedName = devices.first(where: { $0.localizedName.localizedCaseInsensitiveContains(trimmed) }) {
+                return matchedName
+            }
+        }
+        return AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front)
+            ?? AVCaptureDevice.default(for: .video)
+    }
 
     private var isScanning = false
     private var scanCompletion: ((Bool, Float?, NSImage?) -> Void)?
@@ -48,8 +73,7 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         session.beginConfiguration()
         session.sessionPreset = .medium
 
-        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front)
-                ?? AVCaptureDevice.default(for: .video) else {
+        guard let device = CameraScanner.selectDevice(preferredID: Config.shared.preferredCameraID) else {
             print("[CameraScanner] No video camera found!")
             session.commitConfiguration()
             return
@@ -59,6 +83,7 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
             let input = try AVCaptureDeviceInput(device: device)
             if session.canAddInput(input) {
                 session.addInput(input)
+                self.currentDeviceID = device.uniqueID
             }
         } catch {
             print("[CameraScanner] Failed to create device input: \(error)")
@@ -80,6 +105,36 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
 
         session.commitConfiguration()
         isConfigured = true
+    }
+
+    public func reconfigureDeviceIfNeeded() {
+        cameraQueue.async { [weak self] in
+            guard let self = self else { return }
+            let preferredID = Config.shared.preferredCameraID
+            guard let newDevice = CameraScanner.selectDevice(preferredID: preferredID) else { return }
+            if self.currentDeviceID == newDevice.uniqueID && self.isConfigured {
+                return
+            }
+            guard self.isConfigured else {
+                self.configureSessionIfNeeded()
+                return
+            }
+            self.session.beginConfiguration()
+            for input in self.session.inputs {
+                self.session.removeInput(input)
+            }
+            do {
+                let input = try AVCaptureDeviceInput(device: newDevice)
+                if self.session.canAddInput(input) {
+                    self.session.addInput(input)
+                    self.currentDeviceID = newDevice.uniqueID
+                    print("[CameraScanner] Active camera set to: \(newDevice.localizedName) [\(newDevice.uniqueID)]")
+                }
+            } catch {
+                print("[CameraScanner] Failed to switch camera input: \(error)")
+            }
+            self.session.commitConfiguration()
+        }
     }
 
     public func scanFace(timeout: Double = 1.3, completion: @escaping (Bool, Float?, NSImage?) -> Void) {

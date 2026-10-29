@@ -135,7 +135,15 @@ public struct Diagnostics {
                 "camera": [
                     "authorization": camAuthStr,
                     "devicesCount": devices.count,
-                    "devices": devices.map { ["name": $0.localizedName, "id": $0.uniqueID] }
+                    "preferredCameraID": config.preferredCameraID.isEmpty ? "default" : config.preferredCameraID,
+                    "activeCamera": CameraScanner.selectDevice(preferredID: config.preferredCameraID)?.localizedName ?? "None",
+                    "activeCameraID": CameraScanner.selectDevice(preferredID: config.preferredCameraID)?.uniqueID ?? "None",
+                    "devices": devices.map { [
+                        "name": $0.localizedName,
+                        "id": $0.uniqueID,
+                        "isPreferred": (!config.preferredCameraID.isEmpty && ($0.uniqueID == config.preferredCameraID || $0.localizedName.localizedCaseInsensitiveContains(config.preferredCameraID))),
+                        "isActive": ($0.uniqueID == CameraScanner.selectDevice(preferredID: config.preferredCameraID)?.uniqueID)
+                    ] }
                 ],
                 "biometrics": [
                     "neuralFaceprintAvailable": hasFaceprintReq,
@@ -210,9 +218,26 @@ public struct Diagnostics {
         if devices.isEmpty {
             print("  • Video Devices: No cameras detected ⚠️")
         } else {
+            let preferredID = config.preferredCameraID
+            let activeDevice = CameraScanner.selectDevice(preferredID: preferredID)
             print("  • Detected Cameras (\(devices.count)):")
             for dev in devices {
-                print("    - \(dev.localizedName) [\(dev.uniqueID)]")
+                let isPreferred = (!preferredID.isEmpty && (dev.uniqueID == preferredID || dev.localizedName.localizedCaseInsensitiveContains(preferredID)))
+                let isActive = (dev.uniqueID == activeDevice?.uniqueID)
+                var badge = ""
+                if isPreferred && isActive {
+                    badge = " [SELECTED & ACTIVE] ✅"
+                } else if isActive {
+                    badge = " [ACTIVE DEFAULT] 🎯"
+                } else if isPreferred {
+                    badge = " [PREFERRED] ⭐️"
+                }
+                print("    - \(dev.localizedName)\(badge) [\(dev.uniqueID)]")
+            }
+            if preferredID.isEmpty {
+                print("  • Active Camera: \(activeDevice?.localizedName ?? "Default") (Automatic front camera)")
+            } else {
+                print("  • Active Camera: \(activeDevice?.localizedName ?? "N/A") (Manual Selection: \(preferredID))")
             }
         }
 

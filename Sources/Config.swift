@@ -29,6 +29,7 @@ public final class Config: Codable {
     public var lockOnWake: Bool
     public var maxFailedPinAttempts: Int
     public var pinLockoutSeconds: Double
+    public var preferredCameraID: String
 
     public init(
         pin: String = "0000",
@@ -73,7 +74,8 @@ public final class Config: Codable {
         walkAwayIdleSeconds: Double = 45.0,
         lockOnWake: Bool = false,
         maxFailedPinAttempts: Int = 3,
-        pinLockoutSeconds: Double = 5.0
+        pinLockoutSeconds: Double = 5.0,
+        preferredCameraID: String = ""
     ) {
         self.pin = pin
         self.similarityThreshold = similarityThreshold
@@ -95,6 +97,7 @@ public final class Config: Codable {
         self.lockOnWake = lockOnWake
         self.maxFailedPinAttempts = maxFailedPinAttempts
         self.pinLockoutSeconds = pinLockoutSeconds
+        self.preferredCameraID = preferredCameraID
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -118,6 +121,7 @@ public final class Config: Codable {
         case lockOnWake
         case maxFailedPinAttempts
         case pinLockoutSeconds
+        case preferredCameraID
     }
 
     public required init(from decoder: Decoder) throws {
@@ -165,6 +169,7 @@ public final class Config: Codable {
         self.lockOnWake = try container.decodeIfPresent(Bool.self, forKey: .lockOnWake) ?? false
         self.maxFailedPinAttempts = try container.decodeIfPresent(Int.self, forKey: .maxFailedPinAttempts) ?? 3
         self.pinLockoutSeconds = try container.decodeIfPresent(Double.self, forKey: .pinLockoutSeconds) ?? 5.0
+        self.preferredCameraID = try container.decodeIfPresent(String.self, forKey: .preferredCameraID) ?? ""
     }
 
     private static var configURL: URL {
@@ -256,6 +261,7 @@ public final class Config: Codable {
             self.lockOnWake = fresh.lockOnWake
             self.maxFailedPinAttempts = fresh.maxFailedPinAttempts
             self.pinLockoutSeconds = fresh.pinLockoutSeconds
+            self.preferredCameraID = fresh.preferredCameraID
         }
     }
 
@@ -294,6 +300,7 @@ public final class Config: Codable {
         self.lockOnWake = imported.lockOnWake
         self.maxFailedPinAttempts = imported.maxFailedPinAttempts
         self.pinLockoutSeconds = imported.pinLockoutSeconds
+        self.preferredCameraID = imported.preferredCameraID
         self.save()
     }
 

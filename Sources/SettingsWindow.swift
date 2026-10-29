@@ -7,6 +7,7 @@ public final class SettingsController: NSObject {
 
     private var masterSwitch: NSButton?
     private var masterStatusLabel: NSTextField?
+    private var cameraPopup: NSPopUpButton?
 
     private var tokenField: NSTextField?
     private var chatIdField: NSTextField?
@@ -49,7 +50,7 @@ public final class SettingsController: NSObject {
         guard window == nil else { return }
 
         let width: CGFloat = 520
-        let height: CGFloat = 850
+        let height: CGFloat = 890
 
         let win = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: width, height: height),
@@ -66,8 +67,8 @@ public final class SettingsController: NSObject {
 
         var currentY: CGFloat = height - 42
 
-        // Section 1: Master Shield Status
-        let masterHeader = makeSectionHeader(title: "1. Статус защиты FaceLock", originY: currentY, width: width)
+        // Section 1: Master Shield Status & Camera
+        let masterHeader = makeSectionHeader(title: "1. Статус защиты и камера FaceLock", originY: currentY, width: width)
         root.addSubview(masterHeader)
         currentY -= 32
 
@@ -84,6 +85,18 @@ public final class SettingsController: NSObject {
         statusLbl.font = .systemFont(ofSize: 12, weight: .bold)
         root.addSubview(statusLbl)
         self.masterStatusLabel = statusLbl
+        currentY -= 34
+
+        let camLabel = NSTextField(labelWithString: "Камера:")
+        camLabel.frame = NSRect(x: 25, y: currentY, width: 65, height: 20)
+        camLabel.textColor = .secondaryLabelColor
+        root.addSubview(camLabel)
+
+        let camPopup = NSPopUpButton(frame: NSRect(x: 95, y: currentY - 2, width: 390, height: 26))
+        camPopup.target = self
+        camPopup.action = #selector(onCameraPopupChanged)
+        root.addSubview(camPopup)
+        self.cameraPopup = camPopup
         currentY -= 36
 
         // Section 2: Telegram Alerts
@@ -319,6 +332,19 @@ public final class SettingsController: NSObject {
         masterSwitch?.state = config.isEnabled ? .on : .off
         updateStatusLabel(isEnabled: config.isEnabled)
 
+        cameraPopup?.removeAllItems()
+        cameraPopup?.addItem(withTitle: "Автоматически (По умолчанию)")
+        let devices = CameraScanner.availableCaptureDevices()
+        var selectedIdx = 0
+        let preferredID = config.preferredCameraID
+        for (i, dev) in devices.enumerated() {
+            cameraPopup?.addItem(withTitle: "\(dev.localizedName) [\(dev.uniqueID.prefix(8))]")
+            if !preferredID.isEmpty && (dev.uniqueID == preferredID || dev.localizedName.localizedCaseInsensitiveContains(preferredID)) {
+                selectedIdx = i + 1
+            }
+        }
+        cameraPopup?.selectItem(at: selectedIdx)
+
         tokenField?.stringValue = config.telegramBotToken
         chatIdField?.stringValue = config.telegramChatId
         telegramSwitch?.state = config.telegramEnabled ? .on : .off
@@ -365,6 +391,29 @@ public final class SettingsController: NSObject {
         StatusBarController.shared.updateIcon()
         HUDController.shared.showToggleStatus(isEnabled: isEnabled)
         updateStatusLabel(isEnabled: isEnabled)
+        AppDelegate.notifyDaemonReload()
+    }
+
+    @objc private func onCameraPopupChanged(_ sender: NSPopUpButton) {
+        let idx = sender.indexOfSelectedItem
+        let devices = CameraScanner.availableCaptureDevices()
+        if idx == 0 || idx > devices.count {
+            Config.shared.preferredCameraID = ""
+            SecurityAuditLogger.shared.logConfigChanged(
+                setting: "preferredCameraID",
+                value: "default",
+                details: "Reset to default automatic camera selection in Settings"
+            )
+        } else {
+            let dev = devices[idx - 1]
+            Config.shared.preferredCameraID = dev.uniqueID
+            SecurityAuditLogger.shared.logConfigChanged(
+                setting: "preferredCameraID",
+                value: dev.uniqueID,
+                details: "Selected camera '\(dev.localizedName)' in Settings"
+            )
+        }
+        Config.shared.save()
         AppDelegate.notifyDaemonReload()
     }
 
