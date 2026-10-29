@@ -143,6 +143,68 @@ public final class TelegramNotifier {
                 }
 
                 print("[TelegramNotifier] Intruder photo sent to Telegram successfully!")
+                SecurityAuditLogger.shared.logTelegramAlert(appName: nil, isSuccess: true, details: "Intruder photo delivered to Telegram")
+                completion?(true, nil)
+            }
+        }
+        task.resume()
+    }
+
+    public func sendSecurityAlert(message: String, completion: ((Bool, String?) -> Void)? = nil) {
+        guard Config.shared.telegramEnabled else {
+            completion?(false, "Telegram alerts disabled")
+            return
+        }
+
+        let token = Config.shared.telegramBotToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        let chatId = Config.shared.telegramChatId.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !token.isEmpty, !chatId.isEmpty else {
+            completion?(false, "Bot Token or Chat ID is empty")
+            return
+        }
+
+        guard let url = URL(string: "https://api.telegram.org/bot\(token)/sendMessage") else {
+            completion?(false, "Invalid Telegram bot URL")
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "chat_id": chatId,
+            "text": message,
+            "parse_mode": "HTML"
+        ]
+
+        guard let httpBody = try? JSONSerialization.data(withJSONObject: body) else {
+            completion?(false, "JSON serialization error")
+            return
+        }
+        request.httpBody = httpBody
+
+        let task = session.dataTask(with: request) { [weak self] data, response, error in
+            _ = self
+            DispatchQueue.main.async {
+                if let err = error {
+                    print("[TelegramNotifier] Security alert network error: \(err.localizedDescription)")
+                    SecurityAuditLogger.shared.logTelegramAlert(appName: nil, isSuccess: false, details: "Network error: \(err.localizedDescription)")
+                    completion?(false, err.localizedDescription)
+                    return
+                }
+
+                guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+                    let responseBody = data.flatMap { String(data: $0, encoding: .utf8) } ?? "Unknown error"
+                    print("[TelegramNotifier] Security alert API error: \(responseBody)")
+                    SecurityAuditLogger.shared.logTelegramAlert(appName: nil, isSuccess: false, details: "Telegram API error: \(responseBody)")
+                    completion?(false, responseBody)
+                    return
+                }
+
+                print("[TelegramNotifier] Security text alert delivered to Telegram successfully!")
+                SecurityAuditLogger.shared.logTelegramAlert(appName: nil, isSuccess: true, details: "Security text alert delivered to Telegram")
                 completion?(true, nil)
             }
         }

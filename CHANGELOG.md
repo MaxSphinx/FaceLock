@@ -4,6 +4,21 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.10] - 2026-10-29
+
+### Added
+- **Multi-Face Candidate Prioritization & Foreground Sorting (`CameraScanner.swift`)**:
+  - Dynamically sorts detected faces by bounding box area to prioritize prominent foreground faces sitting directly in front of the screen.
+  - Sequentially verifies all candidate faces when multiple individuals appear in camera view (e.g. background passersby in shared spaces), eliminating false lockouts when the owner is present.
+- **Vision Capture Quality Anti-Spoofing Assessment (`CameraScanner.swift`)**:
+  - Integrates `VNDetectFaceCaptureQualityRequest` when anti-spoofing liveness detection is enabled, automatically filtering out blurry motion artifacts and planar screen glare.
+- **Telegram Security Text Alerts & Camera-Obscured Fallbacks (`TelegramNotifier.swift`, `LockScreenWindow.swift`)**:
+  - Added formatted text-only security alert dispatching (`sendSecurityAlert`) to Telegram.
+  - Dispatches immediate Telegram security alerts during PIN brute-force attempts even when camera face capture is obscured or unrendered.
+  - Automatically records Telegram alert dispatches and API statuses directly into the security audit log (`telegram_alert_sent` / `telegram_alert_failed`).
+- **Audit Log GUI Telegram Filter & Status Badges (`AuditLogWindow.swift`)**:
+  - Added dedicated Telegram notification filter and visual event badges (📲 Telegram оповещение, ⚠️ Сбой Telegram).
+
 ## [1.0.9] - 2026-10-27
 
 ### Added

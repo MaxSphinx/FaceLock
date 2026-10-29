@@ -17,6 +17,7 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
     private var scanTimer: DispatchSourceTimer?
     private var latestIntruderPhoto: NSImage?
     private var lastFrameSnapshot: NSImage?
+    private var hasDetectedFaceInCurrentScan = false
     public private(set) var lastCandidateVector: [Float]?
     public private(set) var latestBestDistance: Float?
     public private(set) var latestSavedIntruderURL: URL?
@@ -104,6 +105,7 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
             self.latestIntruderPhoto = nil
             self.lastFrameSnapshot = nil
             self.latestBestDistance = nil
+            self.hasDetectedFaceInCurrentScan = false
 
             if !self.session.isRunning {
                 self.session.startRunning()
@@ -133,7 +135,10 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
 
         // Only save intruder photo if an actual human face was detected and rejected.
         // If no face was seen (e.g. user walked away), do not treat empty frame as intruder.
-        let intruderImage = self.latestIntruderPhoto
+        var intruderImage = self.latestIntruderPhoto
+        if intruderImage == nil && self.hasDetectedFaceInCurrentScan {
+            intruderImage = self.lastFrameSnapshot
+        }
         if let photo = intruderImage, autoSaveIntruders {
             self.latestSavedIntruderURL = self.saveIntruderPhoto(photo)
         } else {
@@ -233,6 +238,7 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         }
 
         guard !faces.isEmpty else { return }
+        self.hasDetectedFaceInCurrentScan = true
 
         let enrolled = Config.shared.loadEnrolledVectors()
         let isStrict = Config.shared.strictFaceMatch && !enrolled.isEmpty
@@ -242,30 +248,52 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
             return
         }
 
-        let targetFace = faces.first
-        if let (candidateVec, faceObs) = FaceprintExtractor.shared.extractVector(from: pixelBuffer, faceObservation: targetFace) {
-            self.lastCandidateVector = candidateVec
+        // Sort faces by bounding box area (largest / most prominent foreground face first)
+        let sortedFaces = faces.sorted {
+            ($0.boundingBox.width * $0.boundingBox.height) > ($1.boundingBox.width * $1.boundingBox.height)
+        }
 
-            if self.latestIntruderPhoto == nil {
-                self.latestIntruderPhoto = self.cropFace(from: pixelBuffer, boundingBox: faceObs.boundingBox)
+        // Run anti-spoofing quality assessment if liveness detection is enabled
+        if Config.shared.livenessDetectionEnabled {
+            let qualityReq = VNDetectFaceCaptureQualityRequest()
+            qualityReq.inputFaceObservations = sortedFaces
+            try? handler.perform([qualityReq])
+        }
+
+        let th = Config.shared.similarityThreshold
+
+        for face in sortedFaces {
+            // Anti-spoofing check: filter out extreme motion blur or low-quality planar captures
+            if Config.shared.livenessDetectionEnabled, let quality = face.faceCaptureQuality, quality < 0.18 {
+                print("[CameraScanner] Anti-spoofing: skipping low-quality candidate (score: \(String(format: "%.3f", quality)))")
+                continue
             }
 
-            let sortedDists = enrolled.map { FaceprintExtractor.cosineDistance(candidateVec, $0) }.sorted()
-            let minDistance = sortedDists.first ?? 100.0
-            if self.latestBestDistance == nil || minDistance < self.latestBestDistance! {
-                self.latestBestDistance = minDistance
-            }
-            let top3Distance = sortedDists.count >= 3 ? (sortedDists[0] + sortedDists[1] + sortedDists[2]) / 3.0 : minDistance
-            let th = Config.shared.similarityThreshold
+            if let (candidateVec, faceObs) = FaceprintExtractor.shared.extractVector(from: pixelBuffer, faceObservation: face) {
+                if self.lastCandidateVector == nil {
+                    self.lastCandidateVector = candidateVec
+                }
 
-            let isOwnerMatch = minDistance <= th && (enrolled.count < 3 || top3Distance <= (th + 0.05))
+                if self.latestIntruderPhoto == nil {
+                    self.latestIntruderPhoto = self.cropFace(from: pixelBuffer, boundingBox: faceObs.boundingBox)
+                }
 
-            print("[CameraScanner] Face verification: min=\(String(format: "%.4f", minDistance)), top3=\(String(format: "%.4f", top3Distance)) (th: \(th)) -> \(isOwnerMatch ? "OWNER MATCH ✅" : "INTRUDER REJECTED 🛡️")")
+                let sortedDists = enrolled.map { FaceprintExtractor.cosineDistance(candidateVec, $0) }.sorted()
+                let minDistance = sortedDists.first ?? 100.0
+                if self.latestBestDistance == nil || minDistance < self.latestBestDistance! {
+                    self.latestBestDistance = minDistance
+                }
+                let top3Distance = sortedDists.count >= 3 ? (sortedDists[0] + sortedDists[1] + sortedDists[2]) / 3.0 : minDistance
 
-            if isOwnerMatch {
-                // Matching owner face found!
-                handleScanSuccess(distance: minDistance)
-                return
+                let isOwnerMatch = minDistance <= th && (enrolled.count < 3 || top3Distance <= (th + 0.05))
+
+                print("[CameraScanner] Face verification: min=\(String(format: "%.4f", minDistance)), top3=\(String(format: "%.4f", top3Distance)) (th: \(th)) -> \(isOwnerMatch ? "OWNER MATCH ✅" : "INTRUDER REJECTED 🛡️")")
+
+                if isOwnerMatch {
+                    // Matching owner face found!
+                    handleScanSuccess(distance: minDistance)
+                    return
+                }
             }
         }
     }

@@ -14,8 +14,40 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
-        // Handle command-line arguments
-        let args = CommandLine.arguments
+        // Handle command-line arguments and normalize --*-json alias flags
+        var args: [String] = []
+        for arg in CommandLine.arguments {
+            switch arg {
+            case "--status-json":
+                args.append(contentsOf: ["--status", "--json"])
+            case "--config-json":
+                args.append(contentsOf: ["--config", "--json"])
+            case "--health-json":
+                args.append(contentsOf: ["--health", "--json"])
+            case "--diagnostics-json":
+                args.append(contentsOf: ["--diagnostics", "--json"])
+            case "--vectors-json":
+                args.append(contentsOf: ["--vectors", "--json"])
+            case "--optimize-vectors-json":
+                args.append(contentsOf: ["--optimize-vectors", "--json"])
+            case "--incidents-summary-json":
+                args.append(contentsOf: ["--incidents-summary", "--json"])
+            case "--incidents-json":
+                args.append(contentsOf: ["--incidents", "--json"])
+            case "--latest-incident-json":
+                args.append(contentsOf: ["--latest-incident", "--json"])
+            case "--is-locked-json":
+                args.append(contentsOf: ["--is-locked", "--json"])
+            case "--audit-json":
+                args.append(contentsOf: ["--audit", "--json"])
+            case "--apps-json":
+                args.append(contentsOf: ["--apps", "--json"])
+            case "--version-json":
+                args.append(contentsOf: ["--version", "--json"])
+            default:
+                args.append(arg)
+            }
+        }
 
         if args.contains("--help") || args.contains("-h") {
             print("""
@@ -92,7 +124,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if args.contains("--version") || args.contains("-v") {
-            print("FaceLock v1.0.9 (darwin-arm64)")
+            if args.contains("--json") {
+                print("{\"name\":\"FaceLock\",\"version\":\"1.0.10\",\"platform\":\"darwin-arm64\"}")
+            } else {
+                print("FaceLock v1.0.10 (darwin-arm64)")
+            }
             exit(0)
         }
 
@@ -246,7 +282,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
             if args.contains("--json") {
                 let statusDict: [String: Any] = [
-                    "version": "1.0.9",
+                    "version": "1.0.10",
                     "daemon": isAlreadyRunning ? "running" : "stopped",
                     "shieldState": Config.shared.isEnabled ? "active" : "paused",
                     "protectionMode": Config.shared.protectionMode,
@@ -1878,6 +1914,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 print("[FaceLock] Dispatched audit log command to running instance.")
                 exit(0)
             } else if !args.contains("--reset") {
+                let unhandledArgs = args.dropFirst().filter { $0.starts(with: "-") }
+                if let unknown = unhandledArgs.first {
+                    print("Error: Unrecognized option '\(unknown)'. See 'facelock --help' for available commands.")
+                    exit(1)
+                }
                 DistributedNotificationCenter.default().postNotificationName(
                     AppDelegate.commandNotificationName,
                     object: nil,
@@ -1936,6 +1977,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 AuditLogController.shared.show()
             }
         } else {
+            let unhandledArgs = args.dropFirst().filter { $0.starts(with: "-") && $0 != "--daemon" && $0 != "--background" }
+            if let unknown = unhandledArgs.first {
+                print("Error: Unrecognized option '\(unknown)'. See 'facelock --help' for available commands.")
+                exit(1)
+            }
             if !Config.shared.hasEnrolledFace {
                 print("[FaceLock] Note: No face enrolled yet. Running in face detection mode.")
                 print("[FaceLock] Open Menu Bar icon -> «Запомнить моё лицо» to train your specific face.")

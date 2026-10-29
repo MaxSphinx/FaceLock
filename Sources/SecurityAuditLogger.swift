@@ -280,6 +280,15 @@ public final class SecurityAuditLogger {
         )
     }
 
+    public func logTelegramAlert(appName: String?, isSuccess: Bool, details: String) {
+        log(
+            eventType: isSuccess ? "telegram_alert_sent" : "telegram_alert_failed",
+            appName: appName ?? "Telegram Alert",
+            details: details,
+            isSuccess: isSuccess
+        )
+    }
+
     public func fetchRecentEvents(tail: Int = 20, filterType: String? = nil) -> [AuditEvent] {
         var results: [AuditEvent] = []
         logQueue.sync {
@@ -315,6 +324,8 @@ public final class SecurityAuditLogger {
                             match = evType.contains("vector")
                         case "incidents", "incident":
                             match = evType.contains("incident") || evType.contains("intruder")
+                        case "telegram", "tg":
+                            match = evType.contains("telegram")
                         case "success":
                             match = event.isSuccess
                         case "failure", "failed":

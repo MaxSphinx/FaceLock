@@ -168,6 +168,7 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
             Config.shared.protectionMode = "selective"
         }
         Config.shared.save()
+        SecurityAuditLogger.shared.logConfigChanged(setting: "protectionMode", value: Config.shared.protectionMode, details: "Toggled via menu bar icon")
         let msg = (Config.shared.protectionMode == "selective") ? "Режим: Секретные приложения" : "Режим: Все приложения"
         HUDController.shared.showScanning(appName: msg)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
@@ -178,6 +179,7 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
     @objc public func toggleLockOnWake() {
         Config.shared.lockOnWake.toggle()
         Config.shared.save()
+        SecurityAuditLogger.shared.logConfigChanged(setting: "lockOnWake", value: "\(Config.shared.lockOnWake)", details: "Toggled via menu bar icon")
         let msg = Config.shared.lockOnWake ? "Проверка при пробуждении: Вкл" : "Проверка при пробуждении: Выкл"
         HUDController.shared.showScanning(appName: msg)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
@@ -252,6 +254,7 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         Config.shared.clearEnrolledVectors()
         Config.shared.strictFaceMatch = false
         Config.shared.save()
+        SecurityAuditLogger.shared.logVectorsModified(action: "Purged facial vectors", count: 0, details: "Reset via status bar menu")
         updateIcon()
     }
 

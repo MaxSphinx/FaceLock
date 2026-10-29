@@ -136,6 +136,7 @@ public final class AuditLogController: NSObject {
         popup.addItem(withTitle: "Настройки и конфигурация (Config)")
         popup.addItem(withTitle: "Векторы биометрии (Vectors)")
         popup.addItem(withTitle: "Brute-force и блокировки (Lockouts)")
+        popup.addItem(withTitle: "Telegram оповещения (Telegram)")
         popup.target = self
         popup.action = #selector(filterChanged(_:))
         header.addSubview(popup)
@@ -282,6 +283,14 @@ public final class AuditLogController: NSObject {
             badgeTitle = event.isSuccess ? "🧪 Проверка пройдена" : "🧪 Проверка отклонена"
             badgeColor = event.isSuccess ? .systemGreen : .systemRed
             isCritical = !event.isSuccess
+        case "telegram_alert_sent":
+            badgeTitle = "📲 Telegram оповещение"
+            badgeColor = .systemBlue
+            isCritical = false
+        case "telegram_alert_failed":
+            badgeTitle = "⚠️ Сбой Telegram"
+            badgeColor = .systemOrange
+            isCritical = true
         default:
             badgeTitle = event.isSuccess ? "✓ \(event.eventType.uppercased())" : "⚠️ \(event.eventType.uppercased())"
             badgeColor = event.isSuccess ? .systemGreen : .systemRed
@@ -375,6 +384,7 @@ public final class AuditLogController: NSObject {
         case 7: currentFilter = "config"
         case 8: currentFilter = "vectors"
         case 9: currentFilter = "lock"
+        case 10: currentFilter = "telegram"
         default: currentFilter = nil
         }
         reloadLogs()
