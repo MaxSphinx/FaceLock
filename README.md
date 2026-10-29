@@ -201,6 +201,9 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --set-timeout <sec>` | Set camera verification timeout (0.5 - 10.0s, default: 2.0s) |
 | `facelock --set-debounce <sec>` | Set app switch debounce interval (0.5 - 30.0s, default: 2.0s) |
 | `facelock --set-mode <mode>` | Set mode: 'all' (every app) or 'selective' (secret apps) |
+| `facelock --cameras [--json]` | List available video capture cameras and active selection |
+| `facelock --set-camera <id\|name\|default>` | Select preferred video camera by device ID, name substring or 'default' |
+| `facelock --reset-camera [--json]` | Reset preferred camera selection to default front camera |
 | `facelock --diagnostics` | Run full biometric, hardware & storage diagnostics |
 | `facelock --test-lock` | Trigger fullscreen security shield test |
 | `facelock --status` | Display daemon status and biometric template metrics |

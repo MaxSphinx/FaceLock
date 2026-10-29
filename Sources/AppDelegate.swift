@@ -54,6 +54,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--toggle-touchid", "--json"])
             case "--cameras-json":
                 args.append(contentsOf: ["--cameras", "--json"])
+            case "--reset-camera-json":
+                args.append(contentsOf: ["--reset-camera", "--json"])
             default:
                 args.append(arg)
             }
@@ -128,6 +130,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --set-mode <mode>          Set mode: 'all' (every app) or 'selective' (secret apps)
               --cameras [--json]         List available video capture cameras and active selection
               --set-camera <id|name|default> Set preferred camera device by ID, name substring, or 'default'
+              --reset-camera [--json]    Reset preferred camera selection to default front/built-in camera
               --diagnostics, -d [--json] Run complete biometric & hardware system diagnostics
               --status [--json]          Print current daemon status and vector metrics
               --test-telegram            Dispatch a verification alert to configured Telegram chat
@@ -141,9 +144,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if args.contains("--version") || args.contains("-v") {
             if args.contains("--json") {
-                print("{\"name\":\"FaceLock\",\"version\":\"1.0.13\",\"platform\":\"darwin-arm64\"}")
+                print("{\"name\":\"FaceLock\",\"version\":\"1.0.14\",\"platform\":\"darwin-arm64\"}")
             } else {
-                print("FaceLock v1.0.13 (darwin-arm64)")
+                print("FaceLock v1.0.14 (darwin-arm64)")
             }
             exit(0)
         }
@@ -298,7 +301,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
             if args.contains("--json") {
                 let statusDict: [String: Any] = [
-                    "version": "1.0.13",
+                    "version": "1.0.14",
                     "daemon": isAlreadyRunning ? "running" : "stopped",
                     "shieldState": Config.shared.isEnabled ? "active" : "paused",
                     "protectionMode": Config.shared.protectionMode,
@@ -1145,6 +1148,23 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 print("{\"success\":true,\"preferredCameraID\":\"\(selectedID)\",\"name\":\"\(selectedName)\"}")
             } else {
                 print("✓ Preferred camera set to: \(selectedName) [\(selectedID)]")
+            }
+            exit(0)
+        }
+
+        if args.contains("--reset-camera") {
+            Config.shared.preferredCameraID = ""
+            Config.shared.save()
+            SecurityAuditLogger.shared.logConfigChanged(
+                setting: "preferredCameraID",
+                value: "default",
+                details: "Reset to default automatic camera selection"
+            )
+            notifyDaemonIfRunning()
+            if args.contains("--json") {
+                print("{\"success\":true,\"preferredCameraID\":\"default\",\"name\":\"Default (Auto)\"}")
+            } else {
+                print("✓ Reset preferred camera to Default (Automatic front camera).")
             }
             exit(0)
         }

@@ -293,6 +293,7 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
         let faceRetry = NSButton(frame: NSRect(x: (cardW - pinContainerW) / 2, y: faceRetryY, width: pinContainerW, height: 34))
         faceRetry.bezelStyle = .inline
         faceRetry.title = " Повторить Face ID"
+        faceRetry.toolTip = "Повторить распознавание лица (Cmd+R или Cmd+F)"
         let faceConfig = NSImage.SymbolConfiguration(pointSize: 15, weight: .medium)
         faceRetry.image = NSImage(systemSymbolName: "faceid", accessibilityDescription: "Face ID")?.withSymbolConfiguration(faceConfig)
         faceRetry.imagePosition = .imageLeading
@@ -306,6 +307,7 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
         let touchBtn = NSButton(frame: NSRect(x: (cardW - pinContainerW) / 2, y: touchY, width: pinContainerW, height: 34))
         touchBtn.bezelStyle = .inline
         touchBtn.title = " Использовать Touch ID"
+        touchBtn.toolTip = "Аутентификация по Touch ID (Cmd+T)"
         let touchConfig = NSImage.SymbolConfiguration(pointSize: 16, weight: .medium)
         touchBtn.image = NSImage(systemSymbolName: "touchid", accessibilityDescription: "Touch ID")?.withSymbolConfiguration(touchConfig)
         touchBtn.imagePosition = .imageLeading
@@ -525,6 +527,24 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
         }
     }
 
+    public func clearPinField() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, self.isLocked else { return }
+            if self.lockoutTimer == nil {
+                self.pinField?.stringValue = ""
+                self.errorLabel?.isHidden = true
+                self.pinField?.becomeFirstResponder()
+            }
+        }
+    }
+
+    public func retryFaceFromShortcut() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, self.isLocked else { return }
+            self.onFaceRetryClicked()
+        }
+    }
+
     // MARK: - Unlock with Animation
     public func unlock() {
         guard isLocked else { return }
@@ -626,10 +646,21 @@ private final class FullscreenLockWindow: NSWindow {
 
     override func keyDown(with event: NSEvent) {
         if event.modifierFlags.contains(.command) {
-            let chars = event.charactersIgnoringModifiers ?? ""
+            let chars = (event.charactersIgnoringModifiers ?? "").lowercased()
             if chars == "q" || chars == "w" || chars == "m" || chars == "h" {
+                return // Suppress bypass shortcuts
+            }
+            if chars == "t" {
+                LockScreenController.shared.triggerTouchID()
                 return
             }
+            if chars == "r" || chars == "f" {
+                LockScreenController.shared.retryFaceFromShortcut()
+                return
+            }
+        } else if event.keyCode == 53 { // ESC key
+            LockScreenController.shared.clearPinField()
+            return
         }
         super.keyDown(with: event)
     }

@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 
 public final class StatusBarController: NSObject, NSMenuDelegate {
     public static let shared = StatusBarController()
@@ -109,6 +110,9 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         walkItem.target = self
         menu.addItem(walkItem)
 
+        let cameraItem = buildCameraSubmenu()
+        menu.addItem(cameraItem)
+
         menu.addItem(NSMenuItem.separator())
 
         let home = FileManager.default.homeDirectoryForCurrentUser
@@ -206,6 +210,61 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
             HUDController.shared.hide()
         }
+    }
+
+    private func buildCameraSubmenu() -> NSMenuItem {
+        let preferredID = Config.shared.preferredCameraID
+        let activeDevice = CameraScanner.selectDevice(preferredID: preferredID)
+        let activeTitle = activeDevice?.localizedName ?? "По умолчанию"
+        let parentItem = NSMenuItem(title: "Камера: \(activeTitle)", action: nil, keyEquivalent: "")
+
+        let subMenu = NSMenu()
+
+        // Auto / System default entry
+        let defaultItem = NSMenuItem(title: "Авто (Системная по умолчанию)", action: #selector(onSelectCameraMenuItem(_:)), keyEquivalent: "")
+        defaultItem.target = self
+        defaultItem.representedObject = "default"
+        if preferredID.isEmpty || preferredID.lowercased() == "default" {
+            defaultItem.state = .on
+        }
+        subMenu.addItem(defaultItem)
+        subMenu.addItem(NSMenuItem.separator())
+
+        let devices = CameraScanner.availableCaptureDevices()
+        for dev in devices {
+            let item = NSMenuItem(title: dev.localizedName, action: #selector(onSelectCameraMenuItem(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = dev.uniqueID
+            if dev.uniqueID == preferredID || (preferredID.isEmpty && dev.uniqueID == activeDevice?.uniqueID) {
+                item.state = .on
+            }
+            subMenu.addItem(item)
+        }
+
+        parentItem.submenu = subMenu
+        return parentItem
+    }
+
+    @objc private func onSelectCameraMenuItem(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String else { return }
+        let targetID = (id == "default") ? "" : id
+        Config.shared.preferredCameraID = targetID
+        Config.shared.save()
+        CameraScanner.shared.reconfigureDeviceIfNeeded()
+        AppDelegate.notifyDaemonReload()
+
+        let activeDevice = CameraScanner.selectDevice(preferredID: targetID)
+        let camName = activeDevice?.localizedName ?? "По умолчанию"
+        SecurityAuditLogger.shared.logConfigChanged(
+            setting: "preferredCameraID",
+            value: targetID.isEmpty ? "default" : targetID,
+            details: "Camera switched via menu bar: \(camName)"
+        )
+        HUDController.shared.showScanning(appName: "Камера: \(camName)")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            HUDController.shared.hide()
+        }
+        NSSound(named: "Tink")?.play()
     }
 
     @objc private func openGallery() {

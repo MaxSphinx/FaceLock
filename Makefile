@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock is-locked is-locked-json settings gallery status config apps diagnostics health toggle toggle-wake wake reload reset-session check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents export-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-gui prune-audit clear-audit export-audit pin-attempts pin-lockout cameras cameras-json set-camera backup-config restore-config test
+.PHONY: all build run enroll test-lock lock is-locked is-locked-json settings gallery status config apps diagnostics health toggle toggle-wake wake reload reset-session check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents export-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-gui prune-audit clear-audit export-audit pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config restore-config test
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -36,6 +36,7 @@ help:
 	@echo "  make cameras        - List available video capture cameras and active selection"
 	@echo "  make cameras-json   - List video capture cameras in JSON format"
 	@echo "  make set-camera CAMERA= - Set preferred camera device by ID, name or 'default'"
+	@echo "  make reset-camera   - Reset preferred camera selection to default front camera"
 	@echo "  make backup-config DEST= - Backup FaceLock configuration to JSON file"
 	@echo "  make restore-config SRC= - Restore FaceLock configuration from JSON file"
 	@echo "  make vectors        - Inspect enrolled facial templates and cluster metrics"
@@ -139,6 +140,9 @@ set-camera: build
 		exit 1; \
 	fi
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-camera "$(CAMERA)"
+
+reset-camera: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --reset-camera
 
 backup-config: build
 	@if [ -z "$(DEST)" ]; then \
@@ -262,6 +266,7 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --cameras --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --cameras > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-camera default --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --reset-camera --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --backup-config /tmp/facelock_cfg_test.json > /dev/null && rm -f /tmp/facelock_cfg_test.json
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-walkaway 45 --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-walkaway --json > /dev/null

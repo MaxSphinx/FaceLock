@@ -4,6 +4,24 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.14] - 2026-10-30
+
+### Added
+- **Menu Bar Dynamic Camera Selection Submenu (`StatusBarController.swift`)**:
+  - Integrated dynamic camera switching submenu directly into the macOS menu bar status menu (`Камера: <Active Camera>`).
+  - Lists all discovered video capture devices (FaceTime HD, Apple Continuity Camera / iPhone, external webcams, Studio Displays) with real-time active checkmarks and `Авто (Системная по умолчанию)`.
+  - Instantly reconfigures the live video capture pipeline, persists `preferredCameraID`, records structured security audit events, and displays visual HUD confirmation.
+- **Lock Screen Keyboard Ergonomics & Biometric Hotkeys (`LockScreenWindow.swift`)**:
+  - Added native keyboard shortcuts on the full-screen lock shield:
+    - `Cmd+T`: Instantly trigger Touch ID biometric verification.
+    - `Cmd+R` / `Cmd+F`: Trigger immediate Face ID re-scan without manual mouse navigation.
+    - `Escape`: Clear PIN field input and reset error state.
+  - Added informative tooltips on Face ID retry, Touch ID, and PIN input controls.
+- **Dedicated Camera Reset CLI Command & Makefile Automation (`AppDelegate.swift`, `Makefile`)**:
+  - Added `facelock --reset-camera` (`--reset-camera-json`) command to quickly restore default automatic camera discovery.
+  - Added `make reset-camera` Makefile convenience target.
+  - Expanded `make test` CLI test suite with camera reset verification.
+
 ## [1.0.13] - 2026-10-29
 
 ### Added
