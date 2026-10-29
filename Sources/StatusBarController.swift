@@ -104,6 +104,11 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         wakeItem.target = self
         menu.addItem(wakeItem)
 
+        let walkState = Config.shared.walkAwayLockEnabled ? "Вкл (\(Int(Config.shared.walkAwayIdleSeconds))с)" : "Выкл"
+        let walkItem = NSMenuItem(title: "Авто-замок при уходе (Walk-Away): \(walkState)", action: #selector(toggleWalkAwayLock), keyEquivalent: "k")
+        walkItem.target = self
+        menu.addItem(walkItem)
+
         menu.addItem(NSMenuItem.separator())
 
         let home = FileManager.default.homeDirectoryForCurrentUser
@@ -181,6 +186,22 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         Config.shared.save()
         SecurityAuditLogger.shared.logConfigChanged(setting: "lockOnWake", value: "\(Config.shared.lockOnWake)", details: "Toggled via menu bar icon")
         let msg = Config.shared.lockOnWake ? "Проверка при пробуждении: Вкл" : "Проверка при пробуждении: Выкл"
+        HUDController.shared.showScanning(appName: msg)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            HUDController.shared.hide()
+        }
+    }
+
+    @objc public func toggleWalkAwayLock() {
+        Config.shared.walkAwayLockEnabled.toggle()
+        Config.shared.save()
+        SecurityAuditLogger.shared.logConfigChanged(
+            setting: "walkAwayLockEnabled",
+            value: "\(Config.shared.walkAwayLockEnabled)",
+            details: "Toggled via menu bar icon"
+        )
+        let stateStr = Config.shared.walkAwayLockEnabled ? "Вкл (\(Int(Config.shared.walkAwayIdleSeconds))с)" : "Выкл"
+        let msg = "Авто-замок Walk-Away: \(stateStr)"
         HUDController.shared.showScanning(appName: msg)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
             HUDController.shared.hide()

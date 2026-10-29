@@ -295,6 +295,18 @@ public final class AuditLogController: NSObject {
             badgeTitle = "⚠️ Сбой Telegram"
             badgeColor = .systemOrange
             isCritical = true
+        case "audit_cleared":
+            badgeTitle = "🧹 Очистка аудита"
+            badgeColor = .systemGray
+            isCritical = false
+        case "audit_pruned":
+            badgeTitle = "✂️ Ротация аудита"
+            badgeColor = .systemGray
+            isCritical = false
+        case "audit_exported":
+            badgeTitle = "📦 Экспорт аудита"
+            badgeColor = .systemTeal
+            isCritical = false
         default:
             badgeTitle = event.isSuccess ? "✓ \(event.eventType.uppercased())" : "⚠️ \(event.eventType.uppercased())"
             badgeColor = event.isSuccess ? .systemGreen : .systemRed

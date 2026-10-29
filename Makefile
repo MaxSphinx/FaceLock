@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock is-locked is-locked-json settings gallery status config apps diagnostics health toggle toggle-wake wake reload reset-session check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents export-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-gui prune-audit clear-audit pin-attempts pin-lockout test
+.PHONY: all build run enroll test-lock lock is-locked is-locked-json settings gallery status config apps diagnostics health toggle toggle-wake wake reload reset-session check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents export-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-gui prune-audit clear-audit export-audit pin-attempts pin-lockout test
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -40,6 +40,7 @@ help:
 	@echo "  make audit-stats    - View security audit statistics"
 	@echo "  make prune-audit KEEP= - Prune older audit events keeping latest N (default: 100)"
 	@echo "  make clear-audit    - Purge security audit event log"
+	@echo "  make export-audit FILE= - Export security audit log events to JSONL file"
 	@echo "  make incidents      - List logged intruder incident captures"
 	@echo "  make incidents-summary - Intruder telemetry (total, 24h, 7d, timestamps)"
 	@echo "  make export-incidents DIR= - Export all intruder incident photos & manifest"
@@ -192,6 +193,13 @@ prune-audit: build
 clear-audit: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --clear-audit
 
+export-audit: build
+	@if [ -z "$(FILE)" ]; then \
+		echo "Usage: make export-audit FILE=/path/to/destination.jsonl"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --export-audit "$(FILE)"
+
 test: build
 	@echo "==> Running CLI verification tests..."
 	@build/FaceLock.app/Contents/MacOS/FaceLock --help > /dev/null
@@ -215,16 +223,24 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --audit --type config --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --audit --type policy --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --audit --type vectors --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit --type telegram --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-stats > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-stats --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --diagnostics --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-walkaway 45 --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-walkaway --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-walkaway toggle --json > /dev/null
 	@CUR_PIN=$$(python3 -c "import json, os; print(json.load(open(os.path.expanduser('~/.facelock/config.json'))).get('pin', '0000'))" 2>/dev/null || echo "0000"); \
 	build/FaceLock.app/Contents/MacOS/FaceLock --verify-pin "$$CUR_PIN" --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --enable-telegram --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-liveness on --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-liveness --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-liveness toggle --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-touchid on --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-touchid --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-touchid toggle --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-lock-on-wake toggle --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-wake --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-lock-on-wake off --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --ignore-app com.apple.calculator --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --unignore-app com.apple.calculator --json > /dev/null

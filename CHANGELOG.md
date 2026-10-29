@@ -4,6 +4,26 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.12] - 2026-10-29
+
+### Added
+- **Status Bar Quick-Action Walk-Away Lock Toggle (`StatusBarController.swift`)**:
+  - Integrated direct menu bar quick-toggle for Walk-Away auto-lock protection (`Авто-замок при уходе (Walk-Away): Вкл (45с) | Выкл`) with keyboard shortcut `Cmd+K`.
+  - Dynamically displays active idle timeout in the dropdown title and emits real-time HUD notification and audit trail events on change.
+- **Interactive Feature Toggles & Extended CLI Ergonomics (`AppDelegate.swift`)**:
+  - Added dedicated CLI toggle flags and parameter normalization for all primary protection features: `--toggle-walkaway`, `--toggle-wake`, `--toggle-liveness`, and `--toggle-touchid`.
+  - Supported `toggle` parameter for `--set-walkaway toggle`, `--set-liveness toggle`, and `--set-touchid toggle`.
+  - Added automatic JSON alias resolution for `--toggle-walkaway-json`, `--toggle-wake-json`, `--toggle-liveness-json`, and `--toggle-touchid-json`.
+- **Live IPC Synchronization in Preferences UI (`SettingsWindow.swift`)**:
+  - Live preference sliders (`idleSlider`, `attemptsSlider`, `lockoutSlider`) and mode radio controls now immediately dispatch `io.github.facelock.command` IPC reload signals to active background daemons.
+  - Changes take effect instantaneously across running daemon instances without requiring explicit modal window dismissal or manual daemon restart.
+- **Dedicated Audit Maintenance Visual Badging & CLI Formatting (`AuditLogWindow.swift`, `AppDelegate.swift`)**:
+  - Added specialized badge styling for audit management actions: `audit_cleared` ("🧹 Очистка аудита"), `audit_pruned` ("✂️ Ротация аудита"), and `audit_exported` ("📦 Экспорт аудита").
+  - Extended CLI `--audit` log formatter with `🧹` icon for audit lifecycle operations.
+- **Makefile `export-audit` Target & Test Suite Expansion (`Makefile`)**:
+  - Added `make export-audit FILE=/path/to/destination.jsonl` target for easy security log archiving from the command line.
+  - Expanded `make test` CLI test suite verifying feature toggle switches and telegram audit log filtering.
+
 ## [1.0.11] - 2026-10-29
 
 ### Added

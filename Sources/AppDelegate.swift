@@ -44,6 +44,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--apps", "--json"])
             case "--version-json":
                 args.append(contentsOf: ["--version", "--json"])
+            case "--toggle-walkaway-json":
+                args.append(contentsOf: ["--toggle-walkaway", "--json"])
+            case "--toggle-wake-json":
+                args.append(contentsOf: ["--toggle-wake", "--json"])
+            case "--toggle-liveness-json":
+                args.append(contentsOf: ["--toggle-liveness", "--json"])
+            case "--toggle-touchid-json":
+                args.append(contentsOf: ["--toggle-touchid", "--json"])
             default:
                 args.append(arg)
             }
@@ -93,9 +101,12 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --unprotect-app <bundleId> Remove application bundle ID from protected list
               --ignore-app <bundleId>    Add application bundle ID to ignored list
               --unignore-app <bundleId>  Remove application bundle ID from ignored list
-              --set-liveness <on|off>    Enable or disable anti-spoofing liveness verification
-              --set-touchid <on|off>     Enable or disable Touch ID fallback on lock screen
+              --set-liveness <on|off|toggle> Enable, disable or toggle anti-spoofing verification
+              --toggle-liveness          Toggle anti-spoofing 3D liveness detection
+              --set-touchid <on|off|toggle> Enable, disable or toggle Touch ID fallback
+              --toggle-touchid           Toggle Touch ID fallback on lock screen
               --set-lock-on-wake <on|off|toggle> Enable, disable or toggle lock verification upon Mac screen wake
+              --toggle-wake              Toggle lock verification upon Mac screen wake
               --vectors [--json]         Inspect enrolled biometric facial vectors & cluster metrics
               --optimize-vectors [--json] Prune redundant templates & outliers to optimize cluster compactness
               --export-vectors <path>    Export enrolled facial biometric vectors to JSON file
@@ -107,7 +118,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --set-telegram <tok> <id>  Configure Telegram bot credentials and enable alerts
               --enable-telegram          Enable Telegram notifications
               --disable-telegram         Disable Telegram notifications
-              --set-walkaway <sec|off>   Configure walk-away timeout (10-600s) or 'off'
+              --set-walkaway <sec|off|toggle> Configure walk-away timeout (10-600s), 'off', or 'toggle'
+              --toggle-walkaway          Toggle walk-away auto-lock detection
               --set-threshold <val>      Set similarity threshold (0.05 - 0.60, default: 0.22)
               --set-timeout <seconds>    Set camera verification timeout (0.5 - 10.0s, default: 2.0s)
               --set-debounce <seconds>   Set app switch debounce interval (0.5 - 30.0s, default: 2.0s)
@@ -125,9 +137,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if args.contains("--version") || args.contains("-v") {
             if args.contains("--json") {
-                print("{\"name\":\"FaceLock\",\"version\":\"1.0.11\",\"platform\":\"darwin-arm64\"}")
+                print("{\"name\":\"FaceLock\",\"version\":\"1.0.12\",\"platform\":\"darwin-arm64\"}")
             } else {
-                print("FaceLock v1.0.11 (darwin-arm64)")
+                print("FaceLock v1.0.12 (darwin-arm64)")
             }
             exit(0)
         }
@@ -282,7 +294,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
             if args.contains("--json") {
                 let statusDict: [String: Any] = [
-                    "version": "1.0.11",
+                    "version": "1.0.12",
                     "daemon": isAlreadyRunning ? "running" : "stopped",
                     "shieldState": Config.shared.isEnabled ? "active" : "paused",
                     "protectionMode": Config.shared.protectionMode,
@@ -532,6 +544,20 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(0)
         }
 
+        if args.contains("--toggle-liveness") || (args.firstIndex(of: "--set-liveness").map { $0 + 1 < args.count && args[$0 + 1].lowercased() == "toggle" } ?? false) {
+            let enabled = !Config.shared.livenessDetectionEnabled
+            Config.shared.livenessDetectionEnabled = enabled
+            Config.shared.save()
+            SecurityAuditLogger.shared.logConfigChanged(setting: "livenessDetectionEnabled", value: "\(enabled)", details: "Toggled via CLI")
+            notifyDaemonIfRunning()
+            if args.contains("--json") {
+                print("{\"success\":true,\"livenessDetectionEnabled\":\(enabled)}")
+            } else {
+                print("✓ Anti-spoofing liveness verification \(enabled ? "enabled" : "disabled").")
+            }
+            exit(0)
+        }
+
         if let idx = args.firstIndex(of: "--set-liveness"), idx + 1 < args.count {
             let val = args[idx + 1].lowercased()
             let enabled = (val == "on" || val == "true" || val == "1" || val == "enable" || val == "yes")
@@ -547,6 +573,20 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(0)
         }
 
+        if args.contains("--toggle-touchid") || (args.firstIndex(of: "--set-touchid").map { $0 + 1 < args.count && args[$0 + 1].lowercased() == "toggle" } ?? false) {
+            let enabled = !Config.shared.autoTriggerTouchID
+            Config.shared.autoTriggerTouchID = enabled
+            Config.shared.save()
+            SecurityAuditLogger.shared.logConfigChanged(setting: "autoTriggerTouchID", value: "\(enabled)", details: "Toggled via CLI")
+            notifyDaemonIfRunning()
+            if args.contains("--json") {
+                print("{\"success\":true,\"autoTriggerTouchID\":\(enabled)}")
+            } else {
+                print("✓ Touch ID fallback on lock screen \(enabled ? "enabled" : "disabled").")
+            }
+            exit(0)
+        }
+
         if let idx = args.firstIndex(of: "--set-touchid"), idx + 1 < args.count {
             let val = args[idx + 1].lowercased()
             let enabled = (val == "on" || val == "true" || val == "1" || val == "enable" || val == "yes")
@@ -558,6 +598,20 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 print("{\"success\":true,\"autoTriggerTouchID\":\(enabled)}")
             } else {
                 print("✓ Touch ID fallback on lock screen \(enabled ? "enabled" : "disabled").")
+            }
+            exit(0)
+        }
+
+        if args.contains("--toggle-wake") {
+            let enabled = !Config.shared.lockOnWake
+            Config.shared.lockOnWake = enabled
+            Config.shared.save()
+            SecurityAuditLogger.shared.logConfigChanged(setting: "lockOnWake", value: "\(enabled)", details: "Toggled via CLI")
+            notifyDaemonIfRunning()
+            if args.contains("--json") {
+                print("{\"success\":true,\"lockOnWake\":\(enabled)}")
+            } else {
+                print("✓ Lock verification upon Mac screen wake \(enabled ? "enabled" : "disabled").")
             }
             exit(0)
         }
@@ -935,6 +989,20 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 print("{\"success\":true,\"telegramEnabled\":false}")
             } else {
                 print("✓ Telegram intruder alerts disabled.")
+            }
+            exit(0)
+        }
+
+        if args.contains("--toggle-walkaway") || (args.firstIndex(of: "--set-walkaway").map { $0 + 1 < args.count && args[$0 + 1].lowercased() == "toggle" } ?? false) {
+            let enabled = !Config.shared.walkAwayLockEnabled
+            Config.shared.walkAwayLockEnabled = enabled
+            Config.shared.save()
+            SecurityAuditLogger.shared.logConfigChanged(setting: "walkAwayLockEnabled", value: "\(enabled)", details: "Toggled via CLI")
+            notifyDaemonIfRunning()
+            if args.contains("--json") {
+                print("{\"success\":true,\"walkAwayLockEnabled\":\(enabled),\"walkAwayIdleSeconds\":\(Config.shared.walkAwayIdleSeconds)}")
+            } else {
+                print("✓ Walk-away auto-lock \(enabled ? "enabled (\(Int(Config.shared.walkAwayIdleSeconds))s idle timeout)" : "disabled").")
             }
             exit(0)
         }
@@ -1493,6 +1561,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     case "enrollment_cancelled": icon = "🧬⚠️"
                     case "telegram_alert_sent": icon = "📲"
                     case "telegram_alert_failed": icon = "⚠️📲"
+                    case "audit_cleared", "audit_pruned", "audit_exported": icon = "🧹"
                     case "incidents_action": icon = "📸"
                     case "pin_check": icon = "🔐"
                     case "face_check": icon = "👤"
@@ -2022,6 +2091,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 StatusBarController.shared.toggleEnabled()
             case "toggle-lock-on-wake":
                 StatusBarController.shared.toggleLockOnWake()
+            case "toggle-walkaway":
+                StatusBarController.shared.toggleWalkAwayLock()
             case "pause":
                 let minutes = notif.userInfo?["minutes"] as? Double ?? 15.0
                 StatusBarController.shared.pauseFor(minutes: minutes)

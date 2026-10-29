@@ -373,6 +373,7 @@ public final class SettingsController: NSObject {
         idleLabel?.stringValue = "\(val) сек"
         Config.shared.walkAwayIdleSeconds = Double(val)
         Config.shared.save()
+        AppDelegate.notifyDaemonReload()
     }
 
     @objc private func onAttemptsSliderChanged() {
@@ -380,6 +381,7 @@ public final class SettingsController: NSObject {
         attemptsLabel?.stringValue = "\(val)"
         Config.shared.maxFailedPinAttempts = val
         Config.shared.save()
+        AppDelegate.notifyDaemonReload()
     }
 
     @objc private func onLockoutSliderChanged() {
@@ -387,6 +389,7 @@ public final class SettingsController: NSObject {
         lockoutLabel?.stringValue = "\(val) сек"
         Config.shared.pinLockoutSeconds = Double(val)
         Config.shared.save()
+        AppDelegate.notifyDaemonReload()
     }
 
     @objc private func onModeChanged() {
@@ -396,6 +399,7 @@ public final class SettingsController: NSObject {
             Config.shared.protectionMode = "all"
         }
         Config.shared.save()
+        AppDelegate.notifyDaemonReload()
     }
 
     @objc private func onConfigChanged() {
