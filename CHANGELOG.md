@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.10] - 2026-10-29
 
 ### Added
+- **Direct `--*-json` CLI Flag Ergonomics & Strict Option Validation (`AppDelegate.swift`)**:
+  - Implemented automatic argument normalization for all machine-readable JSON flags: `--status-json`, `--config-json`, `--health-json`, `--diagnostics-json`, `--vectors-json`, `--optimize-vectors-json`, `--incidents-summary-json`, `--incidents-json`, `--latest-incident-json`, `--is-locked-json`, `--audit-json`, `--apps-json`, and `--version-json`.
+  - Added strict CLI option validation preventing typos or unrecognized flags from unintentionally launching or opening GUI settings.
+- **Status Bar Security Audit Trail (`StatusBarController.swift`)**:
+  - Added structured audit trail logging for menu bar protection mode switches, screen wake lock toggles, and biometric vector purges.
 - **Multi-Face Candidate Prioritization & Foreground Sorting (`CameraScanner.swift`)**:
   - Dynamically sorts detected faces by bounding box area to prioritize prominent foreground faces sitting directly in front of the screen.
   - Sequentially verifies all candidate faces when multiple individuals appear in camera view (e.g. background passersby in shared spaces), eliminating false lockouts when the owner is present.
