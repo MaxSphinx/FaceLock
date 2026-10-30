@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics health toggle toggle-wake wake reload reset-session check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents export-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-gui prune-audit clear-audit export-audit pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config restore-config test profiles profile toggle-shoulder toggle-audible toggle-battery
+.PHONY: all build run enroll test-lock lock is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics health toggle toggle-wake wake reload reset-session check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents export-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-gui prune-audit clear-audit export-audit pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config restore-config test profiles profile toggle-shoulder toggle-audible toggle-battery toggle-presentation
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -48,6 +48,7 @@ help:
 	@echo "  make toggle-shoulder- Toggle shoulder-surfing bystander defense"
 	@echo "  make toggle-audible - Toggle audible alarm and sound cues"
 	@echo "  make toggle-battery - Toggle battery-aware adaptive idle sweep throttling"
+	@echo "  make toggle-presentation - Toggle meeting / presentation lock auto-suppression"
 	@echo "  make test           - Run automated unit test suite and Apple Silicon benchmarks"
 	@echo "  make backup-config DEST= - Backup FaceLock configuration to JSON file"
 	@echo "  make restore-config SRC= - Restore FaceLock configuration from JSON file"
@@ -92,6 +93,9 @@ toggle-audible: build
 
 toggle-battery: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-battery-aware
+
+toggle-presentation: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-presentation
 
 run: build
 	@echo "Launching FaceLock..."
@@ -363,6 +367,9 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --prune-audit 1000 --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --export-audit /tmp/facelock_audit_test.jsonl --json > /dev/null && rm -f /tmp/facelock_audit_test.jsonl
 	@mkdir -p /tmp/facelock_test_export && build/FaceLock.app/Contents/MacOS/FaceLock --export-incidents /tmp/facelock_test_export --json > /dev/null && rm -rf /tmp/facelock_test_export
+	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-presentation --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-presentation-mode on --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-profile normal --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --health --json > /dev/null || true
 	@echo "✓ All CLI tests passed!"
 

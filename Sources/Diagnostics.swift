@@ -128,6 +128,11 @@ public struct Diagnostics {
                     "pids": runningApps.map { $0.processIdentifier },
                     "shieldState": config.isEnabled ? "active" : "paused",
                     "protectionMode": config.protectionMode,
+                    "activeProfile": config.activeProfile,
+                    "shoulderSurfingDefense": config.shoulderSurfingDefense,
+                    "batteryAwareScanning": config.batteryAwareScanning,
+                    "audibleAlerts": config.audibleAlerts,
+                    "presentationModeSuppression": config.presentationModeSuppression,
                     "walkAwayLockEnabled": config.walkAwayLockEnabled,
                     "walkAwayIdleSeconds": config.walkAwayIdleSeconds,
                     "lockOnWake": config.lockOnWake
@@ -198,6 +203,11 @@ public struct Diagnostics {
         }
         print("  • Shield Status: \(config.isEnabled ? "ACTIVE 🛡️" : "PAUSED ⏸️")")
         print("  • Protection Mode: \(config.protectionMode) (\(config.protectedBundleIdentifiers.count) protected apps)")
+        print("  • Active Security Profile: \(config.activeProfile.uppercased()) (\(Config.SecurityProfile(rawValue: config.activeProfile)?.title ?? config.activeProfile))")
+        print("  • Shoulder-Surfing Defense: \(config.shoulderSurfingDefense ? "Enabled (Bystander Detection Active) 👥" : "Disabled")")
+        print("  • Battery-Aware Adaptive Polling: \(config.batteryAwareScanning ? "Enabled (Live IOKit Power Sensing) 🔋" : "Disabled")")
+        print("  • Audible Deterrents: \(config.audibleAlerts ? "Enabled 🔔" : "Disabled (Silent)")")
+        print("  • Meeting Auto-Suppression: \(config.presentationModeSuppression ? "Enabled 🎯" : "Disabled")")
         print("  • Walk-Away Detection: \(config.walkAwayLockEnabled ? "Enabled (\(Int(config.walkAwayIdleSeconds))s idle)" : "Disabled")")
         print("  • Screen Wake Verification: \(config.lockOnWake ? "Enabled" : "Disabled")")
 

@@ -40,7 +40,7 @@ public final class WalkAwayMonitor {
         guard !isChecking else { return }
 
         // Check if presentation mode is active and should suppress lock
-        if isPresentationActive() {
+        if WalkAwayMonitor.isPresentationActive() {
             return
         }
 
@@ -89,22 +89,27 @@ public final class WalkAwayMonitor {
         }
     }
 
-    private func isPresentationActive() -> Bool {
+    public static let presentationBundleIdentifiers: Set<String> = [
+        "com.apple.iWork.Keynote",
+        "com.microsoft.Powerpoint",
+        "us.zoom.xos",
+        "us.zoom.ZoomPresence",
+        "com.apple.FaceTime",
+        "com.microsoft.teams",
+        "com.microsoft.teams2",
+        "com.cisco.webexmeetingsapp",
+        "com.tinyspeck.slackmacgap",
+        "com.discord.Discord"
+    ]
+
+    public static func isPresentationActive(bundleId: String? = nil) -> Bool {
         guard Config.shared.presentationModeSuppression else { return false }
-        if let frontApp = NSWorkspace.shared.frontmostApplication?.bundleIdentifier {
-            let presentationApps = [
-                "com.apple.iWork.Keynote",
-                "com.microsoft.Powerpoint",
-                "us.zoom.xos",
-                "com.apple.FaceTime",
-                "com.microsoft.teams2",
-                "com.cisco.webexmeetingsapp",
-                "com.tinyspeck.slackmacgap"
-            ]
-            if presentationApps.contains(frontApp) {
-                return true
-            }
-        }
-        return false
+        let bundle = bundleId ?? NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+        guard let appId = bundle else { return false }
+        return presentationBundleIdentifiers.contains(appId)
+    }
+
+    private func checkPresentationState() -> Bool {
+        return WalkAwayMonitor.isPresentationActive()
     }
 }

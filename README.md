@@ -196,6 +196,8 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --profile <name>` | Switch active security profile (e.g. `facelock --profile cafe`) |
 | `facelock --toggle-shoulder-defense` | Toggle shoulder-surfing bystander detection shield |
 | `facelock --toggle-audible` | Toggle audible alarm deterrent chimes |
+| `facelock --toggle-battery-aware` | Toggle battery-aware adaptive idle sweep throttling |
+| `facelock --toggle-presentation` | Toggle meeting / presentation lock auto-suppression |
 | `facelock --test` | Execute 100% automated test suite & vector benchmark |
 | `facelock --set-pin <pin>` | Set lock screen unlock PIN from terminal |
 | `facelock --set-pin-attempts <count>` | Set max failed PIN attempts before lockout (1-10, default: 3) |

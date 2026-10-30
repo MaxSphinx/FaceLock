@@ -66,6 +66,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--toggle-audible", "--json"])
             case "--toggle-battery-aware-json":
                 args.append(contentsOf: ["--toggle-battery-aware", "--json"])
+            case "--toggle-presentation-json", "--toggle-presentation-mode-json":
+                args.append(contentsOf: ["--toggle-presentation", "--json"])
             default:
                 args.append(arg)
             }
@@ -135,6 +137,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --set-audible <on|off>     Enable or disable audible alarm & sound cues
               --toggle-battery-aware     Toggle battery-aware adaptive idle sweep throttling
               --set-battery-aware <on|off> Enable or disable battery-aware adaptive scanning
+              --toggle-presentation, --toggle-presentation-mode Toggle meeting / presentation lock auto-suppression
+              --set-presentation-mode <on|off|toggle> Enable or disable meeting lock auto-suppression
               --test, --run-tests        Execute automated unit test suite and benchmarks
               --health [--json]          Fast operational healthcheck (exit 0 if healthy)
               --set-pin <pin>            Update lock screen unlock PIN
@@ -165,9 +169,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if args.contains("--version") || args.contains("-v") {
             if args.contains("--json") {
-                print("{\"name\":\"FaceLock\",\"version\":\"1.1.1\",\"platform\":\"darwin-arm64\"}")
+                print("{\"name\":\"FaceLock\",\"version\":\"1.1.2\",\"platform\":\"darwin-arm64\"}")
             } else {
-                print("FaceLock v1.1.1 (darwin-arm64)")
+                print("FaceLock v1.1.2 (darwin-arm64)")
             }
             exit(0)
         }
@@ -328,13 +332,15 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
             if args.contains("--json") {
                 let statusDict: [String: Any] = [
-                    "version": "1.1.0",
+                    "version": "1.1.2",
                     "daemon": isAlreadyRunning ? "running" : "stopped",
                     "shieldState": Config.shared.isEnabled ? "active" : "paused",
                     "protectionMode": Config.shared.protectionMode,
                     "activeProfile": Config.shared.activeProfile,
                     "shoulderSurfingDefense": Config.shared.shoulderSurfingDefense,
+                    "batteryAwareScanning": Config.shared.batteryAwareScanning,
                     "audibleAlerts": Config.shared.audibleAlerts,
+                    "presentationModeSuppression": Config.shared.presentationModeSuppression,
                     "enrolledTemplates": enrolledCount,
                     "incidentCaptures": incidentCount,
                     "recentIncidents24h": recent24hCount,
@@ -358,9 +364,15 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             let recent24hStr = recent24hCount > 0 ? " (\(recent24hCount) in past 24h)" : ""
             print("""
             FaceLock Status:
+              Version: 1.1.2 (darwin-arm64)
               Daemon: \(isAlreadyRunning ? "RUNNING" : "STOPPED")
               Shield: \(Config.shared.isEnabled ? "ACTIVE" : "PAUSED")
               Mode: \(Config.shared.protectionMode)
+              Security Profile: \(Config.shared.activeProfile.uppercased()) (\(Config.SecurityProfile(rawValue: Config.shared.activeProfile)?.title ?? Config.shared.activeProfile))
+              Shoulder-Surfing Defense: \(Config.shared.shoulderSurfingDefense ? "Enabled" : "Disabled")
+              Battery-Aware Polling: \(Config.shared.batteryAwareScanning ? "Enabled" : "Disabled")
+              Audible Alerts: \(Config.shared.audibleAlerts ? "Enabled" : "Disabled")
+              Meeting Auto-Suppression: \(Config.shared.presentationModeSuppression ? "Enabled" : "Disabled")
               Enrolled Templates: \(enrolledCount) (\(enrolledCount > 0 ? "Strict Neural Biometrics" : "Presence Detection Fallback"))
               Intruder Captures: \(incidentCount) logged\(recent24hStr)
               Decision Threshold: \(Config.shared.similarityThreshold)
@@ -1125,7 +1137,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(0)
         }
 
-        if let idx = args.firstIndex(of: "--profile"), idx + 1 < args.count {
+        if let idx = (args.firstIndex(of: "--profile") ?? args.firstIndex(of: "--set-profile")), idx + 1 < args.count {
             let targetName = args[idx + 1].lowercased()
             if Config.shared.setProfile(targetName) {
                 notifyDaemonIfRunning()
@@ -1234,6 +1246,40 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 print("{\"success\":true,\"batteryAwareScanning\":\(enabled)}")
             } else {
                 print("✓ Battery-aware adaptive scanning set to \(enabled ? "enabled" : "disabled").")
+            }
+            exit(0)
+        }
+
+        if args.contains("--toggle-presentation") || args.contains("--toggle-presentation-mode") {
+            let enabled = !Config.shared.presentationModeSuppression
+            Config.shared.presentationModeSuppression = enabled
+            Config.shared.save()
+            SecurityAuditLogger.shared.logConfigChanged(setting: "presentationModeSuppression", value: "\(enabled)", details: "Toggled via CLI")
+            notifyDaemonIfRunning()
+            if args.contains("--json") {
+                print("{\"success\":true,\"presentationModeSuppression\":\(enabled)}")
+            } else {
+                print("✓ Meeting / presentation lock auto-suppression \(enabled ? "enabled" : "disabled").")
+            }
+            exit(0)
+        }
+
+        if let idx = (args.firstIndex(of: "--set-presentation-mode") ?? args.firstIndex(of: "--set-presentation")), idx + 1 < args.count {
+            let val = args[idx + 1].lowercased()
+            let enabled: Bool
+            if val == "toggle" {
+                enabled = !Config.shared.presentationModeSuppression
+            } else {
+                enabled = (val == "1" || val == "true" || val == "on" || val == "enable")
+            }
+            Config.shared.presentationModeSuppression = enabled
+            Config.shared.save()
+            SecurityAuditLogger.shared.logConfigChanged(setting: "presentationModeSuppression", value: "\(enabled)", details: "Configured via CLI")
+            notifyDaemonIfRunning()
+            if args.contains("--json") {
+                print("{\"success\":true,\"presentationModeSuppression\":\(enabled)}")
+            } else {
+                print("✓ Meeting / presentation lock auto-suppression set to \(enabled ? "enabled" : "disabled").")
             }
             exit(0)
         }

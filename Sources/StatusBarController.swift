@@ -118,6 +118,11 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         batteryItem.target = self
         menu.addItem(batteryItem)
 
+        let presentationState = Config.shared.presentationModeSuppression ? "Вкл" : "Выкл"
+        let presentationItem = NSMenuItem(title: "Подавление при звонках/презентациях: \(presentationState)", action: #selector(togglePresentationSuppression), keyEquivalent: "")
+        presentationItem.target = self
+        menu.addItem(presentationItem)
+
         let appsItem = NSMenuItem(title: "Политика приложений (Секретные: \(Config.shared.protectedBundleIdentifiers.count))...", action: #selector(openAppsManager), keyEquivalent: "p")
         appsItem.target = self
         menu.addItem(appsItem)
@@ -285,6 +290,14 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         let state = Config.shared.batteryAwareScanning ? "Вкл" : "Выкл"
         SecurityAuditLogger.shared.logConfigChanged(setting: "batteryAwareScanning", value: "\(Config.shared.batteryAwareScanning)", details: "Toggled via menu bar icon")
         HUDController.shared.showProfile(name: "Энергосбережение: \(state)")
+    }
+
+    @objc private func togglePresentationSuppression() {
+        Config.shared.presentationModeSuppression.toggle()
+        Config.shared.save()
+        let state = Config.shared.presentationModeSuppression ? "Вкл" : "Выкл"
+        SecurityAuditLogger.shared.logConfigChanged(setting: "presentationModeSuppression", value: "\(Config.shared.presentationModeSuppression)", details: "Toggled via menu bar icon")
+        HUDController.shared.showProfile(name: "Режим созвонов: \(state)")
     }
 
     private func buildCameraSubmenu() -> NSMenuItem {

@@ -4,6 +4,22 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2026-10-31
+
+### Added
+- **Meeting & Presentation Auto-Suppression Parity (`WalkAwayMonitor.swift`, `StatusBarController.swift`)**:
+  - Exported `presentationBundleIdentifiers` set covering Keynote, PowerPoint, Zoom, Webex, Teams, FaceTime, Slack, and Discord.
+  - Implemented standalone `WalkAwayMonitor.isPresentationActive(bundleId:)` supporting both frontmost workspace evaluation and explicit bundle querying.
+  - Added "Подавление при звонках/презентациях: Вкл/Выкл" toggle into macOS menu bar status item with HUD feedback.
+- **CLI Ergonomics & Diagnostic Parity (`AppDelegate.swift`, `Diagnostics.swift`, `Makefile`)**:
+  - Added CLI flags `--toggle-presentation`, `--toggle-presentation-mode`, `--set-presentation-mode <on|off|toggle>`, and `--toggle-presentation-json`.
+  - Added `--set-profile <name>` alias for direct profile switching from terminal scripts.
+  - Integrated `activeProfile`, `shoulderSurfingDefense`, `batteryAwareScanning`, `audibleAlerts`, and `presentationModeSuppression` into `--diagnostics` (both text and JSON modes) and `--status` outputs.
+  - Synchronized version string `1.1.2` across bundle `Info.plist`, CLI `--version`, and status telemetry.
+  - Added Makefile target `make toggle-presentation`.
+- **Test Suite Expansion to 70 Tests (`Tests/FaceLockTests.swift`)**:
+  - Added automated test cases for presentation and meeting app identification, bundle suppression logic, feature flag state toggling, and presentation CLI alias normalization.
+
 ## [1.1.1] - 2026-10-30
 
 ### Added

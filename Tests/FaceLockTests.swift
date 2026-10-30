@@ -50,6 +50,7 @@ public final class FaceLockTestSuite {
         testSecurityProfiles()
         testBatteryAwareAdaptiveScanning()
         testAudibleAlertsAndShoulderDefense()
+        testMeetingAndPresentationSuppression()
         testCliFlagNormalization()
         testApplicationPolicyFiltering()
         testPinLockoutExponentialLogic()
@@ -202,7 +203,28 @@ public final class FaceLockTestSuite {
         assertEqual(config.audibleAlerts, true, "Audible alerts toggles to true")
     }
 
-    // MARK: - 4d. CLI Argument Normalization
+    // MARK: - 4d. Meeting & Presentation Mode Auto-Suppression
+    private func testMeetingAndPresentationSuppression() {
+        print("\n▶ Test Suite: Meeting & Presentation Mode Auto-Suppression")
+        let config = Config()
+        assertEqual(config.presentationModeSuppression, true, "Presentation mode suppression is enabled by default")
+
+        assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("com.apple.iWork.Keynote"), "Keynote is recognized as presentation app")
+        assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("com.microsoft.Powerpoint"), "PowerPoint is recognized as presentation app")
+        assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("us.zoom.xos"), "Zoom is recognized as meeting app")
+        assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("com.cisco.webexmeetingsapp"), "Webex is recognized as meeting app")
+        assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("com.discord.Discord"), "Discord is recognized as communication app")
+
+        assert(WalkAwayMonitor.isPresentationActive(bundleId: "com.apple.iWork.Keynote"), "Keynote triggers presentation lock suppression")
+        assert(!WalkAwayMonitor.isPresentationActive(bundleId: "com.apple.Safari"), "Safari does not trigger presentation suppression")
+
+        let orig = Config.shared.presentationModeSuppression
+        Config.shared.presentationModeSuppression = false
+        assert(!WalkAwayMonitor.isPresentationActive(bundleId: "com.apple.iWork.Keynote"), "Suppression disabled when feature flag is off")
+        Config.shared.presentationModeSuppression = orig
+    }
+
+    // MARK: - 4e. CLI Argument Normalization
     private func testCliFlagNormalization() {
         print("\n▶ Test Suite: CLI Argument Normalization")
         let aliasMap: [String: [String]] = [
@@ -210,6 +232,8 @@ public final class FaceLockTestSuite {
             "--toggle-shoulder-json": ["--toggle-shoulder-defense", "--json"],
             "--toggle-audible-json": ["--toggle-audible", "--json"],
             "--toggle-battery-aware-json": ["--toggle-battery-aware", "--json"],
+            "--toggle-presentation-json": ["--toggle-presentation", "--json"],
+            "--toggle-presentation-mode-json": ["--toggle-presentation", "--json"],
             "--status-json": ["--status", "--json"],
             "--health-json": ["--health", "--json"]
         ]

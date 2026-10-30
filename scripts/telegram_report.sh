@@ -177,6 +177,8 @@ if os.path.exists(p):
             feats.append('Battery-Aware 🔋')
         if c.get('audibleAlerts', False):
             feats.append('Audible 🔔')
+        if c.get('presentationModeSuppression', True):
+            feats.append('Meeting-Safe 🎯')
         print(', '.join(feats) if feats else 'Базовые')
     except:
         print('N/A')
