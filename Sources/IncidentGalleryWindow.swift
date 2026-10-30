@@ -4,10 +4,12 @@ import UniformTypeIdentifiers
 public final class IncidentGalleryController: NSObject {
     public static let shared = IncidentGalleryController()
 
-    private var window: NSWindow?
+    private var window: FaceLockUtilityWindow?
     private var scrollView: NSScrollView?
     private var containerView: NSView?
     private var statsLabel: NSTextField?
+    private var filterPopup: NSPopUpButton?
+    private var currentFilter: String = "all"
 
     private override init() {
         super.init()
@@ -30,7 +32,7 @@ public final class IncidentGalleryController: NSObject {
         let width: CGFloat = 780
         let height: CGFloat = 620
 
-        let win = NSWindow(
+        let win = FaceLockUtilityWindow(
             contentRect: NSRect(x: 0, y: 0, width: width, height: height),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
@@ -40,6 +42,9 @@ public final class IncidentGalleryController: NSObject {
         win.appearance = NSAppearance(named: .darkAqua)
         win.isReleasedWhenClosed = false
         win.minSize = NSSize(width: 680, height: 460)
+        win.onRefresh = { [weak self] in
+            self?.reloadIncidents()
+        }
 
         let root = NSView(frame: win.contentView!.bounds)
         root.wantsLayer = true
@@ -68,7 +73,7 @@ public final class IncidentGalleryController: NSObject {
         subtitle.textColor = .secondaryLabelColor
         header.addSubview(subtitle)
 
-        let stats = NSTextField(frame: NSRect(x: 20, y: 14, width: 380, height: 18))
+        let stats = NSTextField(frame: NSRect(x: 20, y: 14, width: 330, height: 18))
         stats.isEditable = false
         stats.isBordered = false
         stats.backgroundColor = .clear
@@ -110,6 +115,35 @@ public final class IncidentGalleryController: NSObject {
         clearBtn.action = #selector(clearAllIncidents)
         header.addSubview(clearBtn)
 
+        // Filter & Prune Row
+        let filterLabel = NSTextField(frame: NSRect(x: width - 435, y: 14, width: 55, height: 20))
+        filterLabel.isEditable = false
+        filterLabel.isBordered = false
+        filterLabel.backgroundColor = .clear
+        filterLabel.stringValue = "Период:"
+        filterLabel.textColor = .secondaryLabelColor
+        filterLabel.font = .systemFont(ofSize: 12)
+        filterLabel.autoresizingMask = [.minXMargin]
+        header.addSubview(filterLabel)
+
+        let popup = NSPopUpButton(frame: NSRect(x: width - 380, y: 11, width: 235, height: 26), pullsDown: false)
+        popup.autoresizingMask = [.minXMargin]
+        popup.addItem(withTitle: "Все инциденты (All)")
+        popup.addItem(withTitle: "За последние 24ч (24h)")
+        popup.addItem(withTitle: "За последние 7 дней (7d)")
+        popup.target = self
+        popup.action = #selector(filterChanged(_:))
+        header.addSubview(popup)
+        self.filterPopup = popup
+
+        let pruneBtn = NSButton(frame: NSRect(x: width - 140, y: 11, width: 125, height: 26))
+        pruneBtn.title = "Проредить..."
+        pruneBtn.bezelStyle = .rounded
+        pruneBtn.autoresizingMask = [.minXMargin]
+        pruneBtn.target = self
+        pruneBtn.action = #selector(pruneIncidentsClicked)
+        header.addSubview(pruneBtn)
+
         root.addSubview(header)
 
         let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: width, height: height - headerH))
@@ -130,6 +164,43 @@ public final class IncidentGalleryController: NSObject {
     }
 
     @objc private func refreshClicked() {
+        reloadIncidents()
+    }
+
+    @objc private func filterChanged(_ sender: NSPopUpButton) {
+        switch sender.indexOfSelectedItem {
+        case 1: currentFilter = "24h"
+        case 2: currentFilter = "7d"
+        default: currentFilter = "all"
+        }
+        reloadIncidents()
+    }
+
+    @objc private func pruneIncidentsClicked() {
+        let alert = NSAlert()
+        alert.messageText = "Проредить журнал инцидентов"
+        alert.informativeText = "Оставить только самые свежие фотографии нарушителей для освобождения места на диске. Более старые снимки будут безопасно удалены:"
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Оставить 20")
+        alert.addButton(withTitle: "Оставить 10")
+        alert.addButton(withTitle: "Оставить 5")
+        alert.addButton(withTitle: "Отмена")
+
+        let response = alert.runModal()
+        let keepCount: Int
+        switch response {
+        case .alertFirstButtonReturn: keepCount = 20
+        case .alertSecondButtonReturn: keepCount = 10
+        case .alertThirdButtonReturn: keepCount = 5
+        default: return
+        }
+
+        let removed = CameraScanner.shared.pruneIntruderPhotos(maxRetained: keepCount)
+        SecurityAuditLogger.shared.logIncidentsAction(
+            action: "Pruned intruder incident captures from GUI",
+            count: removed,
+            details: "Retained latest \(keepCount) photos (removed \(removed))"
+        )
         reloadIncidents()
     }
 
@@ -168,7 +239,26 @@ public final class IncidentGalleryController: NSObject {
             : "Всего: \(files.count) инцидентов (\(past24Count) за 24ч) • Память: \(String(format: "%.2f", sizeMB)) МБ"
         statsLabel?.stringValue = metricsStr
 
-        if files.isEmpty {
+        // Apply period filter
+        var displayFiles: [String] = []
+        for file in files {
+            let p = dir.appendingPathComponent(file).path
+            let modDate = (try? FileManager.default.attributesOfItem(atPath: p)[.modificationDate] as? Date) ?? .distantPast
+            let ageSeconds = now.timeIntervalSince(modDate)
+            if currentFilter == "24h" {
+                if ageSeconds <= 86400 {
+                    displayFiles.append(file)
+                }
+            } else if currentFilter == "7d" {
+                if ageSeconds <= 7 * 86400 {
+                    displayFiles.append(file)
+                }
+            } else {
+                displayFiles.append(file)
+            }
+        }
+
+        if displayFiles.isEmpty {
             let emptyLabel = NSTextField(frame: NSRect(x: 20, y: (scroll.bounds.height - 40) / 2, width: scroll.bounds.width - 40, height: 40))
             emptyLabel.isEditable = false
             emptyLabel.isBordered = false
@@ -176,7 +266,11 @@ public final class IncidentGalleryController: NSObject {
             emptyLabel.textColor = .secondaryLabelColor
             emptyLabel.font = .systemFont(ofSize: 15, weight: .medium)
             emptyLabel.alignment = .center
-            emptyLabel.stringValue = "🎉 Журнал чист! Ни одного постороннего не зафиксировано."
+            if currentFilter != "all" {
+                emptyLabel.stringValue = "🔍 Нет инцидентов за выбранный период времени."
+            } else {
+                emptyLabel.stringValue = "🎉 Журнал чист! Ни одного постороннего не зафиксировано."
+            }
             container.addSubview(emptyLabel)
             container.frame = scroll.contentView.bounds
             return
@@ -184,12 +278,12 @@ public final class IncidentGalleryController: NSObject {
 
         let itemH: CGFloat = 120
         let itemW: CGFloat = scroll.bounds.width - 40
-        let totalH = CGFloat(files.count) * (itemH + 12) + 20
+        let totalH = CGFloat(displayFiles.count) * (itemH + 12) + 20
         container.frame = NSRect(x: 0, y: 0, width: scroll.bounds.width, height: max(totalH, scroll.bounds.height))
 
         var currentY = totalH - itemH - 10
 
-        for file in files {
+        for file in displayFiles {
             let fileURL = dir.appendingPathComponent(file)
             let card = makeIncidentCard(fileURL: fileURL, frame: NSRect(x: 20, y: currentY, width: itemW, height: itemH))
             container.addSubview(card)

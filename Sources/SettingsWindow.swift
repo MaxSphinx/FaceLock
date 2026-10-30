@@ -3,7 +3,7 @@ import AppKit
 public final class SettingsController: NSObject {
     public static let shared = SettingsController()
 
-    private var window: NSWindow?
+    private var window: FaceLockUtilityWindow?
 
     private var masterSwitch: NSButton?
     private var masterStatusLabel: NSTextField?
@@ -52,7 +52,7 @@ public final class SettingsController: NSObject {
         let width: CGFloat = 520
         let height: CGFloat = 890
 
-        let win = NSWindow(
+        let win = FaceLockUtilityWindow(
             contentRect: NSRect(x: 0, y: 0, width: width, height: height),
             styleMask: [.titled, .closable],
             backing: .buffered,

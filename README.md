@@ -77,7 +77,11 @@ Built strictly in modern **Swift & native AppKit**, with **zero external package
   - **Selective Mode**: Guards only confidential apps (Telegram, Safari, Chrome, Terminal, Notes, Photos, WhatsApp, etc.).
 - **🚶‍♂️ Walk-Away Auto Lock**: Monitors user idle state (`CGEventSource`). If keyboard/mouse are inactive for 45s, FaceLock silently verifies presence via camera. If you stepped away, the Mac locks immediately.
 - **👁️ Liveness Verification**: Analyzes facial landmark contours (`VNDetectFaceLandmarksRequest`) to thwart 2D screen or paper printout attacks.
-- **🎛️ Native Menu Bar & CLI**: One-click protection toggle, calibration wizard, incident log gallery, and full terminal CLI tooling.
+- **🎛️ Native Menu Bar, UI Gallery & Audit Log**:
+  - One-click protection toggle, 3D face calibration wizard, dynamic camera switcher.
+  - Interactive Incident Gallery with 24h / 7d period filtering and one-click pruning.
+  - Security Audit Log viewer with category filtering, pruning, and JSONL export.
+  - Native macOS keyboard ergonomics (`Escape` / `Cmd+W` to close, `Cmd+R` to refresh).
 
 ---
 

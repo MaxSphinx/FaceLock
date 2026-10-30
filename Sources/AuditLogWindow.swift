@@ -3,7 +3,7 @@ import AppKit
 public final class AuditLogController: NSObject {
     public static let shared = AuditLogController()
 
-    private var window: NSWindow?
+    private var window: FaceLockUtilityWindow?
     private var scrollView: NSScrollView?
     private var containerView: NSView?
     private var statsLabel: NSTextField?
@@ -31,7 +31,7 @@ public final class AuditLogController: NSObject {
         let width: CGFloat = 780
         let height: CGFloat = 620
 
-        let win = NSWindow(
+        let win = FaceLockUtilityWindow(
             contentRect: NSRect(x: 0, y: 0, width: width, height: height),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
@@ -41,6 +41,9 @@ public final class AuditLogController: NSObject {
         win.appearance = NSAppearance(named: .darkAqua)
         win.isReleasedWhenClosed = false
         win.minSize = NSSize(width: 660, height: 460)
+        win.onRefresh = { [weak self] in
+            self?.reloadLogs()
+        }
 
         let root = NSView(frame: win.contentView!.bounds)
         root.wantsLayer = true
@@ -81,7 +84,7 @@ public final class AuditLogController: NSObject {
         self.statsLabel = stats
 
         // Action Buttons
-        let finderBtn = NSButton(frame: NSRect(x: width - 390, y: 52, width: 90, height: 30))
+        let finderBtn = NSButton(frame: NSRect(x: width - 495, y: 52, width: 85, height: 30))
         finderBtn.title = "В Finder"
         finderBtn.bezelStyle = .rounded
         finderBtn.autoresizingMask = [.minXMargin]
@@ -89,7 +92,7 @@ public final class AuditLogController: NSObject {
         finderBtn.action = #selector(openInFinder)
         header.addSubview(finderBtn)
 
-        let exportBtn = NSButton(frame: NSRect(x: width - 295, y: 52, width: 95, height: 30))
+        let exportBtn = NSButton(frame: NSRect(x: width - 405, y: 52, width: 90, height: 30))
         exportBtn.title = "Экспорт..."
         exportBtn.bezelStyle = .rounded
         exportBtn.autoresizingMask = [.minXMargin]
@@ -97,7 +100,15 @@ public final class AuditLogController: NSObject {
         exportBtn.action = #selector(exportLogsClicked)
         header.addSubview(exportBtn)
 
-        let clearBtn = NSButton(frame: NSRect(x: width - 195, y: 52, width: 90, height: 30))
+        let pruneBtn = NSButton(frame: NSRect(x: width - 310, y: 52, width: 105, height: 30))
+        pruneBtn.title = "Проредить..."
+        pruneBtn.bezelStyle = .rounded
+        pruneBtn.autoresizingMask = [.minXMargin]
+        pruneBtn.target = self
+        pruneBtn.action = #selector(pruneLogsClicked)
+        header.addSubview(pruneBtn)
+
+        let clearBtn = NSButton(frame: NSRect(x: width - 200, y: 52, width: 90, height: 30))
         clearBtn.title = "Очистить"
         clearBtn.bezelStyle = .rounded
         clearBtn.autoresizingMask = [.minXMargin]
@@ -105,7 +116,7 @@ public final class AuditLogController: NSObject {
         clearBtn.action = #selector(clearLogsClicked)
         header.addSubview(clearBtn)
 
-        let refreshBtn = NSButton(frame: NSRect(x: width - 100, y: 52, width: 85, height: 30))
+        let refreshBtn = NSButton(frame: NSRect(x: width - 105, y: 52, width: 85, height: 30))
         refreshBtn.title = "Обновить"
         refreshBtn.bezelStyle = .rounded
         refreshBtn.autoresizingMask = [.minXMargin]
@@ -423,6 +434,35 @@ public final class AuditLogController: NSObject {
         if FileManager.default.fileExists(atPath: photoURL.path) {
             NSWorkspace.shared.open(photoURL)
         }
+    }
+
+    @objc private func pruneLogsClicked() {
+        let alert = NSAlert()
+        alert.messageText = "Проредить журнал аудита безопасности"
+        alert.informativeText = "Выберите количество последних событий безопасности для сохранения. Более старые записи будут удалены для оптимизации журнала:"
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Оставить 100")
+        alert.addButton(withTitle: "Оставить 50")
+        alert.addButton(withTitle: "Оставить 25")
+        alert.addButton(withTitle: "Отмена")
+
+        let response = alert.runModal()
+        let keepCount: Int
+        switch response {
+        case .alertFirstButtonReturn: keepCount = 100
+        case .alertSecondButtonReturn: keepCount = 50
+        case .alertThirdButtonReturn: keepCount = 25
+        default: return
+        }
+
+        let res = SecurityAuditLogger.shared.pruneLogs(keeping: keepCount)
+        SecurityAuditLogger.shared.log(
+            eventType: "audit_pruned",
+            appName: "FaceLock GUI",
+            details: "Pruned \(res.prunedCount) older audit events from GUI (retained \(res.remainingCount))",
+            isSuccess: true
+        )
+        reloadLogs()
     }
 
     @objc private func clearLogsClicked() {

@@ -4,6 +4,23 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.15] - 2026-10-30
+
+### Added
+- **Interactive Incident Pruning & Period Filtering (`IncidentGalleryWindow.swift`)**:
+  - Added dedicated period filter dropdown in the Incident Gallery window: `Все инциденты (All)`, `За последние 24ч (24h)`, and `За последние 7 дней (7d)` with instant dynamic re-filtering.
+  - Added interactive "Проредить..." (Prune Incidents) dialog allowing users to retain the latest 20, 10, or 5 snapshots and safely remove older intruder images to conserve disk space.
+  - Integrated structured audit logging (`incidents_action`) recording files pruned directly from the GUI gallery.
+- **Interactive Audit Log Pruning Dialog (`AuditLogWindow.swift`)**:
+  - Added interactive "Проредить..." (Prune Audit) dialog in the Security Audit Log viewer, allowing one-click retention of the latest 100, 50, or 25 security audit records with live telemetry updates.
+  - Added structured audit trail recording (`audit_pruned`) of GUI pruning operations.
+- **macOS Window Ergonomics & Keyboard Shortcuts (`FaceLockUtilityWindow.swift`)**:
+  - Created reusable `FaceLockUtilityWindow` standardizing keyboard ergonomics across accessory daemon windows:
+    - `Escape` / `Cmd+W`: Cleanly close Settings, Incident Gallery, and Audit Log windows.
+    - `Cmd+R`: Instantly trigger content refresh in Incident Gallery and Audit Log viewers.
+- **Makefile Parametrization (`Makefile`)**:
+  - Parameterized `make prune-incidents` with `KEEP=` flag support (`make prune-incidents KEEP=20`), defaulting to 30.
+
 ## [1.0.14] - 2026-10-30
 
 ### Added

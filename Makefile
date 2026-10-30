@@ -205,7 +205,7 @@ clear-incidents: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --clear-incidents
 
 prune-incidents: build
-	@build/FaceLock.app/Contents/MacOS/FaceLock --prune-incidents 30
+	@build/FaceLock.app/Contents/MacOS/FaceLock --prune-incidents $(or $(KEEP),30)
 
 test-telegram: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --test-telegram

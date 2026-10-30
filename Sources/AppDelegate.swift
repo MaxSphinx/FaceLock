@@ -144,9 +144,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if args.contains("--version") || args.contains("-v") {
             if args.contains("--json") {
-                print("{\"name\":\"FaceLock\",\"version\":\"1.0.14\",\"platform\":\"darwin-arm64\"}")
+                print("{\"name\":\"FaceLock\",\"version\":\"1.0.15\",\"platform\":\"darwin-arm64\"}")
             } else {
-                print("FaceLock v1.0.14 (darwin-arm64)")
+                print("FaceLock v1.0.15 (darwin-arm64)")
             }
             exit(0)
         }
@@ -301,7 +301,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
             if args.contains("--json") {
                 let statusDict: [String: Any] = [
-                    "version": "1.0.14",
+                    "version": "1.0.15",
                     "daemon": isAlreadyRunning ? "running" : "stopped",
                     "shieldState": Config.shared.isEnabled ? "active" : "paused",
                     "protectionMode": Config.shared.protectionMode,
