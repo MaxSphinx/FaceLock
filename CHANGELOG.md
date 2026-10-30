@@ -4,6 +4,25 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-10-30
+
+### Added
+- **Settings GUI Profile & Defense Parity (`SettingsWindow.swift`)**:
+  - Integrated Security Context Profile selector with dynamic descriptive summary badge across all 5 profiles (`normal`, `cafe`, `work`, `home`, `presentation`).
+  - Added GUI controls for Shoulder-Surfing bystander defense, battery-aware adaptive scanning, audible chimes, and presentation mode suppression.
+  - Implemented responsive `NSScrollView` with flipped layout (`SettingsFlippedView`) ensuring ergonomic scrolling across all MacBook display sizes.
+- **Hardware Battery-Aware Polling Integration (`WalkAwayMonitor.swift`, `build.sh`)**:
+  - Linked macOS `IOKit` framework and implemented live power source sensing via `IOKit.ps` (`IOPSCopyPowerSourcesInfo` / `IOPSGetProvidingPowerSourceType`).
+  - Adaptive 45s debounce and throttled idle polling when running on MacBook battery to maximize battery longevity.
+  - Expanded meeting / presentation auto-suppression detection (Keynote, PowerPoint, Zoom, Teams, Webex, Slack Huddle).
+- **CLI Ergonomics & Flag Normalization (`AppDelegate.swift`, `Makefile`)**:
+  - Added `--set-audible <on|off|toggle>`, `--toggle-battery-aware`, and `--set-battery-aware <on|off|toggle>`.
+  - Added JSON alias normalization for `--profiles-json`, `--toggle-shoulder-json`, `--toggle-audible-json`, and `--toggle-battery-aware-json`.
+  - Updated `--help` output with detailed descriptions for profiles, shoulder defense, audible alerts, and battery awareness.
+  - Added Makefile targets `make profiles`, `make profile PROFILE=`, `make toggle-shoulder`, `make toggle-audible`, `make toggle-battery`, and `make test`.
+- **Test Suite Expansion to 61 Tests (`Tests/FaceLockTests.swift`)**:
+  - Expanded automated unit tests to 61 passing test cases (100% reliability), verifying all 5 profiles, power management detection, audio alert configurations, and CLI argument normalization.
+
 ## [1.1.0] - 2026-10-30
 
 ### Added

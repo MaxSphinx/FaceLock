@@ -145,6 +145,45 @@ else:
     print('0 записей')
 " 2>/dev/null || echo "0 записей")
 
+ACTIVE_PROFILE=$(python3 -c "import json, os
+p = os.path.expanduser('~/.facelock/config.json')
+if os.path.exists(p):
+    try:
+        c = json.load(open(p))
+        prof = c.get('activeProfile', 'normal')
+        labels = {
+            'normal': 'Normal (Сбалансированный)',
+            'cafe': 'Cafe (Strict)',
+            'work': 'Work (Офис)',
+            'home': 'Home (Relaxed)',
+            'presentation': 'Presentation (Фокус)'
+        }
+        print(labels.get(prof, prof.capitalize()))
+    except:
+        print('Normal')
+else:
+    print('Normal')
+" 2>/dev/null || echo "Normal")
+
+DEFENSE_FEATURES=$(python3 -c "import json, os
+p = os.path.expanduser('~/.facelock/config.json')
+if os.path.exists(p):
+    try:
+        c = json.load(open(p))
+        feats = []
+        if c.get('shoulderSurfingDefense', False):
+            feats.append('Shoulder-Surfing 👥')
+        if c.get('batteryAwareScanning', True):
+            feats.append('Battery-Aware 🔋')
+        if c.get('audibleAlerts', False):
+            feats.append('Audible 🔔')
+        print(', '.join(feats) if feats else 'Базовые')
+    except:
+        print('N/A')
+else:
+    print('N/A')
+" 2>/dev/null || echo "N/A")
+
 # Latest commit info
 if [[ -d "$REPO_DIR/.git" ]]; then
     LATEST_COMMIT=$(git -C "$REPO_DIR" log -1 --pretty=format:"%h - %s" 2>/dev/null || echo "N/A")
@@ -175,6 +214,8 @@ MESSAGE="🛡️ <b>FaceLock Status Report</b>
 🖥️ <b>Локальный статус FaceLock:</b>
 • Демон: <b>$DAEMON_STATUS</b>
 • Защита: <b>$SHIELD_STATUS</b>
+• Профиль: <b>$ACTIVE_PROFILE</b>
+• Активные модули: <b>$DEFENSE_FEATURES</b>
 • Слепки лица: <b>$ENROLLED_COUNT</b>
 • Нарушители: <b>$INTRUDER_COUNT</b>
 • Аудит безопасности: <b>$AUDIT_COUNT</b>

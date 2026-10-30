@@ -58,6 +58,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--reset-camera", "--json"])
             case "--reset-apps-json":
                 args.append(contentsOf: ["--reset-apps", "--json"])
+            case "--profiles-json":
+                args.append(contentsOf: ["--profiles", "--json"])
+            case "--toggle-shoulder-json", "--toggle-shoulder-defense-json":
+                args.append(contentsOf: ["--toggle-shoulder-defense", "--json"])
+            case "--toggle-audible-json":
+                args.append(contentsOf: ["--toggle-audible", "--json"])
+            case "--toggle-battery-aware-json":
+                args.append(contentsOf: ["--toggle-battery-aware", "--json"])
             default:
                 args.append(arg)
             }
@@ -119,6 +127,15 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --optimize-vectors [--json] Prune redundant templates & outliers to optimize cluster compactness
               --export-vectors <path>    Export enrolled facial biometric vectors to JSON file
               --import-vectors <path>    Import facial biometric vectors from JSON file
+              --profiles [--json]        List available security profiles and current active profile
+              --profile <name>           Activate security profile (normal, cafe, work, home, presentation)
+              --toggle-shoulder-defense  Toggle shoulder-surfing bystander defense
+              --set-shoulder-defense <on|off> Enable or disable shoulder-surfing defense
+              --toggle-audible           Toggle audible alarm & sound cues
+              --set-audible <on|off>     Enable or disable audible alarm & sound cues
+              --toggle-battery-aware     Toggle battery-aware adaptive idle sweep throttling
+              --set-battery-aware <on|off> Enable or disable battery-aware adaptive scanning
+              --test, --run-tests        Execute automated unit test suite and benchmarks
               --health [--json]          Fast operational healthcheck (exit 0 if healthy)
               --set-pin <pin>            Update lock screen unlock PIN
               --set-pin-attempts <count> Set allowed failed PIN attempts before lockout (1-10, default: 3)
@@ -148,9 +165,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if args.contains("--version") || args.contains("-v") {
             if args.contains("--json") {
-                print("{\"name\":\"FaceLock\",\"version\":\"1.1.0\",\"platform\":\"darwin-arm64\"}")
+                print("{\"name\":\"FaceLock\",\"version\":\"1.1.1\",\"platform\":\"darwin-arm64\"}")
             } else {
-                print("FaceLock v1.1.0 (darwin-arm64)")
+                print("FaceLock v1.1.1 (darwin-arm64)")
             }
             exit(0)
         }
@@ -1157,11 +1174,66 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             let enabled = !Config.shared.audibleAlerts
             Config.shared.audibleAlerts = enabled
             Config.shared.save()
+            SecurityAuditLogger.shared.logConfigChanged(setting: "audibleAlerts", value: "\(enabled)", details: "Toggled via CLI")
             notifyDaemonIfRunning()
             if args.contains("--json") {
                 print("{\"success\":true,\"audibleAlerts\":\(enabled)}")
             } else {
                 print("✓ Audible sound alerts \(enabled ? "enabled" : "disabled").")
+            }
+            exit(0)
+        }
+
+        if let idx = args.firstIndex(of: "--set-audible"), idx + 1 < args.count {
+            let val = args[idx + 1].lowercased()
+            let enabled: Bool
+            if val == "toggle" {
+                enabled = !Config.shared.audibleAlerts
+            } else {
+                enabled = (val == "1" || val == "true" || val == "on" || val == "enable")
+            }
+            Config.shared.audibleAlerts = enabled
+            Config.shared.save()
+            SecurityAuditLogger.shared.logConfigChanged(setting: "audibleAlerts", value: "\(enabled)", details: "Configured via CLI")
+            notifyDaemonIfRunning()
+            if args.contains("--json") {
+                print("{\"success\":true,\"audibleAlerts\":\(enabled)}")
+            } else {
+                print("✓ Audible sound alerts set to \(enabled ? "enabled" : "disabled").")
+            }
+            exit(0)
+        }
+
+        if args.contains("--toggle-battery-aware") {
+            let enabled = !Config.shared.batteryAwareScanning
+            Config.shared.batteryAwareScanning = enabled
+            Config.shared.save()
+            SecurityAuditLogger.shared.logConfigChanged(setting: "batteryAwareScanning", value: "\(enabled)", details: "Toggled via CLI")
+            notifyDaemonIfRunning()
+            if args.contains("--json") {
+                print("{\"success\":true,\"batteryAwareScanning\":\(enabled)}")
+            } else {
+                print("✓ Battery-aware adaptive scanning \(enabled ? "enabled" : "disabled").")
+            }
+            exit(0)
+        }
+
+        if let idx = args.firstIndex(of: "--set-battery-aware"), idx + 1 < args.count {
+            let val = args[idx + 1].lowercased()
+            let enabled: Bool
+            if val == "toggle" {
+                enabled = !Config.shared.batteryAwareScanning
+            } else {
+                enabled = (val == "1" || val == "true" || val == "on" || val == "enable")
+            }
+            Config.shared.batteryAwareScanning = enabled
+            Config.shared.save()
+            SecurityAuditLogger.shared.logConfigChanged(setting: "batteryAwareScanning", value: "\(enabled)", details: "Configured via CLI")
+            notifyDaemonIfRunning()
+            if args.contains("--json") {
+                print("{\"success\":true,\"batteryAwareScanning\":\(enabled)}")
+            } else {
+                print("✓ Battery-aware adaptive scanning set to \(enabled ? "enabled" : "disabled").")
             }
             exit(0)
         }

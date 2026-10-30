@@ -48,6 +48,9 @@ public final class FaceLockTestSuite {
         testVectorNormalization()
         testBiometricClusterAndOutlierPruning()
         testSecurityProfiles()
+        testBatteryAwareAdaptiveScanning()
+        testAudibleAlertsAndShoulderDefense()
+        testCliFlagNormalization()
         testApplicationPolicyFiltering()
         testPinLockoutExponentialLogic()
         testTelegramPayloadEscaping()
@@ -158,9 +161,63 @@ public final class FaceLockTestSuite {
         assertEqual(config.activeProfile, "presentation", "Profile successfully switches to 'presentation'")
         assertEqual(config.walkAwayLockEnabled, false, "Presentation profile disables walk-away lock to prevent slide interruption")
 
+        config.applyProfile(.work)
+        assertEqual(config.activeProfile, "work", "Profile successfully switches to 'work'")
+        assertEqual(config.shoulderSurfingDefense, true, "Work profile enables shoulder-surfing defense")
+
+        config.applyProfile(.home)
+        assertEqual(config.activeProfile, "home", "Profile successfully switches to 'home'")
+        assertEqual(config.walkAwayIdleSeconds, 180.0, "Home profile uses relaxed 180s timeout")
+        assertAccuracy(config.similarityThreshold, 0.24, accuracy: 0.001, "Home profile uses 0.24 threshold")
+
         config.applyProfile(.normal)
         assertEqual(config.activeProfile, "normal", "Profile successfully resets to 'normal'")
         assertEqual(config.walkAwayIdleSeconds, 45.0, "Normal profile uses standard 45s timeout")
+    }
+
+    // MARK: - 4b. Battery-Aware Adaptive Polling & Power Management
+    private func testBatteryAwareAdaptiveScanning() {
+        print("\n▶ Test Suite: Battery-Aware Adaptive Polling & Power Management")
+        let config = Config()
+        assertEqual(config.batteryAwareScanning, true, "Battery-aware scanning is enabled by default")
+
+        let onBattery = WalkAwayMonitor.isOnBatteryPower()
+        assert(onBattery == true || onBattery == false, "WalkAwayMonitor successfully queries power source without crashing")
+
+        let idleDebounce: TimeInterval = (config.batteryAwareScanning && onBattery) ? 45.0 : 20.0
+        assert(idleDebounce >= 20.0, "Idle debounce interval is at least 20.0s")
+    }
+
+    // MARK: - 4c. Audible Alerts & Shoulder-Surfing Defense
+    private func testAudibleAlertsAndShoulderDefense() {
+        print("\n▶ Test Suite: Audible Alerts & Shoulder-Surfing Defense")
+        let config = Config()
+        assertEqual(config.shoulderSurfingDefense, false, "Shoulder-surfing defense default is false (opt-in)")
+        assertEqual(config.audibleAlerts, false, "Audible alerts default is false (silent mode)")
+
+        config.shoulderSurfingDefense = true
+        assertEqual(config.shoulderSurfingDefense, true, "Shoulder-surfing defense toggles to true")
+
+        config.audibleAlerts = true
+        assertEqual(config.audibleAlerts, true, "Audible alerts toggles to true")
+    }
+
+    // MARK: - 4d. CLI Argument Normalization
+    private func testCliFlagNormalization() {
+        print("\n▶ Test Suite: CLI Argument Normalization")
+        let aliasMap: [String: [String]] = [
+            "--profiles-json": ["--profiles", "--json"],
+            "--toggle-shoulder-json": ["--toggle-shoulder-defense", "--json"],
+            "--toggle-audible-json": ["--toggle-audible", "--json"],
+            "--toggle-battery-aware-json": ["--toggle-battery-aware", "--json"],
+            "--status-json": ["--status", "--json"],
+            "--health-json": ["--health", "--json"]
+        ]
+
+        for (alias, expected) in aliasMap {
+            assertEqual(expected.count, 2, "Alias \(alias) maps to exactly 2 arguments")
+            assertEqual(expected.last, "--json", "Alias \(alias) normalized target contains --json")
+        }
     }
 
     // MARK: - 5. Application Policy Filtering

@@ -1,6 +1,7 @@
 import AppKit
 import CoreGraphics
 import Foundation
+import IOKit.ps
 
 public final class WalkAwayMonitor {
     public static let shared = WalkAwayMonitor()
@@ -11,14 +12,21 @@ public final class WalkAwayMonitor {
 
     private init() {}
 
+    public static func isOnBatteryPower() -> Bool {
+        guard let snapshot = IOPSCopyPowerSourcesInfo()?.takeRetainedValue() else { return false }
+        guard let powerSourceType = IOPSGetProvidingPowerSourceType(snapshot)?.takeRetainedValue() as? String else { return false }
+        return powerSourceType == kIOPMBatteryPowerKey
+    }
+
     public func start() {
         guard timer == nil else { return }
 
-        // Check idle time every 5 seconds
-        timer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+        // Adaptive polling interval: 10s if battery-aware on battery power, otherwise 5s
+        let interval: TimeInterval = (Config.shared.batteryAwareScanning && WalkAwayMonitor.isOnBatteryPower()) ? 10.0 : 5.0
+        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             self?.checkIdleState()
         }
-        print("[WalkAwayMonitor] Started background walk-away monitoring.")
+        print("[WalkAwayMonitor] Started background walk-away monitoring (interval: \(Int(interval))s).")
     }
 
     public func stop() {
@@ -41,9 +49,10 @@ public final class WalkAwayMonitor {
 
         guard idleSeconds >= Config.shared.walkAwayIdleSeconds else { return }
 
-        // Debounce checks by at least 20 seconds
+        // Adaptive debounce: 45 seconds when on battery power, 20 seconds on AC power
+        let minDebounce: TimeInterval = (Config.shared.batteryAwareScanning && WalkAwayMonitor.isOnBatteryPower()) ? 45.0 : 20.0
         let now = Date()
-        guard now.timeIntervalSince(lastCheckTime) >= 20.0 else { return }
+        guard now.timeIntervalSince(lastCheckTime) >= minDebounce else { return }
         lastCheckTime = now
 
         isChecking = true
@@ -87,7 +96,10 @@ public final class WalkAwayMonitor {
                 "com.apple.iWork.Keynote",
                 "com.microsoft.Powerpoint",
                 "us.zoom.xos",
-                "com.apple.FaceTime"
+                "com.apple.FaceTime",
+                "com.microsoft.teams2",
+                "com.cisco.webexmeetingsapp",
+                "com.tinyspeck.slackmacgap"
             ]
             if presentationApps.contains(frontApp) {
                 return true

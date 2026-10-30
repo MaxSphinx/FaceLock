@@ -108,6 +108,16 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         shoulderItem.target = self
         menu.addItem(shoulderItem)
 
+        let audibleState = Config.shared.audibleAlerts ? "Вкл" : "Выкл"
+        let audibleItem = NSMenuItem(title: "Звуковые сигналы (Audible Chimes): \(audibleState)", action: #selector(toggleAudibleAlerts), keyEquivalent: "")
+        audibleItem.target = self
+        menu.addItem(audibleItem)
+
+        let batteryState = Config.shared.batteryAwareScanning ? "Вкл" : "Выкл"
+        let batteryItem = NSMenuItem(title: "Энергосбережение (Battery Awareness): \(batteryState)", action: #selector(toggleBatteryAware), keyEquivalent: "")
+        batteryItem.target = self
+        menu.addItem(batteryItem)
+
         let appsItem = NSMenuItem(title: "Политика приложений (Секретные: \(Config.shared.protectedBundleIdentifiers.count))...", action: #selector(openAppsManager), keyEquivalent: "p")
         appsItem.target = self
         menu.addItem(appsItem)
@@ -254,7 +264,27 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         Config.shared.shoulderSurfingDefense.toggle()
         Config.shared.save()
         let state = Config.shared.shoulderSurfingDefense ? "Вкл" : "Выкл"
+        SecurityAuditLogger.shared.logConfigChanged(setting: "shoulderSurfingDefense", value: "\(Config.shared.shoulderSurfingDefense)", details: "Toggled via menu bar icon")
         HUDController.shared.showProfile(name: "Shoulder-Surfing: \(state)")
+    }
+
+    @objc private func toggleAudibleAlerts() {
+        Config.shared.audibleAlerts.toggle()
+        Config.shared.save()
+        let state = Config.shared.audibleAlerts ? "Вкл" : "Выкл"
+        SecurityAuditLogger.shared.logConfigChanged(setting: "audibleAlerts", value: "\(Config.shared.audibleAlerts)", details: "Toggled via menu bar icon")
+        HUDController.shared.showProfile(name: "Звук: \(state)")
+        if Config.shared.audibleAlerts {
+            HUDController.playAlertSound(type: "warning")
+        }
+    }
+
+    @objc private func toggleBatteryAware() {
+        Config.shared.batteryAwareScanning.toggle()
+        Config.shared.save()
+        let state = Config.shared.batteryAwareScanning ? "Вкл" : "Выкл"
+        SecurityAuditLogger.shared.logConfigChanged(setting: "batteryAwareScanning", value: "\(Config.shared.batteryAwareScanning)", details: "Toggled via menu bar icon")
+        HUDController.shared.showProfile(name: "Энергосбережение: \(state)")
     }
 
     private func buildCameraSubmenu() -> NSMenuItem {

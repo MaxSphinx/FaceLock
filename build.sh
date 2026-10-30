@@ -26,6 +26,7 @@ swiftc -O \
     -framework CoreImage \
     -framework QuartzCore \
     -framework Accelerate \
+    -framework IOKit \
     Sources/*.swift \
     Tests/*.swift \
     -o "${MACOS_DIR}/${APP_NAME}"

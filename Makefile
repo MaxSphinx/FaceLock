@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics health toggle toggle-wake wake reload reset-session check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents export-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-gui prune-audit clear-audit export-audit pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config restore-config test
+.PHONY: all build run enroll test-lock lock is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics health toggle toggle-wake wake reload reset-session check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents export-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-gui prune-audit clear-audit export-audit pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config restore-config test profiles profile toggle-shoulder toggle-audible toggle-battery
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -43,6 +43,12 @@ help:
 	@echo "  make cameras-json   - List video capture cameras in JSON format"
 	@echo "  make set-camera CAMERA= - Set preferred camera device by ID, name or 'default'"
 	@echo "  make reset-camera   - Reset preferred camera selection to default front camera"
+	@echo "  make profiles       - List available security context profiles"
+	@echo "  make profile PROFILE= - Apply security profile (normal, cafe, work, home, presentation)"
+	@echo "  make toggle-shoulder- Toggle shoulder-surfing bystander defense"
+	@echo "  make toggle-audible - Toggle audible alarm and sound cues"
+	@echo "  make toggle-battery - Toggle battery-aware adaptive idle sweep throttling"
+	@echo "  make test           - Run automated unit test suite and Apple Silicon benchmarks"
 	@echo "  make backup-config DEST= - Backup FaceLock configuration to JSON file"
 	@echo "  make restore-config SRC= - Restore FaceLock configuration from JSON file"
 	@echo "  make vectors        - Inspect enrolled facial templates and cluster metrics"
@@ -77,6 +83,15 @@ profiles: build
 
 profile: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --profile $(PROFILE)
+
+toggle-shoulder: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-shoulder-defense
+
+toggle-audible: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-audible
+
+toggle-battery: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-battery-aware
 
 run: build
 	@echo "Launching FaceLock..."
