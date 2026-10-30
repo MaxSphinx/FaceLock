@@ -72,6 +72,12 @@ help:
 build:
 	@./build.sh
 
+profiles: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --profiles
+
+profile: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --profile $(PROFILE)
+
 run: build
 	@echo "Launching FaceLock..."
 	@open build/FaceLock.app
@@ -277,6 +283,8 @@ export-audit: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --export-audit "$(FILE)"
 
 test: build
+	@echo "==> Running FaceLock Automated Unit Tests & Benchmarks..."
+	@build/FaceLock.app/Contents/MacOS/FaceLock --test
 	@echo "==> Running CLI verification tests..."
 	@build/FaceLock.app/Contents/MacOS/FaceLock --help > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --version > /dev/null

@@ -58,6 +58,19 @@ while true; do
             ./scripts/autocommit.sh || true
             EVENT_MSG="${EVENT_MSG} 🚀 Выпущен новый коммит с авто-обновлениями."
         fi
+
+        # Check if there are unreleased commits since last tag (auto-release cadence)
+        LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
+        COMMITS_AHEAD=$(git rev-list "${LATEST_TAG}..HEAD" --count 2>/dev/null || echo "0")
+        if [[ "$COMMITS_AHEAD" -ge 10 ]]; then
+            echo "==> $COMMITS_AHEAD commits ahead of $LATEST_TAG. Triggering autonomous release..."
+            CUR_VER="${LATEST_TAG#v}"
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$CUR_VER"
+            NEW_PATCH=$((PATCH + 1))
+            NEW_TAG="v${MAJOR}.${MINOR}.${NEW_PATCH}"
+            ./scripts/release.sh "${NEW_TAG}" "Continuous maintenance release (${NEW_TAG})" || true
+            EVENT_MSG="${EVENT_MSG} 📦 Опубликован новый релиз ${NEW_TAG} на GitHub!"
+        fi
     fi
     
     # 5. Dispatch Telegram report

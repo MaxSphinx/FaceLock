@@ -34,6 +34,34 @@ public final class Config: Codable {
         "com.apple.dock"
     ]
 
+    public enum SecurityProfile: String, CaseIterable, Codable {
+        case normal = "normal"
+        case cafe = "cafe"
+        case work = "work"
+        case home = "home"
+        case presentation = "presentation"
+
+        public var title: String {
+            switch self {
+            case .normal: return "Сбалансированный (Normal)"
+            case .cafe: return "Кафе / Публичное место (Cafe - Strict)"
+            case .work: return "Офис / Работа (Work)"
+            case .home: return "Домашний (Home - Relaxed)"
+            case .presentation: return "Презентация / Созвон (Presentation)"
+            }
+        }
+
+        public var summary: String {
+            switch self {
+            case .normal: return "45с walk-away, тихий снимок, стандартный порог (0.22)."
+            case .cafe: return "10с walk-away, защита от подглядывания (Shoulder-Surfing), блокировка при пробуждении, звуковой сигнал."
+            case .work: return "45с walk-away, выборочная защита секретных приложений, Telegram алерты."
+            case .home: return "180с walk-away, увеличенный порог допуска (0.24), дружелюбный HUD."
+            case .presentation: return "Авто-подавление блокировки во время показа слайдов и созвонов."
+            }
+        }
+    }
+
     public var pin: String
     public var similarityThreshold: Float
     public var verificationTimeout: Double
@@ -60,6 +88,12 @@ public final class Config: Codable {
     public var pinLockoutSeconds: Double
     public var preferredCameraID: String
 
+    public var activeProfile: String
+    public var shoulderSurfingDefense: Bool
+    public var batteryAwareScanning: Bool
+    public var audibleAlerts: Bool
+    public var presentationModeSuppression: Bool
+
     public init(
         pin: String = "0000",
         similarityThreshold: Float = 0.22,
@@ -81,7 +115,12 @@ public final class Config: Codable {
         lockOnWake: Bool = false,
         maxFailedPinAttempts: Int = 3,
         pinLockoutSeconds: Double = 5.0,
-        preferredCameraID: String = ""
+        preferredCameraID: String = "",
+        activeProfile: String = "normal",
+        shoulderSurfingDefense: Bool = false,
+        batteryAwareScanning: Bool = true,
+        audibleAlerts: Bool = false,
+        presentationModeSuppression: Bool = true
     ) {
         self.pin = pin
         self.similarityThreshold = similarityThreshold
@@ -104,6 +143,11 @@ public final class Config: Codable {
         self.maxFailedPinAttempts = maxFailedPinAttempts
         self.pinLockoutSeconds = pinLockoutSeconds
         self.preferredCameraID = preferredCameraID
+        self.activeProfile = activeProfile
+        self.shoulderSurfingDefense = shoulderSurfingDefense
+        self.batteryAwareScanning = batteryAwareScanning
+        self.audibleAlerts = audibleAlerts
+        self.presentationModeSuppression = presentationModeSuppression
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -128,6 +172,11 @@ public final class Config: Codable {
         case maxFailedPinAttempts
         case pinLockoutSeconds
         case preferredCameraID
+        case activeProfile
+        case shoulderSurfingDefense
+        case batteryAwareScanning
+        case audibleAlerts
+        case presentationModeSuppression
     }
 
     public required init(from decoder: Decoder) throws {
@@ -153,6 +202,70 @@ public final class Config: Codable {
         self.maxFailedPinAttempts = try container.decodeIfPresent(Int.self, forKey: .maxFailedPinAttempts) ?? 3
         self.pinLockoutSeconds = try container.decodeIfPresent(Double.self, forKey: .pinLockoutSeconds) ?? 5.0
         self.preferredCameraID = try container.decodeIfPresent(String.self, forKey: .preferredCameraID) ?? ""
+        self.activeProfile = try container.decodeIfPresent(String.self, forKey: .activeProfile) ?? "normal"
+        self.shoulderSurfingDefense = try container.decodeIfPresent(Bool.self, forKey: .shoulderSurfingDefense) ?? false
+        self.batteryAwareScanning = try container.decodeIfPresent(Bool.self, forKey: .batteryAwareScanning) ?? true
+        self.audibleAlerts = try container.decodeIfPresent(Bool.self, forKey: .audibleAlerts) ?? false
+        self.presentationModeSuppression = try container.decodeIfPresent(Bool.self, forKey: .presentationModeSuppression) ?? true
+    }
+
+    public func setProfile(_ profileName: String) -> Bool {
+        guard let profile = SecurityProfile(rawValue: profileName.lowercased()) else {
+            return false
+        }
+        applyProfile(profile)
+        return true
+    }
+
+    public func applyProfile(_ profile: SecurityProfile) {
+        let oldProfile = self.activeProfile
+        self.activeProfile = profile.rawValue
+
+        switch profile {
+        case .normal:
+            self.walkAwayIdleSeconds = 45.0
+            self.walkAwayLockEnabled = true
+            self.shoulderSurfingDefense = false
+            self.lockOnWake = false
+            self.audibleAlerts = false
+            self.presentationModeSuppression = true
+            self.similarityThreshold = 0.22
+        case .cafe:
+            self.walkAwayIdleSeconds = 10.0
+            self.walkAwayLockEnabled = true
+            self.shoulderSurfingDefense = true
+            self.lockOnWake = true
+            self.audibleAlerts = true
+            self.presentationModeSuppression = false
+            self.similarityThreshold = 0.20
+        case .work:
+            self.walkAwayIdleSeconds = 45.0
+            self.walkAwayLockEnabled = true
+            self.shoulderSurfingDefense = true
+            self.lockOnWake = true
+            self.audibleAlerts = false
+            self.presentationModeSuppression = true
+            self.similarityThreshold = 0.22
+        case .home:
+            self.walkAwayIdleSeconds = 180.0
+            self.walkAwayLockEnabled = true
+            self.shoulderSurfingDefense = false
+            self.lockOnWake = false
+            self.audibleAlerts = false
+            self.presentationModeSuppression = true
+            self.similarityThreshold = 0.24
+        case .presentation:
+            self.walkAwayIdleSeconds = 300.0
+            self.walkAwayLockEnabled = false
+            self.shoulderSurfingDefense = false
+            self.lockOnWake = false
+            self.audibleAlerts = false
+            self.presentationModeSuppression = true
+        }
+
+        save()
+        SecurityAuditLogger.shared.logProfileSwitched(from: oldProfile, to: profile.rawValue)
+        HUDController.shared.showProfile(name: profile.title)
     }
 
     private static var configURL: URL {

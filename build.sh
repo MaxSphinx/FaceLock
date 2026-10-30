@@ -25,7 +25,9 @@ swiftc -O \
     -framework LocalAuthentication \
     -framework CoreImage \
     -framework QuartzCore \
+    -framework Accelerate \
     Sources/*.swift \
+    Tests/*.swift \
     -o "${MACOS_DIR}/${APP_NAME}"
 
 # Copy Info.plist and Resources

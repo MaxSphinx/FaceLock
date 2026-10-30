@@ -31,6 +31,11 @@ public final class WalkAwayMonitor {
         guard !LockScreenController.shared.isLocked else { return }
         guard !isChecking else { return }
 
+        // Check if presentation mode is active and should suppress lock
+        if isPresentationActive() {
+            return
+        }
+
         // Check how many seconds user has been idle (no mouse/keyboard input)
         let idleSeconds = CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: CGEventType(rawValue: ~0)!)
 
@@ -73,5 +78,21 @@ public final class WalkAwayMonitor {
                 }
             }
         }
+    }
+
+    private func isPresentationActive() -> Bool {
+        guard Config.shared.presentationModeSuppression else { return false }
+        if let frontApp = NSWorkspace.shared.frontmostApplication?.bundleIdentifier {
+            let presentationApps = [
+                "com.apple.iWork.Keynote",
+                "com.microsoft.Powerpoint",
+                "us.zoom.xos",
+                "com.apple.FaceTime"
+            ]
+            if presentationApps.contains(frontApp) {
+                return true
+            }
+        }
+        return false
     }
 }

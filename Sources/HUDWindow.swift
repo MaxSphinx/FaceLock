@@ -100,6 +100,80 @@ public final class HUDController {
         }
     }
 
+    public func showShoulderSurfingAlert() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.createHUDIfNeeded()
+
+            self.hideTimer?.cancel()
+            self.hideTimer = nil
+            self.stopPulseAnimation()
+
+            let symbolConfig = NSImage.SymbolConfiguration(pointSize: 18, weight: .bold)
+            let img = NSImage(systemSymbolName: "person.2.slash.fill", accessibilityDescription: "Shoulder Surfing")?.withSymbolConfiguration(symbolConfig)
+                ?? NSImage(systemSymbolName: "exclamationmark.triangle.fill", accessibilityDescription: "Warning")?.withSymbolConfiguration(symbolConfig)
+            self.iconView?.image = img
+            self.iconView?.contentTintColor = NSColor.systemYellow
+            self.titleLabel?.stringValue = "Внимание: лицо за спиной!"
+
+            self.animateAppearance()
+            self.bounceIcon()
+            HUDController.playAlertSound(type: "shoulder")
+
+            let timer = DispatchSource.makeTimerSource(queue: .main)
+            timer.schedule(deadline: .now() + 2.5)
+            timer.setEventHandler { [weak self] in
+                self?.hide()
+            }
+            self.hideTimer = timer
+            timer.resume()
+        }
+    }
+
+    public func showProfile(name: String) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.createHUDIfNeeded()
+
+            self.hideTimer?.cancel()
+            self.hideTimer = nil
+            self.stopPulseAnimation()
+
+            let symbolConfig = NSImage.SymbolConfiguration(pointSize: 18, weight: .bold)
+            let img = NSImage(systemSymbolName: "shield.lefthalf.filled", accessibilityDescription: "Profile")?.withSymbolConfiguration(symbolConfig)
+            self.iconView?.image = img
+            self.iconView?.contentTintColor = NSColor.systemCyan
+            self.titleLabel?.stringValue = "Профиль: \(name)"
+
+            self.animateAppearance()
+            self.bounceIcon()
+
+            let timer = DispatchSource.makeTimerSource(queue: .main)
+            timer.schedule(deadline: .now() + 1.5)
+            timer.setEventHandler { [weak self] in
+                self?.hide()
+            }
+            self.hideTimer = timer
+            timer.resume()
+        }
+    }
+
+    public static func playAlertSound(type: String) {
+        guard Config.shared.audibleAlerts else { return }
+        DispatchQueue.main.async {
+            switch type {
+            case "warning", "shoulder":
+                NSSound(named: "Funk")?.play()
+            case "intruder", "lock":
+                NSSound(named: "Basso")?.play()
+            case "success", "unlock":
+                NSSound(named: "Tink")?.play()
+            default:
+                break
+            }
+        }
+    }
+
     public func hide() {
         DispatchQueue.main.async { [weak self] in
             guard let self = self, let win = self.hudWindow else { return }

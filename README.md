@@ -12,9 +12,10 @@
 <p align="center">
   <a href="https://github.com/MaxSphinx/FaceLock/releases"><img src="https://img.shields.io/github/v/release/MaxSphinx/FaceLock?style=flat-square&color=00BBF9" alt="Latest Release" /></a>
   <a href="https://github.com/MaxSphinx/FaceLock/actions"><img src="https://img.shields.io/github/actions/workflow/status/MaxSphinx/FaceLock/build.yml?branch=main&style=flat-square&label=build" alt="Build Status" /></a>
+  <img src="https://img.shields.io/badge/tests-37%20passed%20(100%25)-brightgreen?style=flat-square" alt="Tests" />
   <img src="https://img.shields.io/badge/platform-macOS%2014.0%2B-blue?style=flat-square" alt="Platform" />
   <img src="https://img.shields.io/badge/arch-Apple%20Silicon%20(arm64)-orange?style=flat-square" alt="Architecture" />
-  <img src="https://img.shields.io/badge/swift-5.9%2B-F05138?style=flat-square&logo=swift&logoColor=white" alt="Swift" />
+  <img src="https://img.shields.io/badge/swift-6.0%2B-F05138?style=flat-square&logo=swift&logoColor=white" alt="Swift" />
   <img src="https://img.shields.io/badge/dependencies-0%20(Pure%20AppKit)-success?style=flat-square" alt="Dependencies" />
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License" />
 </p>
@@ -72,31 +73,38 @@ Built strictly in modern **Swift & native AppKit**, with **zero external package
 - **🛡️ Unbypassable Fullscreen Shield**: Renders a dark glassmorphic barrier at `.screenSaver` window level (`CGWindowLevelForKey(.screenSaverWindow)`). Intercepts <kbd>Esc</kbd>, <kbd>Cmd+Q</kbd>, <kbd>Cmd+W</kbd>, <kbd>Cmd+M</kbd>, and system overlays.
 - **📸 Intruder Snapshot & Night-Mode Lift**: Automatically crops intruder faces with 80% shoulder headroom. Applies low-light exposure boosting (+1.3 EV) and tone curve equalization so faces remain crystal clear in dark rooms.
 - **📱 Instant Telegram Bot Alerts**: Dispatches the intruder’s high-resolution photograph, exact timestamp, and targeted application directly to your private Telegram chat via official Bot API.
-- **🎯 Universal & Selective Vault Modes**:
-  - **All Applications**: Continuous biometric verification across every window focus.
-  - **Selective Mode**: Guards only confidential apps (Telegram, Safari, Chrome, Terminal, Notes, Photos, WhatsApp, etc.).
-- **🚶‍♂️ Walk-Away Auto Lock**: Monitors user idle state (`CGEventSource`). If keyboard/mouse are inactive for 45s, FaceLock silently verifies presence via camera. If you stepped away, the Mac locks immediately.
-- **👁️ Liveness Verification**: Analyzes facial landmark contours (`VNDetectFaceLandmarksRequest`) to thwart 2D screen or paper printout attacks.
+- **👥 Shoulder-Surfing Defense**: Neural camera detects if an unauthorized bystander is peeking over your shoulder while you work, triggering a discrete HUD alert or protective shield.
+- **🎯 Dynamic Security Profiles**:
+  - `normal`: Balanced 45s walk-away, silent intruder capture, standard threshold.
+  - `cafe`: Ultra-strict 10s walk-away, active shoulder-surfing defense, lock-on-wake, and audible alarm.
+  - `work`: Confidential apps whitelist, 45s walk-away, Telegram notifications.
+  - `home`: Relaxed 180s walk-away, friendly HUD, expanded tolerance.
+  - `presentation`: Focus mode with automatic lock suppression during Keynote, Zoom, Meet, or full-screen gaming.
+- **🔋 Battery-Aware Adaptive Polling**: Senses power state (`IOPSGetProvidingPowerSourceType`) and intelligently throttles idle scans when unplugged to conserve MacBook battery life.
+- **🚶‍♂️ Walk-Away Auto Lock**: Monitors user idle state (`CGEventSource`). If keyboard/mouse are inactive, FaceLock silently verifies presence via camera. If you stepped away, the Mac locks immediately.
+- **👁️ Anti-Spoofing Liveness**: Analyzes 3D facial capture quality to thwart 2D screen or paper printout spoof attacks.
 - **🎛️ Native Menu Bar, UI Gallery & Audit Log**:
-  - One-click protection toggle, 3D face calibration wizard, dynamic camera switcher.
+  - Profile switcher, 3D face calibration wizard, dynamic camera switcher.
   - Interactive Incident Gallery with 24h / 7d period filtering and one-click pruning.
   - Security Audit Log viewer with category filtering, pruning, and JSONL export.
-  - Native macOS keyboard ergonomics (`Escape` / `Cmd+W` to close, `Cmd+R` to refresh).
+- **🧪 100% Automated Test Suite**: 37 unit tests and microsecond Apple Silicon vector benchmarks built directly into the binary (`make test`).
 
 ---
 
-## Why FaceLock? (Comparison)
+## Why FaceLock? (Competitive Matrix)
 
-| Capability | Standard macOS Lock | Commercial Lock Apps | **FaceLock** |
-|:---|:---:|:---:|:---:|
-| **Per-App Focus Verification** | ❌ No | ❌ No | **✅ Instant Neural Check** |
-| **Intruder Capture with Night HDR** | ❌ No | ⚠️ Basic webcam | **✅ Exposure Lift (+1.3 EV) & Crop** |
-| **Instant Telegram Incident Alerts** | ❌ No | ❌ No | **✅ Photo + Timestamp + App** |
-| **Unbypassable Shield (`.screenSaver`)**| ❌ No | ⚠️ Standard window | **✅ Blocks Cmd+Q, Cmd+W, Esc** |
-| **Walk-Away Inactivity Defense** | ⚠️ Inactivity timer | ⚠️ Flaky Bluetooth | **✅ CGEvent + Silent Neural Camera** |
-| **Neural Engine Acceleration** | ❌ | ❌ | **✅ 100% Apple Silicon ANE** |
-| **Privacy & Local Storage** | ✅ Yes | ❌ Cloud telemetry | **✅ 100% On-Device & Zero Telemetry** |
-| **License & Price** | Closed source | \$15 – \$35 | **✅ Free & Open Source (MIT)** |
+| Capability | macOS Screen Lock | Commercial Lock Apps (Sensei / AppLocker) | Windows Hello (PC) | **FaceLock (macOS)** |
+|:---|:---:|:---:|:---:|:---:|
+| **Per-App Focus Shield** | ❌ No | ⚠️ Basic PIN window | ❌ No | **✅ Instant Neural Face Check** |
+| **Intruder Photo with Night HDR** | ❌ No | ⚠️ Raw webcam snapshot | ❌ No | **✅ +1.3 EV Exposure Lift & Crop** |
+| **Instant Telegram Phone Alerts** | ❌ No | ❌ No | ❌ No | **✅ Photo + Timestamp + App** |
+| **Shoulder-Surfing Bystander Defense** | ❌ No | ❌ No | ⚠️ Limited enterprise | **✅ Multi-face Neural Detection** |
+| **Security Profiles (Cafe/Work/Home)** | ❌ No | ❌ No | ❌ No | **✅ 5 Specialized Context Profiles** |
+| **Walk-Away Camera Inactivity Defense** | ⚠️ Inactivity timer | ⚠️ Bluetooth beacon | ⚠️ Presence sensor | **✅ CGEvent + Silent Neural Camera** |
+| **Presentation Mode Auto-Suppression** | ❌ | ❌ | ⚠️ Focus Assist | **✅ Keynote / Zoom Auto-Detect** |
+| **Apple Neural Engine Acceleration** | ❌ | ❌ | ❌ (x86 / Intel) | **✅ 100% On-Device Apple Silicon** |
+| **Privacy & Zero Telemetry** | ✅ Local | ❌ Cloud telemetry / tracking | ⚠️ Microsoft telemetry | **✅ 100% On-Device, Zero Analytics** |
+| **License & Price** | Proprietary | \$15 – \$35 recurring | Vendor-locked | **✅ 100% Free & Open Source (MIT)** |
 
 ---
 
@@ -184,6 +192,11 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --ignore-app <id>` | Add application bundle ID to ignored list |
 | `facelock --unignore-app <id>` | Remove application bundle ID from ignored list |
 | `facelock --reset-apps [--json]` | Reset protected and ignored application lists to factory defaults |
+| `facelock --profiles [--json]` | List available security profiles (normal, cafe, work, home, presentation) |
+| `facelock --profile <name>` | Switch active security profile (e.g. `facelock --profile cafe`) |
+| `facelock --toggle-shoulder-defense` | Toggle shoulder-surfing bystander detection shield |
+| `facelock --toggle-audible` | Toggle audible alarm deterrent chimes |
+| `facelock --test` | Execute 100% automated test suite & vector benchmark |
 | `facelock --set-pin <pin>` | Set lock screen unlock PIN from terminal |
 | `facelock --set-pin-attempts <count>` | Set max failed PIN attempts before lockout (1-10, default: 3) |
 | `facelock --set-pin-lockout <sec>` | Set cooling lockout delay after failed PIN attempts (1-60s, default: 5s) |

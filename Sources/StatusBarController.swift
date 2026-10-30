@@ -100,6 +100,14 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         modeItem.target = self
         menu.addItem(modeItem)
 
+        let profileItem = buildProfilesSubmenu()
+        menu.addItem(profileItem)
+
+        let shoulderState = Config.shared.shoulderSurfingDefense ? "Вкл" : "Выкл"
+        let shoulderItem = NSMenuItem(title: "Защита от подглядывания (Shoulder-Surfing): \(shoulderState)", action: #selector(toggleShoulderSurfing), keyEquivalent: "")
+        shoulderItem.target = self
+        menu.addItem(shoulderItem)
+
         let appsItem = NSMenuItem(title: "Политика приложений (Секретные: \(Config.shared.protectedBundleIdentifiers.count))...", action: #selector(openAppsManager), keyEquivalent: "p")
         appsItem.target = self
         menu.addItem(appsItem)
@@ -214,6 +222,39 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
             HUDController.shared.hide()
         }
+    }
+
+    private func buildProfilesSubmenu() -> NSMenuItem {
+        let currentProfile = Config.shared.activeProfile
+        let profileName = Config.SecurityProfile(rawValue: currentProfile)?.title ?? currentProfile.capitalized
+        let item = NSMenuItem(title: "Профиль: \(profileName)", action: nil, keyEquivalent: "")
+        let sub = NSMenu()
+
+        for prof in Config.SecurityProfile.allCases {
+            let pItem = NSMenuItem(title: prof.title, action: #selector(profileSelected(_:)), keyEquivalent: "")
+            pItem.target = self
+            pItem.representedObject = prof.rawValue
+            pItem.state = (currentProfile == prof.rawValue) ? .on : .off
+            sub.addItem(pItem)
+        }
+
+        item.submenu = sub
+        return item
+    }
+
+    @objc private func profileSelected(_ sender: NSMenuItem) {
+        if let raw = sender.representedObject as? String,
+           let profile = Config.SecurityProfile(rawValue: raw) {
+            Config.shared.applyProfile(profile)
+            updateIcon()
+        }
+    }
+
+    @objc private func toggleShoulderSurfing() {
+        Config.shared.shoulderSurfingDefense.toggle()
+        Config.shared.save()
+        let state = Config.shared.shoulderSurfingDefense ? "Вкл" : "Выкл"
+        HUDController.shared.showProfile(name: "Shoulder-Surfing: \(state)")
     }
 
     private func buildCameraSubmenu() -> NSMenuItem {

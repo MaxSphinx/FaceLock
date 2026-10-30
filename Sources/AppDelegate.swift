@@ -148,11 +148,17 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if args.contains("--version") || args.contains("-v") {
             if args.contains("--json") {
-                print("{\"name\":\"FaceLock\",\"version\":\"1.0.16\",\"platform\":\"darwin-arm64\"}")
+                print("{\"name\":\"FaceLock\",\"version\":\"1.1.0\",\"platform\":\"darwin-arm64\"}")
             } else {
-                print("FaceLock v1.0.16 (darwin-arm64)")
+                print("FaceLock v1.1.0 (darwin-arm64)")
             }
             exit(0)
+        }
+
+        if args.contains("--test") || args.contains("--run-tests") {
+            let suite = FaceLockTestSuite()
+            let passed = suite.runAll()
+            exit(passed ? 0 : 1)
         }
 
         if args.contains("--diagnostics") || args.contains("-d") {
@@ -305,10 +311,13 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
             if args.contains("--json") {
                 let statusDict: [String: Any] = [
-                    "version": "1.0.16",
+                    "version": "1.1.0",
                     "daemon": isAlreadyRunning ? "running" : "stopped",
                     "shieldState": Config.shared.isEnabled ? "active" : "paused",
                     "protectionMode": Config.shared.protectionMode,
+                    "activeProfile": Config.shared.activeProfile,
+                    "shoulderSurfingDefense": Config.shared.shoulderSurfingDefense,
+                    "audibleAlerts": Config.shared.audibleAlerts,
                     "enrolledTemplates": enrolledCount,
                     "incidentCaptures": incidentCount,
                     "recentIncidents24h": recent24hCount,
@@ -1065,6 +1074,94 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 print("Error: Invalid timeout. Provide seconds (10 - 600) or 'off'.")
                 exit(1)
+            }
+            exit(0)
+        }
+
+        if args.contains("--profiles") {
+            if args.contains("--json") {
+                let profiles = Config.SecurityProfile.allCases.map { p -> [String: Any] in
+                    return [
+                        "id": p.rawValue,
+                        "title": p.title,
+                        "summary": p.summary,
+                        "isActive": (Config.shared.activeProfile == p.rawValue)
+                    ]
+                }
+                let dict: [String: Any] = [
+                    "activeProfile": Config.shared.activeProfile,
+                    "profiles": profiles
+                ]
+                if let d = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
+                   let s = String(data: d, encoding: .utf8) {
+                    print(s)
+                }
+            } else {
+                print("FaceLock Security Profiles:")
+                for p in Config.SecurityProfile.allCases {
+                    let active = (Config.shared.activeProfile == p.rawValue) ? " [ACTIVE] ✅" : ""
+                    print("  • \(p.rawValue): \(p.title)\(active)")
+                    print("    \(p.summary)")
+                }
+                print("\n  Active Profile: \(Config.shared.activeProfile)")
+            }
+            exit(0)
+        }
+
+        if let idx = args.firstIndex(of: "--profile"), idx + 1 < args.count {
+            let targetName = args[idx + 1].lowercased()
+            if Config.shared.setProfile(targetName) {
+                notifyDaemonIfRunning()
+                if args.contains("--json") {
+                    print("{\"success\":true,\"activeProfile\":\"\(targetName)\"}")
+                } else {
+                    print("✓ Applied security profile '\(targetName)': \(Config.SecurityProfile(rawValue: targetName)?.title ?? targetName)")
+                }
+            } else {
+                let valid = Config.SecurityProfile.allCases.map { $0.rawValue }.joined(separator: ", ")
+                print("Error: Unknown profile '\(targetName)'. Available profiles: \(valid)")
+                exit(1)
+            }
+            exit(0)
+        }
+
+        if args.contains("--toggle-shoulder-defense") || args.contains("--toggle-shoulder") {
+            let enabled = !Config.shared.shoulderSurfingDefense
+            Config.shared.shoulderSurfingDefense = enabled
+            Config.shared.save()
+            SecurityAuditLogger.shared.logConfigChanged(setting: "shoulderSurfingDefense", value: "\(enabled)", details: "Toggled via CLI")
+            notifyDaemonIfRunning()
+            if args.contains("--json") {
+                print("{\"success\":true,\"shoulderSurfingDefense\":\(enabled)}")
+            } else {
+                print("✓ Shoulder-surfing defense \(enabled ? "enabled" : "disabled").")
+            }
+            exit(0)
+        }
+
+        if let idx = args.firstIndex(of: "--set-shoulder-defense"), idx + 1 < args.count {
+            let val = args[idx + 1].lowercased()
+            let enabled = (val == "1" || val == "true" || val == "on" || val == "enable")
+            Config.shared.shoulderSurfingDefense = enabled
+            Config.shared.save()
+            notifyDaemonIfRunning()
+            if args.contains("--json") {
+                print("{\"success\":true,\"shoulderSurfingDefense\":\(enabled)}")
+            } else {
+                print("✓ Shoulder-surfing defense set to \(enabled ? "enabled" : "disabled").")
+            }
+            exit(0)
+        }
+
+        if args.contains("--toggle-audible") {
+            let enabled = !Config.shared.audibleAlerts
+            Config.shared.audibleAlerts = enabled
+            Config.shared.save()
+            notifyDaemonIfRunning()
+            if args.contains("--json") {
+                print("{\"success\":true,\"audibleAlerts\":\(enabled)}")
+            } else {
+                print("✓ Audible sound alerts \(enabled ? "enabled" : "disabled").")
             }
             exit(0)
         }

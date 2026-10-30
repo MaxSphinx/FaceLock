@@ -30,12 +30,27 @@ if git rev-parse "${TAG}" >/dev/null 2>&1; then
     exit 1
 fi
 
+echo "==> Building and verifying application bundle..."
+make build
+make test
+
+echo "==> Packaging zip distribution..."
+(cd build && zip -rq "FaceLock-macOS-arm64.zip" FaceLock.app)
+
 echo "==> Creating annotated tag: ${TAG}"
 git tag -a "${TAG}" -m "${MESSAGE}"
 
 echo "==> Pushing commits and tag to GitHub..."
 git push origin main
 git push origin "${TAG}"
+
+# Create GitHub Release directly if gh is authenticated
+if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+    echo "==> Publishing GitHub Release via gh CLI..."
+    gh release create "${TAG}" "build/FaceLock-macOS-arm64.zip" \
+        --title "${TAG}: ${MESSAGE}" \
+        --generate-notes || true
+fi
 
 echo ""
 echo "=========================================================="

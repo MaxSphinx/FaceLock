@@ -345,7 +345,30 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
                 print("[CameraScanner] Face verification: min=\(String(format: "%.4f", minDistance)), top3=\(String(format: "%.4f", top3Distance)) (th: \(th)) -> \(isOwnerMatch ? "OWNER MATCH ✅" : "INTRUDER REJECTED 🛡️")")
 
                 if isOwnerMatch {
-                    // Matching owner face found!
+                    // Matching owner face found! Check for shoulder-surfing if multiple faces are in frame
+                    if sortedFaces.count > 1 && Config.shared.shoulderSurfingDefense {
+                        let otherFaces = sortedFaces.filter { $0 != face }
+                        var unauthorizedBystander = false
+                        for other in otherFaces {
+                            if let (otherVec, _) = FaceprintExtractor.shared.extractVector(from: pixelBuffer, faceObservation: other) {
+                                let otherMinDist = enrolled.map { FaceprintExtractor.cosineDistance(otherVec, $0) }.min() ?? 100.0
+                                if otherMinDist > th {
+                                    unauthorizedBystander = true
+                                    break
+                                }
+                            } else {
+                                unauthorizedBystander = true
+                                break
+                            }
+                        }
+
+                        if unauthorizedBystander {
+                            print("[CameraScanner] ⚠️ Shoulder-Surfing Alert: unauthorized bystander detected behind owner!")
+                            SecurityAuditLogger.shared.logShoulderSurfingDetected(secondaryCount: otherFaces.count)
+                            HUDController.shared.showShoulderSurfingAlert()
+                        }
+                    }
+
                     handleScanSuccess(distance: minDistance)
                     return
                 }

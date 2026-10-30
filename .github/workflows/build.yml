@@ -26,11 +26,9 @@ jobs:
           chmod +x build.sh
           make build
 
-      - name: Test CLI Flags
+      - name: Run Automated Test Suite & Benchmarks
         run: |
-          ./build/FaceLock.app/Contents/MacOS/FaceLock --help
-          ./build/FaceLock.app/Contents/MacOS/FaceLock --version
-          ./build/FaceLock.app/Contents/MacOS/FaceLock --status
+          make test
 
       - name: Compress App Bundle
         run: |

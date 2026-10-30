@@ -197,6 +197,24 @@ public final class SecurityAuditLogger {
         )
     }
 
+    public func logShoulderSurfingDetected(secondaryCount: Int, details: String? = nil) {
+        log(
+            eventType: "shoulder_surfing_alert",
+            appName: "Security",
+            details: details ?? "Detected \(secondaryCount) unauthorized face(s) in background while owner active",
+            isSuccess: false
+        )
+    }
+
+    public func logProfileSwitched(from oldProfile: String, to newProfile: String) {
+        log(
+            eventType: "profile_switched",
+            appName: "FaceLock",
+            details: "Security profile changed from '\(oldProfile)' to '\(newProfile)'",
+            isSuccess: true
+        )
+    }
+
     public func logPINFailed(targetApp: String?) {
         log(
             eventType: "pin_failed",
