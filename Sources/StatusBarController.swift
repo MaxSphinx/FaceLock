@@ -100,6 +100,10 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         modeItem.target = self
         menu.addItem(modeItem)
 
+        let appsItem = NSMenuItem(title: "Политика приложений (Секретные: \(Config.shared.protectedBundleIdentifiers.count))...", action: #selector(openAppsManager), keyEquivalent: "p")
+        appsItem.target = self
+        menu.addItem(appsItem)
+
         let wakeState = Config.shared.lockOnWake ? "Вкл" : "Выкл"
         let wakeItem = NSMenuItem(title: "Проверка при пробуждении: \(wakeState)", action: #selector(toggleLockOnWake), keyEquivalent: "w")
         wakeItem.target = self
@@ -277,6 +281,10 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
 
     @objc private func openSettings() {
         SettingsController.shared.show()
+    }
+
+    @objc private func openAppsManager() {
+        ApplicationsManagerController.shared.show()
     }
 
     @objc private func menuToggleClicked() {

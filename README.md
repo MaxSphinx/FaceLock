@@ -178,10 +178,12 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --check-app <bundleId>` | Inspect whether bundle ID triggers biometric shield |
 | `facelock --config [--json]` | Display active FaceLock configuration settings |
 | `facelock --apps [--json]` | List protected and ignored application bundle IDs |
+| `facelock --apps-gui` | Open interactive application protection policy manager window |
 | `facelock --protect-app <id>` | Add application bundle ID to protected list |
 | `facelock --unprotect-app <id>` | Remove application bundle ID from protected list |
 | `facelock --ignore-app <id>` | Add application bundle ID to ignored list |
 | `facelock --unignore-app <id>` | Remove application bundle ID from ignored list |
+| `facelock --reset-apps [--json]` | Reset protected and ignored application lists to factory defaults |
 | `facelock --set-pin <pin>` | Set lock screen unlock PIN from terminal |
 | `facelock --set-pin-attempts <count>` | Set max failed PIN attempts before lockout (1-10, default: 3) |
 | `facelock --set-pin-lockout <sec>` | Set cooling lockout delay after failed PIN attempts (1-60s, default: 5s) |

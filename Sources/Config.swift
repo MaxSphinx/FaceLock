@@ -1,9 +1,38 @@
 import Foundation
 import Vision
+import AppKit
+import UniformTypeIdentifiers
 
 public final class Config: Codable {
-    // Last maintenance check: 2026-10-29
+    // Last maintenance check: 2026-10-30
     public static let shared = Config.load()
+
+    public static let defaultProtectedBundleIdentifiers: [String] = [
+        "ru.keepcoder.Telegram",
+        "com.apple.Safari",
+        "com.google.Chrome",
+        "com.apple.mobilesms",
+        "com.apple.Notes",
+        "com.apple.Photos",
+        "com.apple.mail",
+        "com.apple.Terminal",
+        "com.googlecode.iterm2",
+        "net.whatsapp.WhatsApp",
+        "com.apple.keychainaccess",
+        "com.apple.systempreferences"
+    ]
+
+    public static let defaultIgnoredBundleIdentifiers: [String] = [
+        "io.github.facelock",
+        "com.apple.controlcenter",
+        "com.apple.notificationcenterui",
+        "com.apple.Spotlight",
+        "com.apple.WindowManager",
+        "com.apple.loginwindow",
+        "com.apple.ScreenSaver.Engine",
+        "com.apple.systemuiserver",
+        "com.apple.dock"
+    ]
 
     public var pin: String
     public var similarityThreshold: Float
@@ -40,35 +69,12 @@ public final class Config: Codable {
         strictFaceMatch: Bool = true,
         showHUD: Bool = true,
         autoTriggerTouchID: Bool = true,
-        ignoredBundleIdentifiers: [String] = [
-            "io.github.facelock",
-            "com.apple.controlcenter",
-            "com.apple.notificationcenterui",
-            "com.apple.Spotlight",
-            "com.apple.WindowManager",
-            "com.apple.loginwindow",
-            "com.apple.ScreenSaver.Engine",
-            "com.apple.systemuiserver",
-            "com.apple.dock"
-        ],
+        ignoredBundleIdentifiers: [String] = Config.defaultIgnoredBundleIdentifiers,
         telegramBotToken: String = "",
         telegramChatId: String = "",
         telegramEnabled: Bool = false,
         protectionMode: String = "all",
-        protectedBundleIdentifiers: [String] = [
-            "ru.keepcoder.Telegram",
-            "com.apple.Safari",
-            "com.google.Chrome",
-            "com.apple.mobilesms",
-            "com.apple.Notes",
-            "com.apple.Photos",
-            "com.apple.mail",
-            "com.apple.Terminal",
-            "com.googlecode.iterm2",
-            "net.whatsapp.WhatsApp",
-            "com.apple.keychainaccess",
-            "com.apple.systempreferences"
-        ],
+        protectedBundleIdentifiers: [String] = Config.defaultProtectedBundleIdentifiers,
         livenessDetectionEnabled: Bool = true,
         walkAwayLockEnabled: Bool = true,
         walkAwayIdleSeconds: Double = 45.0,
@@ -134,35 +140,12 @@ public final class Config: Codable {
         self.strictFaceMatch = try container.decodeIfPresent(Bool.self, forKey: .strictFaceMatch) ?? true
         self.showHUD = try container.decodeIfPresent(Bool.self, forKey: .showHUD) ?? true
         self.autoTriggerTouchID = try container.decodeIfPresent(Bool.self, forKey: .autoTriggerTouchID) ?? true
-        self.ignoredBundleIdentifiers = try container.decodeIfPresent([String].self, forKey: .ignoredBundleIdentifiers) ?? [
-            "io.github.facelock",
-            "com.apple.controlcenter",
-            "com.apple.notificationcenterui",
-            "com.apple.Spotlight",
-            "com.apple.WindowManager",
-            "com.apple.loginwindow",
-            "com.apple.ScreenSaver.Engine",
-            "com.apple.systemuiserver",
-            "com.apple.dock"
-        ]
+        self.ignoredBundleIdentifiers = try container.decodeIfPresent([String].self, forKey: .ignoredBundleIdentifiers) ?? Config.defaultIgnoredBundleIdentifiers
         self.telegramBotToken = try container.decodeIfPresent(String.self, forKey: .telegramBotToken) ?? ""
         self.telegramChatId = try container.decodeIfPresent(String.self, forKey: .telegramChatId) ?? ""
         self.telegramEnabled = try container.decodeIfPresent(Bool.self, forKey: .telegramEnabled) ?? false
         self.protectionMode = try container.decodeIfPresent(String.self, forKey: .protectionMode) ?? "all"
-        self.protectedBundleIdentifiers = try container.decodeIfPresent([String].self, forKey: .protectedBundleIdentifiers) ?? [
-            "ru.keepcoder.Telegram",
-            "com.apple.Safari",
-            "com.google.Chrome",
-            "com.apple.mobilesms",
-            "com.apple.Notes",
-            "com.apple.Photos",
-            "com.apple.mail",
-            "com.apple.Terminal",
-            "com.googlecode.iterm2",
-            "net.whatsapp.WhatsApp",
-            "com.apple.keychainaccess",
-            "com.apple.systempreferences"
-        ]
+        self.protectedBundleIdentifiers = try container.decodeIfPresent([String].self, forKey: .protectedBundleIdentifiers) ?? Config.defaultProtectedBundleIdentifiers
         self.livenessDetectionEnabled = try container.decodeIfPresent(Bool.self, forKey: .livenessDetectionEnabled) ?? true
         self.walkAwayLockEnabled = try container.decodeIfPresent(Bool.self, forKey: .walkAwayLockEnabled) ?? true
         self.walkAwayIdleSeconds = try container.decodeIfPresent(Double.self, forKey: .walkAwayIdleSeconds) ?? 45.0
@@ -375,6 +358,75 @@ public final class Config: Codable {
             return true
         }
         return false
+    }
+
+    public func resetProtectedApps() {
+        self.protectedBundleIdentifiers = Config.defaultProtectedBundleIdentifiers
+        save()
+    }
+
+    public func resetIgnoredApps() {
+        self.ignoredBundleIdentifiers = Config.defaultIgnoredBundleIdentifiers
+        save()
+    }
+
+    public func resetAllAppLists() {
+        self.protectedBundleIdentifiers = Config.defaultProtectedBundleIdentifiers
+        self.ignoredBundleIdentifiers = Config.defaultIgnoredBundleIdentifiers
+        save()
+    }
+
+    public static func localizedAppName(for bundleId: String) -> String {
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) {
+            let bundle = Bundle(url: url)
+            if let displayName = bundle?.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String, !displayName.isEmpty {
+                return displayName
+            }
+            if let name = bundle?.object(forInfoDictionaryKey: "CFBundleName") as? String, !name.isEmpty {
+                return name
+            }
+            return url.deletingPathExtension().lastPathComponent
+        }
+        switch bundleId {
+        case "ru.keepcoder.Telegram": return "Telegram"
+        case "com.apple.Safari": return "Safari"
+        case "com.google.Chrome": return "Google Chrome"
+        case "com.apple.mobilesms": return "Messages"
+        case "com.apple.Notes": return "Notes"
+        case "com.apple.Photos": return "Photos"
+        case "com.apple.mail": return "Mail"
+        case "com.apple.Terminal": return "Terminal"
+        case "com.googlecode.iterm2": return "iTerm2"
+        case "net.whatsapp.WhatsApp": return "WhatsApp"
+        case "com.apple.keychainaccess": return "Keychain Access"
+        case "com.apple.systempreferences": return "System Settings"
+        case "io.github.facelock": return "FaceLock"
+        case "com.apple.controlcenter": return "Control Center"
+        case "com.apple.notificationcenterui": return "Notification Center"
+        case "com.apple.Spotlight": return "Spotlight"
+        case "com.apple.WindowManager": return "Window Manager"
+        case "com.apple.loginwindow": return "Login Window"
+        case "com.apple.ScreenSaver.Engine": return "Screen Saver"
+        case "com.apple.systemuiserver": return "SystemUIServer"
+        case "com.apple.dock": return "Dock"
+        default:
+            return bundleId.components(separatedBy: ".").last?.capitalized ?? bundleId
+        }
+    }
+
+    public static func appIcon(for bundleId: String, size: NSSize = NSSize(width: 32, height: 32)) -> NSImage {
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) {
+            let icon = NSWorkspace.shared.icon(forFile: url.path)
+            icon.size = size
+            return icon
+        }
+        let config = NSImage.SymbolConfiguration(pointSize: size.width * 0.7, weight: .regular)
+        if let img = NSImage(systemSymbolName: "app.dashed", accessibilityDescription: bundleId)?.withSymbolConfiguration(config) {
+            return img
+        }
+        let fallback = NSWorkspace.shared.icon(for: .application)
+        fallback.size = size
+        return fallback
     }
 
     public func clearEnrolledVectors() {

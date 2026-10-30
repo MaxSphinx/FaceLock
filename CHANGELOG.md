@@ -4,6 +4,31 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.16] - 2026-10-30
+
+### Added
+- **Interactive Application Protection Policy Manager (`ApplicationsManagerWindow.swift`)**:
+  - Designed and implemented a dedicated Application Protection Policy manager window accessible from Settings, Menu Bar, and CLI (`facelock --apps-gui`).
+  - Segmented control to switch between **Защищаемые приложения** (Protected Apps) and **Игнорируемые системой** (Ignored System Apps) with dynamic count badges.
+  - Real-time search field with keyboard shortcut `Cmd+F` for filtering applications by display name or bundle identifier.
+  - App cards displaying native application icons (`NSWorkspace.shared.icon`), localized titles, bundle identifiers, and category badges.
+  - One-click addition from running macOS applications via dynamic popup menu with running app icons and names.
+  - Native macOS Finder integration (`NSOpenPanel`) to select applications directly from `/Applications`.
+  - Manual Bundle ID entry dialog for custom and background processes.
+  - One-click removal with immediate daemon hot-reloading (`AppDelegate.notifyDaemonReload`) and structured audit trail recording (`policy_changed`).
+  - One-click policy reset to factory defaults with confirmation dialog.
+- **Settings & Status Bar Menu Integration (`SettingsWindow.swift`, `StatusBarController.swift`)**:
+  - Added "Настроить список приложений..." direct action button in Section 3 ("Режим проверки приложений") in Preferences.
+  - Added "Политика приложений (Секретные: N)..." (`Cmd+P`) quick-access entry in the macOS menu bar status item.
+- **CLI Commands & IPC Automation (`AppDelegate.swift`, `Config.swift`)**:
+  - Added `facelock --apps-gui` (`--apps-window`) to launch the application rules manager window.
+  - Added `facelock --reset-apps` (`--reset-apps-json`) command restoring factory default protection and ignore rules.
+  - Added automated argument alias resolution for `--reset-apps-json`.
+  - Enriched `Config` with `defaultProtectedBundleIdentifiers`, `defaultIgnoredBundleIdentifiers`, `localizedAppName(for:)`, `appIcon(for:size:)`, and policy reset helpers.
+- **Makefile Automation & Test Expansion (`Makefile`)**:
+  - Added `make apps-gui`, `make protect-app APP=`, `make unprotect-app APP=`, `make ignore-app APP=`, `make unignore-app APP=`, and `make reset-apps` targets.
+  - Expanded `make test` CLI test suite with application policy addition, removal, and reset validations.
+
 ## [1.0.15] - 2026-10-30
 
 ### Added

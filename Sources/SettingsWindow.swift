@@ -50,7 +50,7 @@ public final class SettingsController: NSObject {
         guard window == nil else { return }
 
         let width: CGFloat = 520
-        let height: CGFloat = 890
+        let height: CGFloat = 924
 
         let win = FaceLockUtilityWindow(
             contentRect: NSRect(x: 0, y: 0, width: width, height: height),
@@ -168,7 +168,15 @@ public final class SettingsController: NSObject {
         radioSelective.frame = NSRect(x: 25, y: currentY, width: 470, height: 20)
         root.addSubview(radioSelective)
         self.modeRadioSelective = radioSelective
-        currentY -= 38
+        currentY -= 28
+
+        let manageAppsBtn = NSButton(frame: NSRect(x: 45, y: currentY, width: 260, height: 26))
+        manageAppsBtn.title = "Настроить список приложений..."
+        manageAppsBtn.bezelStyle = .rounded
+        manageAppsBtn.target = self
+        manageAppsBtn.action = #selector(openAppsManagerClicked)
+        root.addSubview(manageAppsBtn)
+        currentY -= 36
 
         // Section 4: Walk-Away & Wake
         let walkHeader = makeSectionHeader(title: "4. Авто-замок при уходе и пробуждении", originY: currentY, width: width)
@@ -491,6 +499,10 @@ public final class SettingsController: NSObject {
 
     @objc private func openGalleryClicked() {
         IncidentGalleryController.shared.show()
+    }
+
+    @objc private func openAppsManagerClicked() {
+        ApplicationsManagerController.shared.show()
     }
 
     @objc private func testTelegramClicked() {

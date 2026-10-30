@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock is-locked is-locked-json settings gallery status config apps diagnostics health toggle toggle-wake wake reload reset-session check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents export-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-gui prune-audit clear-audit export-audit pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config restore-config test
+.PHONY: all build run enroll test-lock lock is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics health toggle toggle-wake wake reload reset-session check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents export-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-gui prune-audit clear-audit export-audit pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config restore-config test
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -33,6 +33,12 @@ help:
 	@echo "  make health         - Fast operational healthcheck (exit 0 if healthy)"
 	@echo "  make config         - Display active FaceLock configuration settings"
 	@echo "  make apps           - List protected and ignored application bundle IDs"
+	@echo "  make apps-gui       - Open interactive application protection policy window"
+	@echo "  make protect-app APP= - Add application bundle ID to protected list"
+	@echo "  make unprotect-app APP= - Remove application bundle ID from protected list"
+	@echo "  make ignore-app APP= - Add application bundle ID to ignored list"
+	@echo "  make unignore-app APP= - Remove application bundle ID from ignored list"
+	@echo "  make reset-apps     - Reset application protection rules to factory defaults"
 	@echo "  make cameras        - List available video capture cameras and active selection"
 	@echo "  make cameras-json   - List video capture cameras in JSON format"
 	@echo "  make set-camera CAMERA= - Set preferred camera device by ID, name or 'default'"
@@ -127,6 +133,40 @@ config: build
 
 apps: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --apps
+
+apps-gui: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --apps-gui
+
+protect-app: build
+	@if [ -z "$(APP)" ]; then \
+		echo "Usage: make protect-app APP=<bundleId>"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --protect-app "$(APP)"
+
+unprotect-app: build
+	@if [ -z "$(APP)" ]; then \
+		echo "Usage: make unprotect-app APP=<bundleId>"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --unprotect-app "$(APP)"
+
+ignore-app: build
+	@if [ -z "$(APP)" ]; then \
+		echo "Usage: make ignore-app APP=<bundleId>"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --ignore-app "$(APP)"
+
+unignore-app: build
+	@if [ -z "$(APP)" ]; then \
+		echo "Usage: make unignore-app APP=<bundleId>"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --unignore-app "$(APP)"
+
+reset-apps: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --reset-apps
 
 cameras: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --cameras
@@ -285,6 +325,9 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-lock-on-wake off --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --ignore-app com.apple.calculator --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --unignore-app com.apple.calculator --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --protect-app com.apple.calculator --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --unprotect-app com.apple.calculator --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --reset-apps --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --reload --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --reset-session --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --reset-session --json > /dev/null

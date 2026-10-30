@@ -56,6 +56,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--cameras", "--json"])
             case "--reset-camera-json":
                 args.append(contentsOf: ["--reset-camera", "--json"])
+            case "--reset-apps-json":
+                args.append(contentsOf: ["--reset-apps", "--json"])
             default:
                 args.append(arg)
             }
@@ -101,10 +103,12 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --backup-config <path>     Export active FaceLock configuration to JSON file
               --restore-config <path>    Import and apply FaceLock configuration from JSON file
               --apps [--json]            List protected and ignored application bundle IDs
+              --apps-gui, --apps-window  Open interactive application protection policy window
               --protect-app <bundleId>   Add application bundle ID to protected list
               --unprotect-app <bundleId> Remove application bundle ID from protected list
               --ignore-app <bundleId>    Add application bundle ID to ignored list
               --unignore-app <bundleId>  Remove application bundle ID from ignored list
+              --reset-apps [--json]      Reset protected and ignored application lists to defaults
               --set-liveness <on|off|toggle> Enable, disable or toggle anti-spoofing verification
               --toggle-liveness          Toggle anti-spoofing 3D liveness detection
               --set-touchid <on|off|toggle> Enable, disable or toggle Touch ID fallback
@@ -144,9 +148,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if args.contains("--version") || args.contains("-v") {
             if args.contains("--json") {
-                print("{\"name\":\"FaceLock\",\"version\":\"1.0.15\",\"platform\":\"darwin-arm64\"}")
+                print("{\"name\":\"FaceLock\",\"version\":\"1.0.16\",\"platform\":\"darwin-arm64\"}")
             } else {
-                print("FaceLock v1.0.15 (darwin-arm64)")
+                print("FaceLock v1.0.16 (darwin-arm64)")
             }
             exit(0)
         }
@@ -301,7 +305,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
             if args.contains("--json") {
                 let statusDict: [String: Any] = [
-                    "version": "1.0.15",
+                    "version": "1.0.16",
                     "daemon": isAlreadyRunning ? "running" : "stopped",
                     "shieldState": Config.shared.isEnabled ? "active" : "paused",
                     "protectionMode": Config.shared.protectionMode,
@@ -549,6 +553,27 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 } else {
                     print("ℹ️ '\(bundleId)' was not found in ignored applications list.")
                 }
+            }
+            exit(0)
+        }
+
+        if args.contains("--reset-apps") {
+            Config.shared.resetAllAppLists()
+            SecurityAuditLogger.shared.logPolicyChanged(action: "Reset application policy to defaults", bundleId: "all")
+            notifyDaemonIfRunning()
+            if args.contains("--json") {
+                let dict: [String: Any] = [
+                    "success": true,
+                    "protectedAppsCount": Config.shared.protectedBundleIdentifiers.count,
+                    "ignoredAppsCount": Config.shared.ignoredBundleIdentifiers.count,
+                    "message": "Reset application lists to factory defaults"
+                ]
+                if let jsonData = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
+                   let jsonStr = String(data: jsonData, encoding: .utf8) {
+                    print(jsonStr)
+                }
+            } else {
+                print("✓ Reset protected (\(Config.shared.protectedBundleIdentifiers.count)) and ignored (\(Config.shared.ignoredBundleIdentifiers.count)) application lists to factory defaults.")
             }
             exit(0)
         }
@@ -2119,6 +2144,15 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 )
                 print("[FaceLock] Dispatched audit log command to running instance.")
                 exit(0)
+            } else if args.contains("--apps-gui") || args.contains("--apps-window") {
+                DistributedNotificationCenter.default().postNotificationName(
+                    AppDelegate.commandNotificationName,
+                    object: nil,
+                    userInfo: ["action": "apps-gui"],
+                    deliverImmediately: true
+                )
+                print("[FaceLock] Dispatched applications manager command to running instance.")
+                exit(0)
             } else if !args.contains("--reset") {
                 let unhandledArgs = args.dropFirst().filter { $0.starts(with: "-") }
                 if let unknown = unhandledArgs.first {
@@ -2182,6 +2216,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 AuditLogController.shared.show()
             }
+        } else if args.contains("--apps-gui") || args.contains("--apps-window") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                ApplicationsManagerController.shared.show()
+            }
         } else {
             let unhandledArgs = args.dropFirst().filter { $0.starts(with: "-") && $0 != "--daemon" && $0 != "--background" }
             if let unknown = unhandledArgs.first {
@@ -2219,6 +2257,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 IncidentGalleryController.shared.show()
             case "audit-log", "audit", "audit-window", "audit-ui":
                 AuditLogController.shared.show()
+            case "apps-gui", "apps-window", "apps":
+                ApplicationsManagerController.shared.show()
             case "lock", "test-lock":
                 LockScreenController.shared.showLock()
             case "toggle":

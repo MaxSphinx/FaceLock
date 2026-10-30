@@ -2,6 +2,7 @@ import AppKit
 
 public class FaceLockUtilityWindow: NSWindow {
     public var onRefresh: (() -> Void)?
+    public var onSearch: (() -> Void)?
 
     public override func cancelOperation(_ sender: Any?) {
         self.orderOut(sender)
@@ -21,6 +22,10 @@ public class FaceLockUtilityWindow: NSWindow {
             }
             if chars == "r", let refresh = onRefresh {
                 refresh()
+                return true
+            }
+            if chars == "f", let search = onSearch {
+                search()
                 return true
             }
         }
