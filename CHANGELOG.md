@@ -8,42 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Interactive Diagnostics & System Health GUI (`DiagnosticsWindow.swift`, `Makefile`, `StatusBarController.swift`)**:
-  - Added dedicated graphical window for real-time biometric and subsystem health diagnostics (`facelock --diagnostics-gui` and `make diagnostics-gui`).
-  - Integrated "Диагностика и здоровье системы (Diagnostics)..." (`Cmd+D`) entry directly into the macOS menu bar status item.
-  - Refactored `Diagnostics.collectReport()` for shared headless JSON and graphical inspection.
-- **Case-Insensitive Application Policy Matching (`Config.swift`, `AppMonitor.swift`, `AppDelegate.swift`)**:
-  - Implemented `Config.isProtected(bundleId:)` and `Config.isIgnored(bundleId:)` enforcing whitespace trimming and case-insensitive comparison.
-  - Safeguarded `addProtectedApp` / `removeProtectedApp` / `addIgnoredApp` / `removeIgnoredApp` preventing duplicate bundle IDs with differing cases.
-- **Hardware Display Sleep Assertion & Video Meeting Expansion (`WalkAwayMonitor.swift`)**:
-  - Integrated live display sleep assertion sensing via `IOKit.pwr_mgt` (`IOPMCopyAssertionsByProcess`) to prevent walk-away locking during active screen sharing or video playback.
-  - Expanded meeting / presentation bundle identifiers: Skype, Yandex Telemost, OBS Studio, Loom, Freeform, QuickTime Player, and Chrome Google Meet app.
-- **Lock Screen Ergonomics & Bystander Telegram Alerts (`LockScreenWindow.swift`, `CameraScanner.swift`, `TelegramNotifier.swift`)**:
-  - Added visual Caps Lock indicator badge on the lock screen PIN input field with live `flagsChanged` modifier key tracking.
-  - Added automated photo capture and Telegram alerts for unauthorized secondary bystanders detected during shoulder-surfing scans (`sendBystanderAlert`).
-  - Added audible chimes for lock engagement, unlock, and PIN failure when `audibleAlerts` is enabled.
-- **Test Suite Expansion to 132 Tests (`Tests/FaceLockTests.swift`)**:
-  - Expanded automated test suite from 74 to 132 passing unit tests (100% reliability), covering diagnostics report structures, config defense state synchronization, SIMD vector parity, and case-insensitive policy filtering.
-
-## [1.1.3] - 2026-11-01
-
-### Added
-- **Native Diagnostics GUI Window (`DiagnosticsWindow.swift`, `Makefile`, `AppDelegate.swift`)**:
   - Implemented standalone interactive `DiagnosticsWindow` accessible via Menu Bar, Makefile (`make diagnostics-gui`), and CLI (`facelock --diagnostics-gui`).
   - Displays real-time operational health checks: Apple Silicon architecture, daemon status, camera subsystem permissions, Vision Neural Engine availability, Touch ID biometrics, storage disk usage, and Telegram reachability.
   - Live refresh capability (`Cmd+R`), direct Finder shortcut to `~/.facelock`, and one-click JSON diagnostic report export.
+  - Integrated "Диагностика и здоровье системы (Diagnostics)..." (`Cmd+D`) entry directly into the macOS menu bar status item.
+- **Hardware-Accelerated SIMD Vector Math (`FaceprintExtractor.swift`)**:
+  - Upgraded `FaceprintExtractor.cosineDistance` to use Apple Accelerate framework `vDSP` SIMD vector cosine similarity (`vDSP_dotpr` and `vDSP_svesq`), delivering hardware acceleration on Apple Silicon.
 - **Lock Screen Ergonomics & Caps Lock Sensing (`LockScreenWindow.swift`)**:
-  - Added dynamic Caps Lock indicator (`capslock.fill`) on the PIN authentication card responding in real-time to modifier flag changes via `flagsChanged`.
-  - Added subtle audio cue reinforcement for PIN failure and successful unlocks when audible alerts are enabled.
+  - Added dynamic Caps Lock indicator badge (`capslock.fill`) on the PIN authentication card responding in real-time to modifier flag changes via `flagsChanged`.
+  - Added subtle audio cue reinforcement for PIN failure, lock engagement, and successful unlocks when audible alerts are enabled.
 - **Shoulder-Surfing Defense Photo Capture & Telegram Alerting (`CameraScanner.swift`, `TelegramNotifier.swift`)**:
-  - Integrated automatic intruder photo capture for unauthorized secondary background faces (`bystander_*.jpg`).
+  - Integrated automatic photo capture for unauthorized secondary background faces (`bystander_*.jpg`).
   - Added dedicated Telegram notification dispatch (`sendBystanderAlert`) with 45s throttling debounce to alert owner in real-time of eavesdropping.
 - **Lockdown Security Profile (`Config.swift`, `Tests/FaceLockTests.swift`)**:
-  - Added 6th security profile `lockdown` featuring ultra-strict 5s walk-away timeout, 0.18 neural matching threshold, mandatory shoulder-surfing defense, and audible deterrents.
+  - Added 6th security profile `lockdown` featuring ultra-strict 5s walk-away timeout, 0.18 neural matching threshold, mandatory shoulder-surfing defense, lock-on-wake, and audible deterrents.
 - **Meeting & Video Call Detection Expansion (`WalkAwayMonitor.swift`)**:
-  - Added support for Skype, Yandex Telemost, OBS Studio, Loom, Freeform, and QuickTime Player.
+  - Added support for Skype, Yandex Telemost, OBS Studio, Loom, Freeform, QuickTime Player, and Chrome Google Meet app.
   - Linked `IOKit.pwr_mgt` and integrated `IOPMCopyAssertionsByProcess` to detect active display sleep assertions from presentation and playback software.
 - **State Synchronization & IPC Enhancements (`Config.swift`, `AppDelegate.swift`, `StatusBarController.swift`)**:
-  - Enhanced `Config.reload()` to synchronize all runtime defense settings (`activeProfile`, `shoulderSurfingDefense`, `batteryAwareScanning`, `audibleAlerts`, and `presentationModeSuppression`) on hot-reload.
+  - Enhanced `Config.reload()` and `Config.restoreConfig()` to synchronize all runtime defense settings (`activeProfile`, `shoulderSurfingDefense`, `batteryAwareScanning`, `audibleAlerts`, and `presentationModeSuppression`) on hot-reload.
   - Added case-insensitive bundle identifier check helpers `Config.isProtected(bundleId:)` and `Config.isIgnored(bundleId:)`.
   - Extended distributed IPC command receiver (`handleDistributedCommand`) to support `diagnostics-gui`, `profile`, `toggle-shoulder`, `toggle-audible`, `toggle-battery`, and `toggle-presentation`.
 - **Test Suite Expansion to 132 Tests (`Tests/FaceLockTests.swift`)**:
