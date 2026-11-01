@@ -26,6 +26,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--health", "--json"])
             case "--diagnostics-json":
                 args.append(contentsOf: ["--diagnostics", "--json"])
+            case "--diagnostics-gui-json", "--diagnostics-ui-json", "--diagnostics-window-json":
+                args.append(contentsOf: ["--diagnostics-gui", "--json"])
             case "--vectors-json":
                 args.append(contentsOf: ["--vectors", "--json"])
             case "--optimize-vectors-json":
@@ -93,6 +95,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --export-incident <f> <p>  Copy specific intruder photo capture to destination path
               --clear-incidents          Purge all saved intruder photo captures from disk
               --prune-incidents <count>  Prune intruder captures keeping latest N photos
+              --diagnostics [--json]     Run full biometric, hardware & storage diagnostics
+              --diagnostics-gui, --diagnostics-ui Open system hardware and biometrics diagnostics window
               --logs, --audit [--tail N] [--type T] [--json] View security audit event log
               --audit-ui, --audit-window Open security audit log viewer window
               --clear-logs, --clear-audit Purge all recorded security audit log events
@@ -169,9 +173,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if args.contains("--version") || args.contains("-v") {
             if args.contains("--json") {
-                print("{\"name\":\"FaceLock\",\"version\":\"1.1.2\",\"platform\":\"darwin-arm64\"}")
+                print("{\"name\":\"FaceLock\",\"version\":\"1.1.3\",\"platform\":\"darwin-arm64\"}")
             } else {
-                print("FaceLock v1.1.2 (darwin-arm64)")
+                print("FaceLock v1.1.3 (darwin-arm64)")
             }
             exit(0)
         }
@@ -191,6 +195,23 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: "io.github.facelock")
             .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
         let isAlreadyRunning = !runningApps.isEmpty
+
+        if args.contains("--diagnostics-gui") || args.contains("--diagnostics-ui") || args.contains("--diagnostics-window") {
+            if isAlreadyRunning {
+                DistributedNotificationCenter.default().postNotificationName(
+                    AppDelegate.commandNotificationName,
+                    object: nil,
+                    userInfo: ["action": "diagnostics-gui"],
+                    deliverImmediately: true
+                )
+                if args.contains("--json") {
+                    print("{\"success\":true,\"daemonRunning\":true,\"message\":\"Opened Diagnostics window via running FaceLock daemon\"}")
+                } else {
+                    print("✓ Opened Diagnostics window via running FaceLock daemon.")
+                }
+                exit(0)
+            }
+        }
 
         if args.contains("--reload") || args.contains("--reload-config") {
             if isAlreadyRunning {
@@ -260,8 +281,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 exit(1)
             }
             let config = Config.shared
-            let isIgnored = config.ignoredBundleIdentifiers.contains(bundleId)
-            let isSelf = (bundleId == "io.github.facelock" || bundleId == Bundle.main.bundleIdentifier)
+            let isIgnored = config.isIgnored(bundleId: bundleId)
+            let isSelf = (bundleId.caseInsensitiveCompare("io.github.facelock") == .orderedSame || bundleId == Bundle.main.bundleIdentifier)
             let isProtected: Bool
             let willTrigger: Bool
 
@@ -269,7 +290,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 isProtected = false
                 willTrigger = false
             } else if config.protectionMode == "selective" {
-                isProtected = config.protectedBundleIdentifiers.contains(bundleId)
+                isProtected = config.isProtected(bundleId: bundleId)
                 willTrigger = isProtected && config.isEnabled
             } else {
                 isProtected = true
@@ -332,7 +353,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
             if args.contains("--json") {
                 let statusDict: [String: Any] = [
-                    "version": "1.1.2",
+                    "version": "1.1.3",
                     "daemon": isAlreadyRunning ? "running" : "stopped",
                     "shieldState": Config.shared.isEnabled ? "active" : "paused",
                     "protectionMode": Config.shared.protectionMode,
@@ -364,7 +385,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             let recent24hStr = recent24hCount > 0 ? " (\(recent24hCount) in past 24h)" : ""
             print("""
             FaceLock Status:
-              Version: 1.1.2 (darwin-arm64)
+              Version: 1.1.3 (darwin-arm64)
               Daemon: \(isAlreadyRunning ? "RUNNING" : "STOPPED")
               Shield: \(Config.shared.isEnabled ? "ACTIVE" : "PAUSED")
               Mode: \(Config.shared.protectionMode)
@@ -2435,6 +2456,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 ApplicationsManagerController.shared.show()
             }
+        } else if args.contains("--diagnostics-gui") || args.contains("--diagnostics-ui") || args.contains("--diagnostics-window") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                DiagnosticsController.shared.show()
+            }
         } else {
             let unhandledArgs = args.dropFirst().filter { $0.starts(with: "-") && $0 != "--daemon" && $0 != "--background" }
             if let unknown = unhandledArgs.first {
@@ -2474,6 +2499,22 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 AuditLogController.shared.show()
             case "apps-gui", "apps-window", "apps":
                 ApplicationsManagerController.shared.show()
+            case "diagnostics", "diagnostics-gui", "diagnostics-window", "diagnostics-ui":
+                DiagnosticsController.shared.show()
+            case "profile", "set-profile":
+                if let prof = notif.userInfo?["profile"] as? String,
+                   let p = Config.SecurityProfile(rawValue: prof) {
+                    Config.shared.applyProfile(p)
+                    StatusBarController.shared.updateIcon()
+                }
+            case "toggle-shoulder":
+                StatusBarController.shared.toggleShoulderSurfing()
+            case "toggle-audible":
+                StatusBarController.shared.toggleAudibleAlerts()
+            case "toggle-battery":
+                StatusBarController.shared.toggleBatteryAware()
+            case "toggle-presentation":
+                StatusBarController.shared.togglePresentationSuppression()
             case "lock", "test-lock":
                 LockScreenController.shared.showLock()
             case "toggle":

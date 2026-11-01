@@ -2,6 +2,7 @@ import Foundation
 import Vision
 import CoreVideo
 import AppKit
+import Accelerate
 
 public final class FaceprintExtractor {
     public static let shared = FaceprintExtractor()
@@ -60,15 +61,15 @@ public final class FaceprintExtractor {
 
     public static func cosineDistance(_ a: [Float], _ b: [Float]) -> Float {
         guard a.count == b.count, !a.isEmpty else { return 1.0 }
-        var dot: Float = 0
-        var normA: Float = 0
-        var normB: Float = 0
-        for i in 0..<a.count {
-            dot += a[i] * b[i]
-            normA += a[i] * a[i]
-            normB += b[i] * b[i]
-        }
+        var dot: Float = 0.0
+        var normA: Float = 0.0
+        var normB: Float = 0.0
+        vDSP_dotpr(a, 1, b, 1, &dot, vDSP_Length(a.count))
+        vDSP_svesq(a, 1, &normA, vDSP_Length(a.count))
+        vDSP_svesq(b, 1, &normB, vDSP_Length(b.count))
         let denom = sqrt(normA) * sqrt(normB)
-        return denom > 0 ? (1.0 - (dot / denom)) : 1.0
+        if denom == 0.0 { return 1.0 }
+        let sim = max(-1.0, min(1.0, dot / denom))
+        return 1.0 - sim
     }
 }

@@ -47,6 +47,7 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
     public private(set) var latestBestDistance: Float?
     public private(set) var latestSavedIntruderURL: URL?
     public var autoSaveIntruders: Bool = true
+    private var lastShoulderAlertTime: Date = .distantPast
 
     public func clearCandidateFaceprint() {
         self.lastCandidateVector = nil
@@ -349,15 +350,18 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
                     if sortedFaces.count > 1 && Config.shared.shoulderSurfingDefense {
                         let otherFaces = sortedFaces.filter { $0 != face }
                         var unauthorizedBystander = false
+                        var primaryBystanderFace: VNFaceObservation? = nil
                         for other in otherFaces {
                             if let (otherVec, _) = FaceprintExtractor.shared.extractVector(from: pixelBuffer, faceObservation: other) {
                                 let otherMinDist = enrolled.map { FaceprintExtractor.cosineDistance(otherVec, $0) }.min() ?? 100.0
                                 if otherMinDist > th {
                                     unauthorizedBystander = true
+                                    primaryBystanderFace = other
                                     break
                                 }
                             } else {
                                 unauthorizedBystander = true
+                                primaryBystanderFace = other
                                 break
                             }
                         }
@@ -366,6 +370,20 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
                             print("[CameraScanner] ⚠️ Shoulder-Surfing Alert: unauthorized bystander detected behind owner!")
                             SecurityAuditLogger.shared.logShoulderSurfingDetected(secondaryCount: otherFaces.count)
                             HUDController.shared.showShoulderSurfingAlert()
+
+                            let now = Date()
+                            if now.timeIntervalSince(self.lastShoulderAlertTime) >= 45.0 {
+                                self.lastShoulderAlertTime = now
+                                let targetFace = primaryBystanderFace ?? otherFaces.first!
+                                if let bystanderPhoto = self.cropFace(from: pixelBuffer, boundingBox: targetFace.boundingBox) {
+                                    if self.autoSaveIntruders {
+                                        _ = self.saveIntruderPhoto(bystanderPhoto, prefix: "bystander")
+                                    }
+                                    if Config.shared.telegramEnabled {
+                                        TelegramNotifier.shared.sendBystanderAlert(photo: bystanderPhoto, bystanderCount: otherFaces.count)
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -454,7 +472,7 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
     }
 
     @discardableResult
-    public func saveIntruderPhoto(_ image: NSImage) -> URL? {
+    public func saveIntruderPhoto(_ image: NSImage, prefix: String = "intruder") -> URL? {
         let home = FileManager.default.homeDirectoryForCurrentUser
         let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -462,7 +480,7 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
         let entropy = UUID().uuidString.prefix(6)
-        let filename = "intruder_\(formatter.string(from: Date()))_\(entropy).jpg"
+        let filename = "\(prefix)_\(formatter.string(from: Date()))_\(entropy).jpg"
         let url = dir.appendingPathComponent(filename)
 
         guard let tiff = image.tiffRepresentation,
@@ -471,7 +489,7 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
             return nil
         }
         try? jpeg.write(to: url)
-        print("[CameraScanner] Intruder photo saved: \(url.path)")
+        print("[CameraScanner] Capture photo saved (\(prefix)): \(url.path)")
         pruneOldIntruderPhotos(in: dir, maxRetained: 150)
         return url
     }

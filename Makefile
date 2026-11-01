@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics health toggle toggle-wake wake reload reset-session check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents export-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-gui prune-audit clear-audit export-audit pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config restore-config test profiles profile toggle-shoulder toggle-audible toggle-battery toggle-presentation
+.PHONY: all build run enroll test-lock lock is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health toggle toggle-wake wake reload reset-session check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents export-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-gui prune-audit clear-audit export-audit pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config restore-config test profiles profile toggle-shoulder toggle-audible toggle-battery toggle-presentation
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -71,6 +71,7 @@ help:
 	@echo "  make pin-lockout SECONDS= - Set cooling lockout delay after failed PINs"
 	@echo "  make test-telegram  - Dispatch test notification to Telegram chat"
 	@echo "  make diagnostics    - Run full biometric, hardware & storage diagnostics"
+	@echo "  make diagnostics-gui - Open interactive system diagnostics & health window"
 	@echo "  make diagnostics-json - Run diagnostics in JSON format"
 	@echo "  make stop           - Terminate running FaceLock instance"
 	@echo "  make uninstall      - Remove application and CLI symlink"
@@ -378,6 +379,10 @@ diagnostics: build
 
 diagnostics-json: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --diagnostics --json
+
+diagnostics-gui: build
+	@echo "Opening Diagnostics & System Health window..."
+	@build/FaceLock.app/Contents/MacOS/FaceLock --diagnostics-gui
 
 commit:
 	@./scripts/autocommit.sh

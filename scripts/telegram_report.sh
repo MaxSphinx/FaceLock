@@ -59,7 +59,11 @@ format_pr_status() {
     raw=$(gh pr view "$pr_num" --repo "$repo" --json state,mergeable,comments 2>/dev/null || echo "{}")
     echo "$raw" | python3 -c "import sys, json
 try:
-    d = json.load(sys.stdin)
+    content = sys.stdin.read()
+    idx = content.find('{')
+    if idx != -1:
+        content = content[idx:]
+    d = json.loads(content)
     s = d.get('state', 'PENDING')
     m = d.get('mergeable', '')
     comments = d.get('comments', [])
@@ -156,7 +160,8 @@ if os.path.exists(p):
             'cafe': 'Cafe (Strict)',
             'work': 'Work (Офис)',
             'home': 'Home (Relaxed)',
-            'presentation': 'Presentation (Фокус)'
+            'presentation': 'Presentation (Фокус)',
+            'lockdown': 'Lockdown (Максимальный)'
         }
         print(labels.get(prof, prof.capitalize()))
     except:

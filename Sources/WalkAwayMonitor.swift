@@ -2,6 +2,7 @@ import AppKit
 import CoreGraphics
 import Foundation
 import IOKit.ps
+import IOKit.pwr_mgt
 
 public final class WalkAwayMonitor {
     public static let shared = WalkAwayMonitor()
@@ -95,18 +96,52 @@ public final class WalkAwayMonitor {
         "us.zoom.xos",
         "us.zoom.ZoomPresence",
         "com.apple.FaceTime",
+        "com.apple.QuickTimePlayerX",
         "com.microsoft.teams",
         "com.microsoft.teams2",
         "com.cisco.webexmeetingsapp",
+        "com.cisco.webex.Cisco-WebEx-Start",
         "com.tinyspeck.slackmacgap",
-        "com.discord.Discord"
+        "com.discord.Discord",
+        "com.skype.skype",
+        "ru.yandex.telemost",
+        "com.obsproject.obs-studio",
+        "com.loom.desktop",
+        "com.apple.freeform",
+        "com.google.Chrome.app.kjgfgldnnfoeklkmfkjfagphfepbbdan"
     ]
+
+    public static func hasDisplaySleepAssertion() -> Bool {
+        var assertionsByProcess: Unmanaged<CFDictionary>?
+        let status = IOPMCopyAssertionsByProcess(&assertionsByProcess)
+        guard status == kIOReturnSuccess,
+              let dict = assertionsByProcess?.takeRetainedValue() as? [AnyHashable: Any] else {
+            return false
+        }
+        for (_, assertions) in dict {
+            if let list = assertions as? [[String: Any]] {
+                for a in list {
+                    if let type = a["AssertType"] as? String {
+                        if type == "NoDisplaySleepAssertion" || type == "PreventUserIdleDisplaySleep" {
+                            return true
+                        }
+                    }
+                }
+            }
+        }
+        return false
+    }
 
     public static func isPresentationActive(bundleId: String? = nil) -> Bool {
         guard Config.shared.presentationModeSuppression else { return false }
         let bundle = bundleId ?? NSWorkspace.shared.frontmostApplication?.bundleIdentifier
-        guard let appId = bundle else { return false }
-        return presentationBundleIdentifiers.contains(appId)
+        if let appId = bundle, presentationBundleIdentifiers.contains(where: { $0.caseInsensitiveCompare(appId) == .orderedSame }) {
+            return true
+        }
+        if bundleId == nil && hasDisplaySleepAssertion() {
+            return true
+        }
+        return false
     }
 
     private func checkPresentationState() -> Bool {

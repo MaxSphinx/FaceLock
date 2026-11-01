@@ -44,6 +44,41 @@ public final class TelegramNotifier {
         sendPhotoRequest(token: token, chatId: chatId, photoData: jpegData, caption: caption, completion: completion)
     }
 
+    public func sendBystanderAlert(photo: NSImage, bystanderCount: Int, completion: ((Bool, String?) -> Void)? = nil) {
+        guard Config.shared.telegramEnabled else {
+            completion?(false, "Telegram alerts disabled")
+            return
+        }
+
+        let token = Config.shared.telegramBotToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        let chatId = Config.shared.telegramChatId.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !token.isEmpty, !chatId.isEmpty else {
+            completion?(false, "Bot Token or Chat ID is empty")
+            return
+        }
+
+        guard let tiff = photo.tiffRepresentation,
+              let rep = NSBitmapImageRep(data: tiff),
+              let jpegData = rep.representation(using: .jpeg, properties: [.compressionFactor: 0.85]) else {
+            completion?(false, "Failed to encode JPEG image")
+            return
+        }
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss (dd.MM.yyyy)"
+        let timeStr = formatter.string(from: Date())
+
+        let caption = """
+        👀 <b>FaceLock: Обнаружено подглядывание (Shoulder-Surfing)!</b>
+        👥 Посторонних лиц за спиной: <b>\(bystanderCount)</b>
+        🕒 <b>Время:</b> \(timeStr)
+        ⚠️ Внимание: посторонний человек находится за вашей спиной и смотрит в экран.
+        """
+
+        sendPhotoRequest(token: token, chatId: chatId, photoData: jpegData, caption: caption, completion: completion)
+    }
+
     public static func escapeHTML(_ text: String) -> String {
         return text
             .replacingOccurrences(of: "&", with: "&amp;")

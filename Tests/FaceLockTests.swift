@@ -51,6 +51,8 @@ public final class FaceLockTestSuite {
         testBatteryAwareAdaptiveScanning()
         testAudibleAlertsAndShoulderDefense()
         testMeetingAndPresentationSuppression()
+        testDiagnosticsReportCollection()
+        testConfigReloadAndStateSync()
         testCliFlagNormalization()
         testApplicationPolicyFiltering()
         testPinLockoutExponentialLogic()
@@ -80,6 +82,8 @@ public final class FaceLockTestSuite {
         let v1: [Float] = Array(repeating: 0.5, count: 128)
         let dIdentical = cosineDistance(v1, v1)
         assertAccuracy(dIdentical, 0.0, accuracy: 0.0001, "Identical 128-D vectors produce cosine distance 0.0")
+        let dExtIdentical = FaceprintExtractor.cosineDistance(v1, v1)
+        assertAccuracy(dExtIdentical, 0.0, accuracy: 0.0001, "FaceprintExtractor SIMD produces cosine distance 0.0 for identical vectors")
 
         // Orthogonal vectors must have distance 1.0
         var vOrtho1 = Array(repeating: Float(0.0), count: 128)
@@ -88,11 +92,15 @@ public final class FaceLockTestSuite {
         for i in 64..<128 { vOrtho2[i] = 1.0 }
         let dOrtho = cosineDistance(vOrtho1, vOrtho2)
         assertAccuracy(dOrtho, 1.0, accuracy: 0.0001, "Orthogonal vectors produce cosine distance 1.0")
+        let dExtOrtho = FaceprintExtractor.cosineDistance(vOrtho1, vOrtho2)
+        assertAccuracy(dExtOrtho, 1.0, accuracy: 0.0001, "FaceprintExtractor SIMD produces cosine distance 1.0 for orthogonal vectors")
 
         // Opposite vectors must have distance 2.0
         let vOpposite = v1.map { -$0 }
         let dOpposite = cosineDistance(v1, vOpposite)
         assertAccuracy(dOpposite, 2.0, accuracy: 0.0001, "Inverted vectors produce cosine distance 2.0")
+        let dExtOpposite = FaceprintExtractor.cosineDistance(v1, vOpposite)
+        assertAccuracy(dExtOpposite, 2.0, accuracy: 0.0001, "FaceprintExtractor SIMD produces cosine distance 2.0 for inverted vectors")
 
         // Symmetry: d(A, B) == d(B, A)
         let randA = (0..<128).map { _ in Float.random(in: -1...1) }
@@ -100,6 +108,9 @@ public final class FaceLockTestSuite {
         let dAB = cosineDistance(randA, randB)
         let dBA = cosineDistance(randB, randA)
         assertAccuracy(dAB, dBA, accuracy: 0.00001, "Cosine distance is symmetric: d(A, B) == d(B, A)")
+        let dExtAB = FaceprintExtractor.cosineDistance(randA, randB)
+        let dExtBA = FaceprintExtractor.cosineDistance(randB, randA)
+        assertAccuracy(dExtAB, dExtBA, accuracy: 0.00001, "FaceprintExtractor SIMD distance is symmetric: d(A, B) == d(B, A)")
     }
 
     // MARK: - 2. Vector Normalization
@@ -148,9 +159,16 @@ public final class FaceLockTestSuite {
         print("\n▶ Test Suite: Security Profiles Application & Defaults")
 
         let allProfiles = Config.SecurityProfile.allCases
-        assertEqual(allProfiles.count, 5, "Total 5 distinct security profiles supported")
+        assertEqual(allProfiles.count, 6, "Total 6 distinct security profiles supported")
 
         let config = Config()
+        config.applyProfile(.lockdown)
+        assertEqual(config.activeProfile, "lockdown", "Profile successfully switches to 'lockdown'")
+        assertEqual(config.walkAwayIdleSeconds, 5.0, "Lockdown profile enforces strict 5s walk-away timeout")
+        assertAccuracy(config.similarityThreshold, 0.18, accuracy: 0.001, "Lockdown profile uses strict 0.18 threshold")
+        assertEqual(config.shoulderSurfingDefense, true, "Lockdown profile enables shoulder-surfing defense")
+        assertEqual(config.audibleAlerts, true, "Lockdown profile enables audible alarm")
+
         config.applyProfile(.cafe)
         assertEqual(config.activeProfile, "cafe", "Profile successfully switches to 'cafe'")
         assertEqual(config.walkAwayIdleSeconds, 10.0, "Cafe profile enforces 10s walk-away timeout")
@@ -201,6 +219,15 @@ public final class FaceLockTestSuite {
 
         config.audibleAlerts = true
         assertEqual(config.audibleAlerts, true, "Audible alerts toggles to true")
+
+        // Verify bystander filename prefix support
+        let prefix = "bystander"
+        let sampleName = "\(prefix)_\(UUID().uuidString.prefix(6)).jpg"
+        assert(sampleName.hasPrefix("bystander_"), "Bystander capture prefix formatted correctly")
+
+        // Verify shoulder alert HTML escaping
+        let alertCaption = "👀 FaceLock: Обнаружено подглядывание (Shoulder-Surfing)!"
+        assert(TelegramNotifier.escapeHTML(alertCaption) == alertCaption, "Shoulder alert caption safely preserves valid characters")
     }
 
     // MARK: - 4d. Meeting & Presentation Mode Auto-Suppression
@@ -214,14 +241,104 @@ public final class FaceLockTestSuite {
         assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("us.zoom.xos"), "Zoom is recognized as meeting app")
         assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("com.cisco.webexmeetingsapp"), "Webex is recognized as meeting app")
         assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("com.discord.Discord"), "Discord is recognized as communication app")
+        assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("com.skype.skype"), "Skype is recognized as meeting app")
+        assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("ru.yandex.telemost"), "Telemost is recognized as meeting app")
+        assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("com.obsproject.obs-studio"), "OBS Studio is recognized as streaming app")
+        assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("com.loom.desktop"), "Loom is recognized as recording app")
+        assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("com.apple.freeform"), "Freeform is recognized as presentation app")
+        assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("com.apple.QuickTimePlayerX"), "QuickTime Player is recognized as presentation app")
 
         assert(WalkAwayMonitor.isPresentationActive(bundleId: "com.apple.iWork.Keynote"), "Keynote triggers presentation lock suppression")
+        assert(WalkAwayMonitor.isPresentationActive(bundleId: "com.apple.QuickTimePlayerX"), "QuickTime Player triggers presentation lock suppression")
+        assert(WalkAwayMonitor.isPresentationActive(bundleId: "com.skype.skype"), "Skype triggers presentation lock suppression")
+        assert(WalkAwayMonitor.isPresentationActive(bundleId: "ru.yandex.telemost"), "Telemost triggers presentation lock suppression")
         assert(!WalkAwayMonitor.isPresentationActive(bundleId: "com.apple.Safari"), "Safari does not trigger presentation suppression")
+
+        let hasAssertion = WalkAwayMonitor.hasDisplaySleepAssertion()
+        assert(hasAssertion == true || hasAssertion == false, "WalkAwayMonitor safely queries display sleep assertion state without crashing")
 
         let orig = Config.shared.presentationModeSuppression
         Config.shared.presentationModeSuppression = false
         assert(!WalkAwayMonitor.isPresentationActive(bundleId: "com.apple.iWork.Keynote"), "Suppression disabled when feature flag is off")
         Config.shared.presentationModeSuppression = orig
+    }
+
+    // MARK: - 4e. Diagnostics Report Collection & Telemetry
+    private func testDiagnosticsReportCollection() {
+        print("\n▶ Test Suite: Diagnostics Telemetry & Report Collection")
+        let report = Diagnostics.collectReport()
+
+        assert(report["platform"] != nil, "Diagnostics platform telemetry collected")
+        assert(report["daemon"] != nil, "Diagnostics daemon telemetry collected")
+        assert(report["camera"] != nil, "Diagnostics camera subsystem telemetry collected")
+        assert(report["biometrics"] != nil, "Diagnostics biometrics telemetry collected")
+        assert(report["storage"] != nil, "Diagnostics storage telemetry collected")
+        assert(report["integrations"] != nil, "Diagnostics integrations telemetry collected")
+
+        if let platform = report["platform"] as? [String: Any] {
+            assert(platform["osVersion"] is String, "Diagnostics platform contains osVersion string")
+            assert(platform["architecture"] is String, "Diagnostics platform contains architecture string")
+            assert(platform["appleSilicon"] is Bool, "Diagnostics platform contains appleSilicon boolean")
+        }
+
+        if let biometrics = report["biometrics"] as? [String: Any] {
+            assert(biometrics["similarityThreshold"] is Double, "Diagnostics similarityThreshold is valid Double")
+            assert(biometrics["neuralFaceprintAvailable"] is Bool, "Diagnostics neuralFaceprintAvailable is valid Bool")
+        }
+
+        if let storage = report["storage"] as? [String: Any] {
+            assert(storage["configExists"] is Bool, "Diagnostics configExists is valid Bool")
+            assert(storage["enrolledVectors"] is Int, "Diagnostics enrolledVectors is valid Int")
+        }
+    }
+
+    // MARK: - 4f. Config Reload & State Synchronization
+    private func testConfigReloadAndStateSync() {
+        print("\n▶ Test Suite: Config Reload & Defense State Synchronization")
+
+        let tempPath = "/tmp/facelock_sync_test_\(UUID().uuidString).json"
+        defer {
+            try? FileManager.default.removeItem(atPath: tempPath)
+        }
+
+        let testCfg = Config(
+            pin: "9876",
+            similarityThreshold: 0.19,
+            activeProfile: "cafe",
+            shoulderSurfingDefense: true,
+            batteryAwareScanning: false,
+            audibleAlerts: true,
+            presentationModeSuppression: false
+        )
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .prettyPrinted
+        let data = try? encoder.encode(testCfg)
+        assert(data != nil, "Config with activeProfile and defense flags encodes successfully")
+
+        if let d = data {
+            let decoder = JSONDecoder()
+            let decoded = try? decoder.decode(Config.self, from: d)
+            assertEqual(decoded?.activeProfile, "cafe", "Decoded activeProfile matches 'cafe'")
+            assertEqual(decoded?.shoulderSurfingDefense, true, "Decoded shoulderSurfingDefense matches true")
+            assertEqual(decoded?.batteryAwareScanning, false, "Decoded batteryAwareScanning matches false")
+            assertEqual(decoded?.audibleAlerts, true, "Decoded audibleAlerts matches true")
+            assertEqual(decoded?.presentationModeSuppression, false, "Decoded presentationModeSuppression matches false")
+
+            // Test restoreConfig
+            try? d.write(to: URL(fileURLWithPath: tempPath), options: .atomic)
+            let recipientCfg = Config()
+            do {
+                try recipientCfg.restoreConfig(from: tempPath)
+                assertEqual(recipientCfg.activeProfile, "cafe", "restoreConfig synchronizes activeProfile")
+                assertEqual(recipientCfg.shoulderSurfingDefense, true, "restoreConfig synchronizes shoulderSurfingDefense")
+                assertEqual(recipientCfg.batteryAwareScanning, false, "restoreConfig synchronizes batteryAwareScanning")
+                assertEqual(recipientCfg.audibleAlerts, true, "restoreConfig synchronizes audibleAlerts")
+                assertEqual(recipientCfg.presentationModeSuppression, false, "restoreConfig synchronizes presentationModeSuppression")
+            } catch {
+                assert(false, "restoreConfig threw error: \(error)")
+            }
+        }
     }
 
     // MARK: - 4e. CLI Argument Normalization
@@ -234,7 +351,10 @@ public final class FaceLockTestSuite {
             "--toggle-battery-aware-json": ["--toggle-battery-aware", "--json"],
             "--toggle-presentation-json": ["--toggle-presentation", "--json"],
             "--toggle-presentation-mode-json": ["--toggle-presentation", "--json"],
+            "--toggle-walkaway-json": ["--toggle-walkaway", "--json"],
+            "--toggle-wake-json": ["--toggle-wake", "--json"],
             "--status-json": ["--status", "--json"],
+            "--diagnostics-gui-json": ["--diagnostics-gui", "--json"],
             "--health-json": ["--health", "--json"]
         ]
 
@@ -266,6 +386,16 @@ public final class FaceLockTestSuite {
         let query = "RU.KEEPCODER.TELEGRAM"
         let isProtected = protectedList.contains { $0.caseInsensitiveCompare(query) == .orderedSame }
         assert(isProtected, "Bundle ID matching is strictly case-insensitive")
+
+        // Config method tests
+        let testConfig = Config()
+        assert(testConfig.isProtected(bundleId: "ru.keepcoder.Telegram"), "Config.isProtected identifies exact Telegram bundle ID")
+        assert(testConfig.isProtected(bundleId: "RU.KEEPCODER.TELEGRAM"), "Config.isProtected handles uppercase Telegram bundle ID")
+        assert(testConfig.isProtected(bundleId: "com.apple.safari"), "Config.isProtected handles lowercase Safari bundle ID")
+        assert(testConfig.isIgnored(bundleId: "com.apple.loginwindow"), "Config.isIgnored identifies loginwindow")
+        assert(testConfig.isIgnored(bundleId: "COM.APPLE.DOCK"), "Config.isIgnored handles uppercase Dock")
+        assert(!testConfig.isProtected(bundleId: "com.unknown.nonexistent.app"), "Config.isProtected returns false for non-protected app")
+        assert(!testConfig.isIgnored(bundleId: "com.unknown.nonexistent.app"), "Config.isIgnored returns false for non-ignored app")
     }
 
     // MARK: - 6. PIN Lockout Exponential Logic

@@ -13,6 +13,7 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
     private var pinField: NSSecureTextField?
     private var errorLabel: NSTextField?
     private var faceRetryBtn: NSButton?
+    private var capsLockIndicator: NSImageView?
     private var isFaceRetrying = false
     private var targetApp: NSRunningApplication?
     private var intruderImage: NSImage?
@@ -67,6 +68,15 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
                 }
 
                 self.animateCardEntrance()
+
+                // Play audible alarm / lock sound if enabled
+                if Config.shared.audibleAlerts {
+                    if self.intruderImage != nil {
+                        HUDController.playAlertSound(type: "intruder")
+                    } else {
+                        HUDController.playAlertSound(type: "lock")
+                    }
+                }
 
                 // Auto-trigger Touch ID if enabled
                 if Config.shared.autoTriggerTouchID {
@@ -267,6 +277,18 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
         effect.addSubview(pinField)
         self.pinField = pinField
 
+        let capsSize: CGFloat = 18
+        let capsX = (cardW + pinContainerW) / 2 - 28
+        let capsY = pinY + (44 - capsSize) / 2
+        let capsView = NSImageView(frame: NSRect(x: capsX, y: capsY, width: capsSize, height: capsSize))
+        let capsConfig = NSImage.SymbolConfiguration(pointSize: 14, weight: .bold)
+        capsView.image = NSImage(systemSymbolName: "capslock.fill", accessibilityDescription: "Caps Lock")?.withSymbolConfiguration(capsConfig)
+        capsView.contentTintColor = NSColor.systemYellow
+        capsView.toolTip = "Caps Lock включен"
+        capsView.isHidden = !NSEvent.modifierFlags.contains(.capsLock)
+        effect.addSubview(capsView)
+        self.capsLockIndicator = capsView
+
         let errY = pinY - 26
         let errLabel = NSTextField(frame: NSRect(x: 20, y: errY, width: cardW - 40, height: 20))
         errLabel.isEditable = false
@@ -379,6 +401,9 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
             failedPinAttempts += 1
             SecurityAuditLogger.shared.logPINFailed(targetApp: targetApp?.localizedName)
             NSSound.beep()
+            if Config.shared.audibleAlerts {
+                HUDController.playAlertSound(type: "warning")
+            }
             shakeCard()
             pinField?.stringValue = ""
 
@@ -545,11 +570,21 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
         }
     }
 
+    public func updateCapsLockState(_ isCapsOn: Bool) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, self.isLocked else { return }
+            self.capsLockIndicator?.isHidden = !isCapsOn
+        }
+    }
+
     // MARK: - Unlock with Animation
     public func unlock() {
         guard isLocked else { return }
 
         NSSound(named: "Glass")?.play()
+        if Config.shared.audibleAlerts {
+            HUDController.playAlertSound(type: "unlock")
+        }
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
@@ -601,6 +636,7 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
                 self.lockoutTimer?.invalidate()
                 self.lockoutTimer = nil
                 self.faceRetryBtn = nil
+                self.capsLockIndicator = nil
                 self.errorLabel?.isHidden = true
                 self.pinField?.stringValue = ""
                 self.intruderImage = nil
@@ -643,6 +679,11 @@ private final class FullscreenLockWindow: NSWindow {
     override func cancelOperation(_ sender: Any?) {}
 
     override func performClose(_ sender: Any?) {}
+
+    override func flagsChanged(with event: NSEvent) {
+        super.flagsChanged(with: event)
+        LockScreenController.shared.updateCapsLockState(event.modifierFlags.contains(.capsLock))
+    }
 
     override func keyDown(with event: NSEvent) {
         if event.modifierFlags.contains(.command) {

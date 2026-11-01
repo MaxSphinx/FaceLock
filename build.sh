@@ -17,7 +17,7 @@ mkdir -p "${MACOS_DIR}"
 mkdir -p "${RESOURCES_DIR}"
 
 # Compile Swift sources
-swiftc -O \
+swiftc -Osize -j 2 \
     -target arm64-apple-macos14.0 \
     -framework AppKit \
     -framework AVFoundation \

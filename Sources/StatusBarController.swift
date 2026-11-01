@@ -162,6 +162,10 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         auditItem.target = self
         menu.addItem(auditItem)
 
+        let diagItem = NSMenuItem(title: "Диагностика и здоровье системы (Diagnostics)...", action: #selector(openDiagnostics), keyEquivalent: "d")
+        diagItem.target = self
+        menu.addItem(diagItem)
+
         let enrollItem = NSMenuItem(title: "Запомнить моё лицо (Калибровка 3D Face ID)...", action: #selector(openEnrollment), keyEquivalent: "e")
         enrollItem.target = self
         menu.addItem(enrollItem)
@@ -262,10 +266,14 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
            let profile = Config.SecurityProfile(rawValue: raw) {
             Config.shared.applyProfile(profile)
             updateIcon()
+            HUDController.shared.showProfile(name: profile.title)
+            if Config.shared.audibleAlerts {
+                HUDController.playAlertSound(type: "warning")
+            }
         }
     }
 
-    @objc private func toggleShoulderSurfing() {
+    @objc public func toggleShoulderSurfing() {
         Config.shared.shoulderSurfingDefense.toggle()
         Config.shared.save()
         let state = Config.shared.shoulderSurfingDefense ? "Вкл" : "Выкл"
@@ -273,7 +281,7 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         HUDController.shared.showProfile(name: "Shoulder-Surfing: \(state)")
     }
 
-    @objc private func toggleAudibleAlerts() {
+    @objc public func toggleAudibleAlerts() {
         Config.shared.audibleAlerts.toggle()
         Config.shared.save()
         let state = Config.shared.audibleAlerts ? "Вкл" : "Выкл"
@@ -284,7 +292,7 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         }
     }
 
-    @objc private func toggleBatteryAware() {
+    @objc public func toggleBatteryAware() {
         Config.shared.batteryAwareScanning.toggle()
         Config.shared.save()
         let state = Config.shared.batteryAwareScanning ? "Вкл" : "Выкл"
@@ -292,7 +300,7 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         HUDController.shared.showProfile(name: "Энергосбережение: \(state)")
     }
 
-    @objc private func togglePresentationSuppression() {
+    @objc public func togglePresentationSuppression() {
         Config.shared.presentationModeSuppression.toggle()
         Config.shared.save()
         let state = Config.shared.presentationModeSuppression ? "Вкл" : "Выкл"
@@ -361,6 +369,10 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
 
     @objc private func openAuditLog() {
         AuditLogController.shared.show()
+    }
+
+    @objc public func openDiagnostics() {
+        DiagnosticsController.shared.show()
     }
 
     @objc private func openSettings() {

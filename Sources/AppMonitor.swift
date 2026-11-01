@@ -205,16 +205,16 @@ public final class AppMonitor {
         guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else { return }
         guard let bundleId = app.bundleIdentifier else { return }
 
-        if bundleId == Bundle.main.bundleIdentifier || bundleId == "io.github.facelock" {
+        if bundleId == Bundle.main.bundleIdentifier || bundleId.caseInsensitiveCompare("io.github.facelock") == .orderedSame {
             return
         }
 
-        if Config.shared.ignoredBundleIdentifiers.contains(bundleId) {
+        if Config.shared.isIgnored(bundleId: bundleId) {
             return
         }
 
         if Config.shared.protectionMode == "selective" {
-            guard Config.shared.protectedBundleIdentifiers.contains(bundleId) else {
+            guard Config.shared.isProtected(bundleId: bundleId) else {
                 return
             }
         }

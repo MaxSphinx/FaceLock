@@ -4,7 +4,7 @@ import AppKit
 import UniformTypeIdentifiers
 
 public final class Config: Codable {
-    // Last maintenance check: 2026-10-31
+    // Last maintenance check: 2026-11-01
     public static let shared = Config.load()
 
     public static let defaultProtectedBundleIdentifiers: [String] = [
@@ -40,6 +40,7 @@ public final class Config: Codable {
         case work = "work"
         case home = "home"
         case presentation = "presentation"
+        case lockdown = "lockdown"
 
         public var title: String {
             switch self {
@@ -48,6 +49,7 @@ public final class Config: Codable {
             case .work: return "Офис / Работа (Work)"
             case .home: return "Домашний (Home - Relaxed)"
             case .presentation: return "Презентация / Созвон (Presentation)"
+            case .lockdown: return "Максимальная защита (Lockdown - Maximum)"
             }
         }
 
@@ -58,6 +60,7 @@ public final class Config: Codable {
             case .work: return "45с walk-away, выборочная защита секретных приложений, Telegram алерты."
             case .home: return "180с walk-away, увеличенный порог допуска (0.24), дружелюбный HUD."
             case .presentation: return "Авто-подавление блокировки во время показа слайдов и созвонов."
+            case .lockdown: return "5с walk-away, сверхстрогий порог (0.18), защита от подглядывания, звуковая тревога."
             }
         }
     }
@@ -261,6 +264,14 @@ public final class Config: Codable {
             self.lockOnWake = false
             self.audibleAlerts = false
             self.presentationModeSuppression = true
+        case .lockdown:
+            self.walkAwayIdleSeconds = 5.0
+            self.walkAwayLockEnabled = true
+            self.shoulderSurfingDefense = true
+            self.lockOnWake = true
+            self.audibleAlerts = true
+            self.presentationModeSuppression = false
+            self.similarityThreshold = 0.18
         }
 
         save()
@@ -358,6 +369,11 @@ public final class Config: Codable {
             self.maxFailedPinAttempts = fresh.maxFailedPinAttempts
             self.pinLockoutSeconds = fresh.pinLockoutSeconds
             self.preferredCameraID = fresh.preferredCameraID
+            self.activeProfile = fresh.activeProfile
+            self.shoulderSurfingDefense = fresh.shoulderSurfingDefense
+            self.batteryAwareScanning = fresh.batteryAwareScanning
+            self.audibleAlerts = fresh.audibleAlerts
+            self.presentationModeSuppression = fresh.presentationModeSuppression
         }
     }
 
@@ -397,6 +413,11 @@ public final class Config: Codable {
         self.maxFailedPinAttempts = imported.maxFailedPinAttempts
         self.pinLockoutSeconds = imported.pinLockoutSeconds
         self.preferredCameraID = imported.preferredCameraID
+        self.activeProfile = imported.activeProfile
+        self.shoulderSurfingDefense = imported.shoulderSurfingDefense
+        self.batteryAwareScanning = imported.batteryAwareScanning
+        self.audibleAlerts = imported.audibleAlerts
+        self.presentationModeSuppression = imported.presentationModeSuppression
         self.save()
     }
 
@@ -431,10 +452,22 @@ public final class Config: Codable {
         print("[Config] Added new face vector sample. Total enrolled: \(current.count)")
     }
 
+    public func isProtected(bundleId: String) -> Bool {
+        let trimmed = bundleId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        return protectedBundleIdentifiers.contains { $0.caseInsensitiveCompare(trimmed) == .orderedSame }
+    }
+
+    public func isIgnored(bundleId: String) -> Bool {
+        let trimmed = bundleId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        return ignoredBundleIdentifiers.contains { $0.caseInsensitiveCompare(trimmed) == .orderedSame }
+    }
+
     public func addProtectedApp(_ bundleId: String) -> Bool {
         let trimmed = bundleId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return false }
-        if !protectedBundleIdentifiers.contains(trimmed) {
+        if !isProtected(bundleId: trimmed) {
             protectedBundleIdentifiers.append(trimmed)
             save()
             return true
@@ -444,7 +477,8 @@ public final class Config: Codable {
 
     public func removeProtectedApp(_ bundleId: String) -> Bool {
         let trimmed = bundleId.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let idx = protectedBundleIdentifiers.firstIndex(of: trimmed) {
+        guard !trimmed.isEmpty else { return false }
+        if let idx = protectedBundleIdentifiers.firstIndex(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame }) {
             protectedBundleIdentifiers.remove(at: idx)
             save()
             return true
@@ -455,7 +489,7 @@ public final class Config: Codable {
     public func addIgnoredApp(_ bundleId: String) -> Bool {
         let trimmed = bundleId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return false }
-        if !ignoredBundleIdentifiers.contains(trimmed) {
+        if !isIgnored(bundleId: trimmed) {
             ignoredBundleIdentifiers.append(trimmed)
             save()
             return true
@@ -465,7 +499,8 @@ public final class Config: Codable {
 
     public func removeIgnoredApp(_ bundleId: String) -> Bool {
         let trimmed = bundleId.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let idx = ignoredBundleIdentifiers.firstIndex(of: trimmed) {
+        guard !trimmed.isEmpty else { return false }
+        if let idx = ignoredBundleIdentifiers.firstIndex(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame }) {
             ignoredBundleIdentifiers.remove(at: idx)
             save()
             return true

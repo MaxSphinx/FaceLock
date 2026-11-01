@@ -5,7 +5,7 @@ import Vision
 import LocalAuthentication
 
 public struct Diagnostics {
-    public static func run(jsonOutput: Bool = false) {
+    public static func collectReport() -> [String: Any] {
         // 1. System & Architecture
         let osVer = ProcessInfo.processInfo.operatingSystemVersionString
         var uts = utsname()
@@ -114,76 +114,138 @@ public struct Diagnostics {
         let agentInstalled = FileManager.default.fileExists(atPath: launchAgentPath)
         let logStats = SecurityAuditLogger.shared.getLogStats()
 
-        if jsonOutput {
-            let diagDict: [String: Any] = [
-                "timestamp": ISO8601DateFormatter().string(from: Date()),
-                "platform": [
-                    "osVersion": osVer,
-                    "architecture": arch,
-                    "appleSilicon": isAppleSilicon,
-                    "pid": ProcessInfo.processInfo.processIdentifier
-                ],
-                "daemon": [
-                    "running": isRunning,
-                    "pids": runningApps.map { $0.processIdentifier },
-                    "shieldState": config.isEnabled ? "active" : "paused",
-                    "protectionMode": config.protectionMode,
-                    "activeProfile": config.activeProfile,
-                    "shoulderSurfingDefense": config.shoulderSurfingDefense,
-                    "batteryAwareScanning": config.batteryAwareScanning,
-                    "audibleAlerts": config.audibleAlerts,
-                    "presentationModeSuppression": config.presentationModeSuppression,
-                    "walkAwayLockEnabled": config.walkAwayLockEnabled,
-                    "walkAwayIdleSeconds": config.walkAwayIdleSeconds,
-                    "lockOnWake": config.lockOnWake
-                ],
-                "camera": [
-                    "authorization": camAuthStr,
-                    "devicesCount": devices.count,
-                    "preferredCameraID": config.preferredCameraID.isEmpty ? "default" : config.preferredCameraID,
-                    "activeCamera": CameraScanner.selectDevice(preferredID: config.preferredCameraID)?.localizedName ?? "None",
-                    "activeCameraID": CameraScanner.selectDevice(preferredID: config.preferredCameraID)?.uniqueID ?? "None",
-                    "devices": devices.map { [
-                        "name": $0.localizedName,
-                        "id": $0.uniqueID,
-                        "isPreferred": (!config.preferredCameraID.isEmpty && ($0.uniqueID == config.preferredCameraID || $0.localizedName.localizedCaseInsensitiveContains(config.preferredCameraID))),
-                        "isActive": ($0.uniqueID == CameraScanner.selectDevice(preferredID: config.preferredCameraID)?.uniqueID)
-                    ] }
-                ],
-                "biometrics": [
-                    "neuralFaceprintAvailable": hasFaceprintReq,
-                    "similarityThreshold": Double(config.similarityThreshold),
-                    "biometryType": bioTypeStr,
-                    "biometricsReady": canTouchID,
-                    "autoTriggerTouchID": config.autoTriggerTouchID
-                ],
-                "storage": [
-                    "configPath": configPath,
-                    "configExists": configExists,
-                    "vectorsPath": vectorsPath,
-                    "enrolledVectors": vectors.count,
-                    "vectorMetrics": vectorMetrics,
-                    "intrudersDir": intrudersDir.path,
-                    "intruderCaptures": intruderCount,
-                    "recent24hCaptures": recent24hCount,
-                    "intruderSizeBytes": totalBytes,
-                    "auditLogEvents": logStats.totalCount,
-                    "auditLogSizeBytes": logStats.fileSizeBytes,
-                    "auditLogLastEvent": logStats.lastEventTime ?? ""
-                ],
-                "integrations": [
-                    "telegramConfigured": tgConfigured,
-                    "telegramEnabled": config.telegramEnabled,
-                    "telegramReachable": telegramReachable ?? false,
-                    "maintainerInstalled": agentInstalled
-                ]
+        return [
+            "timestamp": ISO8601DateFormatter().string(from: Date()),
+            "platform": [
+                "osVersion": osVer,
+                "architecture": arch,
+                "appleSilicon": isAppleSilicon,
+                "pid": ProcessInfo.processInfo.processIdentifier
+            ],
+            "daemon": [
+                "running": isRunning,
+                "pids": runningApps.map { $0.processIdentifier },
+                "shieldState": config.isEnabled ? "active" : "paused",
+                "protectionMode": config.protectionMode,
+                "activeProfile": config.activeProfile,
+                "shoulderSurfingDefense": config.shoulderSurfingDefense,
+                "batteryAwareScanning": config.batteryAwareScanning,
+                "audibleAlerts": config.audibleAlerts,
+                "presentationModeSuppression": config.presentationModeSuppression,
+                "walkAwayLockEnabled": config.walkAwayLockEnabled,
+                "walkAwayIdleSeconds": config.walkAwayIdleSeconds,
+                "lockOnWake": config.lockOnWake
+            ],
+            "camera": [
+                "authorization": camAuthStr,
+                "devicesCount": devices.count,
+                "preferredCameraID": config.preferredCameraID.isEmpty ? "default" : config.preferredCameraID,
+                "activeCamera": CameraScanner.selectDevice(preferredID: config.preferredCameraID)?.localizedName ?? "None",
+                "activeCameraID": CameraScanner.selectDevice(preferredID: config.preferredCameraID)?.uniqueID ?? "None",
+                "devices": devices.map { [
+                    "name": $0.localizedName,
+                    "id": $0.uniqueID,
+                    "isPreferred": (!config.preferredCameraID.isEmpty && ($0.uniqueID == config.preferredCameraID || $0.localizedName.localizedCaseInsensitiveContains(config.preferredCameraID))),
+                    "isActive": ($0.uniqueID == CameraScanner.selectDevice(preferredID: config.preferredCameraID)?.uniqueID)
+                ] }
+            ],
+            "biometrics": [
+                "neuralFaceprintAvailable": hasFaceprintReq,
+                "similarityThreshold": Double(config.similarityThreshold),
+                "biometryType": bioTypeStr,
+                "biometricsReady": canTouchID,
+                "autoTriggerTouchID": config.autoTriggerTouchID
+            ],
+            "storage": [
+                "configPath": configPath,
+                "configExists": configExists,
+                "vectorsPath": vectorsPath,
+                "enrolledVectors": vectors.count,
+                "vectorMetrics": vectorMetrics,
+                "intrudersDir": intrudersDir.path,
+                "intruderCaptures": intruderCount,
+                "recent24hCaptures": recent24hCount,
+                "intruderSizeBytes": totalBytes,
+                "auditLogEvents": logStats.totalCount,
+                "auditLogSizeBytes": logStats.fileSizeBytes,
+                "auditLogLastEvent": logStats.lastEventTime ?? ""
+            ],
+            "integrations": [
+                "telegramConfigured": tgConfigured,
+                "telegramEnabled": config.telegramEnabled,
+                "telegramReachable": telegramReachable ?? false,
+                "maintainerInstalled": agentInstalled
             ]
-            if let jsonData = try? JSONSerialization.data(withJSONObject: diagDict, options: [.prettyPrinted, .sortedKeys]),
+        ]
+    }
+
+    public static func run(jsonOutput: Bool = false) {
+        let report = collectReport()
+
+        if jsonOutput {
+            if let jsonData = try? JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys]),
                let jsonStr = String(data: jsonData, encoding: .utf8) {
                 print(jsonStr)
             }
             return
         }
+
+        guard let platform = report["platform"] as? [String: Any],
+              let daemon = report["daemon"] as? [String: Any],
+              let camera = report["camera"] as? [String: Any],
+              let biometrics = report["biometrics"] as? [String: Any],
+              let storage = report["storage"] as? [String: Any],
+              let integrations = report["integrations"] as? [String: Any] else {
+            return
+        }
+
+        let osVer = platform["osVersion"] as? String ?? "N/A"
+        let arch = platform["architecture"] as? String ?? "N/A"
+        let isAppleSilicon = platform["appleSilicon"] as? Bool ?? false
+        let pid = platform["pid"] as? Int32 ?? 0
+
+        let isRunning = daemon["running"] as? Bool ?? false
+        let pids = (daemon["pids"] as? [Int32] ?? []).map { "\($0)" }.joined(separator: ", ")
+        let isEnabled = (daemon["shieldState"] as? String) == "active"
+        let protectionMode = daemon["protectionMode"] as? String ?? "all"
+        let activeProfile = daemon["activeProfile"] as? String ?? "normal"
+        let shoulder = daemon["shoulderSurfingDefense"] as? Bool ?? false
+        let battery = daemon["batteryAwareScanning"] as? Bool ?? false
+        let audible = daemon["audibleAlerts"] as? Bool ?? false
+        let presentation = daemon["presentationModeSuppression"] as? Bool ?? false
+        let walkAway = daemon["walkAwayLockEnabled"] as? Bool ?? false
+        let walkAwaySec = daemon["walkAwayIdleSeconds"] as? Double ?? 45.0
+        let lockOnWake = daemon["lockOnWake"] as? Bool ?? false
+
+        let camAuthStr = camera["authorization"] as? String ?? "unknown"
+        let devicesCount = camera["devicesCount"] as? Int ?? 0
+        let activeCamera = camera["activeCamera"] as? String ?? "None"
+        let preferredCameraID = camera["preferredCameraID"] as? String ?? "default"
+        let devicesList = camera["devices"] as? [[String: Any]] ?? []
+
+        let hasFaceprintReq = biometrics["neuralFaceprintAvailable"] as? Bool ?? false
+        let simThresh = biometrics["similarityThreshold"] as? Double ?? 0.22
+        let bioTypeStr = biometrics["biometryType"] as? String ?? "None"
+        let canTouchID = biometrics["biometricsReady"] as? Bool ?? false
+        let autoTouchID = biometrics["autoTriggerTouchID"] as? Bool ?? true
+
+        let configPath = storage["configPath"] as? String ?? ""
+        let configExists = storage["configExists"] as? Bool ?? false
+        let vectorsPath = storage["vectorsPath"] as? String ?? ""
+        let enrolledVectors = storage["enrolledVectors"] as? Int ?? 0
+        let vectorMetrics = storage["vectorMetrics"] as? [String: Any] ?? [:]
+        let intrudersDir = storage["intrudersDir"] as? String ?? ""
+        let intruderCount = storage["intruderCaptures"] as? Int ?? 0
+        let recent24hCount = storage["recent24hCaptures"] as? Int ?? 0
+        let totalBytes = storage["intruderSizeBytes"] as? UInt64 ?? 0
+        let auditEvents = storage["auditLogEvents"] as? Int ?? 0
+        let auditBytes = storage["auditLogSizeBytes"] as? Int64 ?? 0
+        let auditLast = storage["auditLogLastEvent"] as? String ?? "None"
+
+        let tgConfigured = integrations["telegramConfigured"] as? Bool ?? false
+        let tgEnabled = integrations["telegramEnabled"] as? Bool ?? false
+        let tgReachable = integrations["telegramReachable"] as? Bool ?? false
+        let agentInstalled = integrations["maintainerInstalled"] as? Bool ?? false
 
         print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
         print("          🛡️  FaceLock Autonomous Diagnostics Suite         ")
@@ -192,104 +254,97 @@ public struct Diagnostics {
         print("\n[1] Platform & Environment:")
         print("  • OS Version: \(osVer)")
         print("  • Architecture: \(arch) (\(isAppleSilicon ? "Apple Silicon Neural Engine Active ✅" : "Intel Legacy ⚠️"))")
-        print("  • PID: \(ProcessInfo.processInfo.processIdentifier)")
+        print("  • PID: \(pid)")
 
         print("\n[2] Process & Daemon State:")
         if isRunning {
-            let pids = runningApps.map { "\($0.processIdentifier)" }.joined(separator: ", ")
-            print("  • Daemon Process: RUNNING (PID: \(pids)) ✅")
+            print("  • Daemon Process: RUNNING (PID: \(pids.isEmpty ? "\(pid)" : pids)) ✅")
         } else {
             print("  • Daemon Process: STANDBY (Not running) ℹ️")
         }
-        print("  • Shield Status: \(config.isEnabled ? "ACTIVE 🛡️" : "PAUSED ⏸️")")
-        print("  • Protection Mode: \(config.protectionMode) (\(config.protectedBundleIdentifiers.count) protected apps)")
-        print("  • Active Security Profile: \(config.activeProfile.uppercased()) (\(Config.SecurityProfile(rawValue: config.activeProfile)?.title ?? config.activeProfile))")
-        print("  • Shoulder-Surfing Defense: \(config.shoulderSurfingDefense ? "Enabled (Bystander Detection Active) 👥" : "Disabled")")
-        print("  • Battery-Aware Adaptive Polling: \(config.batteryAwareScanning ? "Enabled (Live IOKit Power Sensing) 🔋" : "Disabled")")
-        print("  • Audible Deterrents: \(config.audibleAlerts ? "Enabled 🔔" : "Disabled (Silent)")")
-        print("  • Meeting Auto-Suppression: \(config.presentationModeSuppression ? "Enabled 🎯" : "Disabled")")
-        print("  • Walk-Away Detection: \(config.walkAwayLockEnabled ? "Enabled (\(Int(config.walkAwayIdleSeconds))s idle)" : "Disabled")")
-        print("  • Screen Wake Verification: \(config.lockOnWake ? "Enabled" : "Disabled")")
+        print("  • Shield Status: \(isEnabled ? "ACTIVE 🛡️" : "PAUSED ⏸️")")
+        print("  • Protection Mode: \(protectionMode) (\(Config.shared.protectedBundleIdentifiers.count) protected apps)")
+        print("  • Active Security Profile: \(activeProfile.uppercased()) (\(Config.SecurityProfile(rawValue: activeProfile)?.title ?? activeProfile))")
+        print("  • Shoulder-Surfing Defense: \(shoulder ? "Enabled (Bystander Detection Active) 👥" : "Disabled")")
+        print("  • Battery-Aware Adaptive Polling: \(battery ? "Enabled (Live IOKit Power Sensing) 🔋" : "Disabled")")
+        print("  • Audible Deterrents: \(audible ? "Enabled 🔔" : "Disabled (Silent)")")
+        print("  • Meeting Auto-Suppression: \(presentation ? "Enabled 🎯" : "Disabled")")
+        print("  • Walk-Away Detection: \(walkAway ? "Enabled (\(Int(walkAwaySec))s idle)" : "Disabled")")
+        print("  • Screen Wake Verification: \(lockOnWake ? "Enabled" : "Disabled")")
 
         print("\n[3] Camera Hardware & Permissions:")
-        switch camAuth {
-        case .authorized:
+        switch camAuthStr {
+        case "authorized":
             print("  • Camera Authorization: AUTHORIZED ✅")
-        case .denied:
+        case "denied":
             print("  • Camera Authorization: DENIED ❌ (Grant access in System Settings > Privacy & Security > Camera)")
-        case .restricted:
+        case "restricted":
             print("  • Camera Authorization: RESTRICTED ⚠️")
-        case .notDetermined:
+        case "notDetermined":
             print("  • Camera Authorization: NOT DETERMINED ❓ (Will prompt on first scan)")
-        @unknown default:
+        default:
             print("  • Camera Authorization: UNKNOWN")
         }
 
-        if devices.isEmpty {
+        if devicesCount == 0 {
             print("  • Video Devices: No cameras detected ⚠️")
         } else {
-            let preferredID = config.preferredCameraID
-            let activeDevice = CameraScanner.selectDevice(preferredID: preferredID)
-            print("  • Detected Cameras (\(devices.count)):")
-            for dev in devices {
-                let isPreferred = (!preferredID.isEmpty && (dev.uniqueID == preferredID || dev.localizedName.localizedCaseInsensitiveContains(preferredID)))
-                let isActive = (dev.uniqueID == activeDevice?.uniqueID)
+            print("  • Detected Cameras (\(devicesCount)):")
+            for dev in devicesList {
+                let name = dev["name"] as? String ?? "Camera"
+                let id = dev["id"] as? String ?? ""
+                let isPref = dev["isPreferred"] as? Bool ?? false
+                let isAct = dev["isActive"] as? Bool ?? false
                 var badge = ""
-                if isPreferred && isActive {
+                if isPref && isAct {
                     badge = " [SELECTED & ACTIVE] ✅"
-                } else if isActive {
+                } else if isAct {
                     badge = " [ACTIVE DEFAULT] 🎯"
-                } else if isPreferred {
+                } else if isPref {
                     badge = " [PREFERRED] ⭐️"
                 }
-                print("    - \(dev.localizedName)\(badge) [\(dev.uniqueID)]")
+                print("    - \(name)\(badge) [\(id)]")
             }
-            if preferredID.isEmpty {
-                print("  • Active Camera: \(activeDevice?.localizedName ?? "Default") (Automatic front camera)")
+            if preferredCameraID == "default" || preferredCameraID.isEmpty {
+                print("  • Active Camera: \(activeCamera) (Automatic front camera)")
             } else {
-                print("  • Active Camera: \(activeDevice?.localizedName ?? "N/A") (Manual Selection: \(preferredID))")
+                print("  • Active Camera: \(activeCamera) (Manual Selection: \(preferredCameraID))")
             }
         }
 
         print("\n[4] Apple Neural Vision & Faceprints:")
         print("  • Vision Framework: Loaded ✅")
         print("  • Neural Faceprint Model (VNCreateFaceprintRequest): \(hasFaceprintReq ? "AVAILABLE ✅" : "UNAVAILABLE ❌")")
-        print("  • Similarity Decision Threshold: \(config.similarityThreshold) (Strict Neural Mode)")
+        print("  • Similarity Decision Threshold: \(simThresh) (Strict Neural Mode)")
 
         print("\n[5] Biometrics & LocalAuthentication:")
         print("  • Biometric Hardware: \(bioTypeStr)")
-        print("  • Biometrics Ready: \(canTouchID ? "YES ✅" : "NO (\(laError?.localizedDescription ?? "Unavailable")) ⚠️")")
-        print("  • Auto-Trigger Touch ID: \(config.autoTriggerTouchID ? "Enabled" : "Disabled")")
+        print("  • Biometrics Ready: \(canTouchID ? "YES ✅" : "NO ⚠️")")
+        print("  • Auto-Trigger Touch ID: \(autoTouchID ? "Enabled" : "Disabled")")
 
         print("\n[6] Storage & Datasets:")
         print("  • Config File: \(configExists ? "Valid (\(configPath)) ✅" : "Missing ⚠️")")
-        if vectors.isEmpty {
+        if enrolledVectors == 0 {
             print("  • Enrolled Face Templates: None - run 'facelock --enroll' ⚠️")
-        } else if vectors.count == 1 {
+        } else if enrolledVectors == 1 {
             print("  • Enrolled Face Templates: 1 vector (128-d) calibrated at \(vectorsPath) ✅")
         } else {
             let avg = vectorMetrics["avgPairwiseDistance"] as? Double ?? 0.0
             let quality = vectorMetrics["quality"] as? String ?? "N/A"
-            print("  • Enrolled Face Templates: \(vectors.count) vectors (128-d, avg distance: \(String(format: "%.3f", avg))) at \(vectorsPath) ✅")
+            print("  • Enrolled Face Templates: \(enrolledVectors) vectors (128-d, avg distance: \(String(format: "%.3f", avg))) at \(vectorsPath) ✅")
             print("  • Biometric Cluster Quality: \(quality)")
         }
 
         let sizeMB = Double(totalBytes) / (1024.0 * 1024.0)
         let recentStr = recent24hCount > 0 ? " (\(recent24hCount) in past 24h)" : ""
-        print("  • Intruder Incident Log: \(intruderCount) captures\(recentStr) (\(String(format: "%.2f", sizeMB)) MB) in \(intrudersDir.path)")
-        let auditMB = Double(logStats.fileSizeBytes) / (1024.0 * 1024.0)
-        let auditLast = logStats.lastEventTime ?? "None"
-        print("  • Security Audit Log: \(logStats.totalCount) events (\(String(format: "%.2f", auditMB)) MB), last: \(auditLast)")
+        print("  • Intruder Incident Log: \(intruderCount) captures\(recentStr) (\(String(format: "%.2f", sizeMB)) MB) in \(intrudersDir)")
+        let auditMB = Double(auditBytes) / (1024.0 * 1024.0)
+        print("  • Security Audit Log: \(auditEvents) events (\(String(format: "%.2f", auditMB)) MB), last: \(auditLast)")
 
         print("\n[7] Integrations & Cloud Connectivity:")
         if tgConfigured {
-            let reachStr: String
-            if let r = telegramReachable {
-                reachStr = r ? " (Gateway Reachable ✅)" : " (Gateway Unreachable / DNS Error ❌)"
-            } else {
-                reachStr = ""
-            }
-            print("  • Telegram Bot Alerts: Configured (Active: \(config.telegramEnabled ? "YES ✅" : "NO ⏸️"))\(reachStr)")
+            let reachStr = tgReachable ? " (Gateway Reachable ✅)" : " (Gateway Unreachable / DNS Error ❌)"
+            print("  • Telegram Bot Alerts: Configured (Active: \(tgEnabled ? "YES ✅" : "NO ⏸️"))\(reachStr)")
         } else {
             print("  • Telegram Bot Alerts: Not configured ℹ️")
         }
