@@ -339,8 +339,7 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-walkaway 45 --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-walkaway --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-walkaway toggle --json > /dev/null
-	@CUR_PIN=$$(python3 -c "import json, os; print(json.load(open(os.path.expanduser('~/.facelock/config.json'))).get('pin', '0000'))" 2>/dev/null || echo "0000"); \
-	build/FaceLock.app/Contents/MacOS/FaceLock --verify-pin "$$CUR_PIN" --json > /dev/null
+	@CUR_PIN=$$(python3 -c "import json, os; print(json.load(open(os.path.expanduser('~/.facelock/config.json'))).get('pin', '0000'))" 2>/dev/null || echo "0000"); build/FaceLock.app/Contents/MacOS/FaceLock --verify-pin "$$CUR_PIN" --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --enable-telegram --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-liveness on --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-liveness --json > /dev/null
