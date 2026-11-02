@@ -27,7 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Telemetry & CLI Incident Classification (`AppDelegate.swift`)**:
   - Extended `--incidents` to support `--type <intruder|bystander>` filtering and added `"type"` attribute to each JSON incident capture entry.
   - Enriched `--incidents-summary` and `--incidents-summary-json` with distinct `intrudersCount` and `bystandersCount` metrics.
-  - Added JSON response support for `--pause` and `--resume` CLI commands.
+  - Added comprehensive JSON response support for `--pause`, `--resume`, `--toggle`, and `--lock` CLI commands (both daemon-connected and offline modes).
+  - Expanded argument normalizer with `--toggle-json`, `--pause-json`, `--resume-json`, `--lock-json`, `--reload-json`, `--reset-session-json`, and `--profile-json`.
+  - Added Makefile targets `make toggle-json`, `make pause`, `make pause-json`, `make resume`, `make resume-json`, `make lock-json`, `make reload-json`, `make reset-session-json`, and `make profile-json`.
+  - Scaled automated test suite to 250 unit tests across 18 specialized test suites with 100% pass rate.
 - **Protection Pause Management & Countdown Ergonomics (`StatusBarController.swift`)**:
   - Added interactive "Таймер паузы..." submenu with quick presets (15 мин, 30 мин, 1 час, 4 часа / Полдня).
   - Integrated live remaining pause minutes countdown in menu item header, status bar button tooltip (`~X мин осталось`), and added "+15 мин" extension button when paused.

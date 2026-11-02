@@ -426,7 +426,18 @@ public final class FaceLockTestSuite {
             "--emergency-lockdown-json": ["--lockdown", "--json"],
             "--status-json": ["--status", "--json"],
             "--diagnostics-gui-json": ["--diagnostics-gui", "--json"],
-            "--health-json": ["--health", "--json"]
+            "--health-json": ["--health", "--json"],
+            "--toggle-json": ["--toggle", "--json"],
+            "--pause-json": ["--pause", "--json"],
+            "--resume-json": ["--resume", "--json"],
+            "--unpause-json": ["--resume", "--json"],
+            "--lock-json": ["--lock", "--json"],
+            "--test-lock-json": ["--lock", "--json"],
+            "--reload-json": ["--reload", "--json"],
+            "--reload-config-json": ["--reload", "--json"],
+            "--reset-session-json": ["--reset-session", "--json"],
+            "--profile-json": ["--profiles", "--json"],
+            "--set-profile-json": ["--profiles", "--json"]
         ]
 
         for (alias, expected) in aliasMap {

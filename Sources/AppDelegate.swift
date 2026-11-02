@@ -73,6 +73,20 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--toggle-presentation", "--json"])
             case "--lockdown-json", "--emergency-lockdown-json":
                 args.append(contentsOf: ["--lockdown", "--json"])
+            case "--toggle-json":
+                args.append(contentsOf: ["--toggle", "--json"])
+            case "--pause-json":
+                args.append(contentsOf: ["--pause", "--json"])
+            case "--resume-json", "--unpause-json":
+                args.append(contentsOf: ["--resume", "--json"])
+            case "--lock-json", "--test-lock-json":
+                args.append(contentsOf: ["--lock", "--json"])
+            case "--reload-json", "--reload-config-json":
+                args.append(contentsOf: ["--reload", "--json"])
+            case "--reset-session-json":
+                args.append(contentsOf: ["--reset-session", "--json"])
+            case "--profile-json", "--set-profile-json":
+                args.append(contentsOf: ["--profiles", "--json"])
             default:
                 args.append(arg)
             }
@@ -144,7 +158,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --export-vectors <path>    Export enrolled facial biometric vectors to JSON file
               --import-vectors <path>    Import facial biometric vectors from JSON file
               --profiles [--json]        List available security profiles and current active profile
-              --profile <name>           Activate security profile (normal, cafe, work, home, presentation)
+              --profile <name>           Activate security profile (normal, cafe, work, home, presentation, lockdown)
               --toggle-shoulder-defense  Toggle shoulder-surfing bystander defense
               --set-shoulder-defense <on|off> Enable or disable shoulder-surfing defense
               --toggle-audible           Toggle audible alarm & sound cues
@@ -2373,12 +2387,40 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     userInfo: ["action": "pause", "minutes": mins],
                     deliverImmediately: true
                 )
-                print("[FaceLock] Dispatched pause command (\(Int(mins)) min) to running instance.")
+                if args.contains("--json") {
+                    let out: [String: Any] = [
+                        "success": true,
+                        "daemonRunning": true,
+                        "shieldActive": false,
+                        "pauseMinutes": mins,
+                        "message": "Dispatched pause command (\(Int(mins)) min) to running instance"
+                    ]
+                    if let d = try? JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys]),
+                       let s = String(data: d, encoding: .utf8) {
+                        print(s)
+                    }
+                } else {
+                    print("[FaceLock] Dispatched pause command (\(Int(mins)) min) to running instance.")
+                }
             } else {
                 Config.shared.isEnabled = false
                 Config.shared.save()
                 SecurityAuditLogger.shared.logShieldStateChanged(enabled: false, reason: "Protection paused offline via CLI (\(Int(mins)) min)")
-                print("[FaceLock] Protection paused offline.")
+                if args.contains("--json") {
+                    let out: [String: Any] = [
+                        "success": true,
+                        "daemonRunning": false,
+                        "shieldActive": false,
+                        "pauseMinutes": mins,
+                        "message": "Protection paused offline (\(Int(mins)) min)"
+                    ]
+                    if let d = try? JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys]),
+                       let s = String(data: d, encoding: .utf8) {
+                        print(s)
+                    }
+                } else {
+                    print("[FaceLock] Protection paused offline.")
+                }
             }
             exit(0)
         }
@@ -2391,12 +2433,38 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     userInfo: ["action": "resume"],
                     deliverImmediately: true
                 )
-                print("[FaceLock] Dispatched resume command to running instance.")
+                if args.contains("--json") {
+                    let out: [String: Any] = [
+                        "success": true,
+                        "daemonRunning": true,
+                        "shieldActive": true,
+                        "message": "Dispatched resume command to running instance"
+                    ]
+                    if let d = try? JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys]),
+                       let s = String(data: d, encoding: .utf8) {
+                        print(s)
+                    }
+                } else {
+                    print("[FaceLock] Dispatched resume command to running instance.")
+                }
             } else {
                 Config.shared.isEnabled = true
                 Config.shared.save()
                 SecurityAuditLogger.shared.logShieldStateChanged(enabled: true, reason: "Protection resumed offline via CLI")
-                print("[FaceLock] Protection resumed: ACTIVE 🛡️")
+                if args.contains("--json") {
+                    let out: [String: Any] = [
+                        "success": true,
+                        "daemonRunning": false,
+                        "shieldActive": true,
+                        "message": "Protection resumed: ACTIVE 🛡️"
+                    ]
+                    if let d = try? JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys]),
+                       let s = String(data: d, encoding: .utf8) {
+                        print(s)
+                    }
+                } else {
+                    print("[FaceLock] Protection resumed: ACTIVE 🛡️")
+                }
             }
             exit(0)
         }
@@ -2436,7 +2504,19 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     userInfo: ["action": "toggle"],
                     deliverImmediately: true
                 )
-                print("[FaceLock] Sent toggle signal to running instance.")
+                if args.contains("--json") {
+                    let out: [String: Any] = [
+                        "success": true,
+                        "daemonRunning": true,
+                        "message": "Sent toggle signal to running instance"
+                    ]
+                    if let d = try? JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys]),
+                       let s = String(data: d, encoding: .utf8) {
+                        print(s)
+                    }
+                } else {
+                    print("[FaceLock] Sent toggle signal to running instance.")
+                }
                 exit(0)
             } else if args.contains("--lock") || args.contains("--test-lock") {
                 DistributedNotificationCenter.default().postNotificationName(
@@ -2445,7 +2525,20 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     userInfo: ["action": "lock"],
                     deliverImmediately: true
                 )
-                print("[FaceLock] Dispatched lock command to running instance.")
+                if args.contains("--json") {
+                    let out: [String: Any] = [
+                        "success": true,
+                        "daemonRunning": true,
+                        "screenLocked": true,
+                        "message": "Dispatched lock command to running instance"
+                    ]
+                    if let d = try? JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys]),
+                       let s = String(data: d, encoding: .utf8) {
+                        print(s)
+                    }
+                } else {
+                    print("[FaceLock] Dispatched lock command to running instance.")
+                }
                 exit(0)
             } else if args.contains("--settings") {
                 DistributedNotificationCenter.default().postNotificationName(
@@ -2515,7 +2608,34 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             Config.shared.isEnabled.toggle()
             Config.shared.save()
             SecurityAuditLogger.shared.logShieldStateChanged(enabled: Config.shared.isEnabled, reason: "Protection toggled offline via CLI")
-            print("[FaceLock] Toggled protection state: \(Config.shared.isEnabled ? "ACTIVE 🛡️" : "PAUSED ⏸️")")
+            if args.contains("--json") {
+                let out: [String: Any] = [
+                    "success": true,
+                    "daemonRunning": false,
+                    "shieldActive": Config.shared.isEnabled,
+                    "message": "Toggled protection state: \(Config.shared.isEnabled ? "ACTIVE" : "PAUSED")"
+                ]
+                if let d = try? JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys]),
+                   let s = String(data: d, encoding: .utf8) {
+                    print(s)
+                }
+            } else {
+                print("[FaceLock] Toggled protection state: \(Config.shared.isEnabled ? "ACTIVE 🛡️" : "PAUSED ⏸️")")
+            }
+            exit(0)
+        }
+
+        if (args.contains("--lock") || args.contains("--test-lock")) && args.contains("--json") {
+            let out: [String: Any] = [
+                "success": true,
+                "status": "lock_screen_triggered",
+                "daemonRunning": false,
+                "message": "Starting standalone FaceLock lock screen"
+            ]
+            if let d = try? JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys]),
+               let s = String(data: d, encoding: .utf8) {
+                print(s)
+            }
             exit(0)
         }
 

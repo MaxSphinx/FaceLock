@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health toggle toggle-wake wake reload reset-session check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents export-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-gui prune-audit clear-audit export-audit pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config restore-config test profiles profile toggle-shoulder toggle-audible toggle-battery toggle-presentation battery-status battery-status-json
+.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health toggle toggle-json pause pause-json resume resume-json toggle-wake wake reload reload-json reset-session reset-session-json check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents export-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-gui prune-audit clear-audit export-audit pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config restore-config test profiles profile profile-json toggle-shoulder toggle-audible toggle-battery toggle-presentation battery-status battery-status-json
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -45,7 +45,8 @@ help:
 	@echo "  make set-camera CAMERA= - Set preferred camera device by ID, name or 'default'"
 	@echo "  make reset-camera   - Reset preferred camera selection to default front camera"
 	@echo "  make profiles       - List available security context profiles"
-	@echo "  make profile PROFILE= - Apply security profile (normal, cafe, work, home, presentation)"
+	@echo "  make profile-json   - Query current profile and available profiles as JSON"
+	@echo "  make profile PROFILE= - Apply security profile (normal, cafe, work, home, presentation, lockdown)"
 	@echo "  make toggle-shoulder- Toggle shoulder-surfing bystander defense"
 	@echo "  make toggle-audible - Toggle audible alarm and sound cues"
 	@echo "  make toggle-battery - Toggle battery-aware adaptive idle sweep throttling"
@@ -88,6 +89,9 @@ profiles: build
 profile: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --profile $(PROFILE)
 
+profile-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --profiles --json
+
 toggle-shoulder: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-shoulder-defense
 
@@ -122,6 +126,9 @@ lock: build
 	@echo "Triggering Lock Screen..."
 	@build/FaceLock.app/Contents/MacOS/FaceLock --lock
 
+lock-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --lock --json
+
 lockdown: build
 	@echo "Engaging Emergency Lockdown..."
 	@build/FaceLock.app/Contents/MacOS/FaceLock --lockdown
@@ -138,6 +145,21 @@ is-locked-json: build
 toggle: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle
 
+toggle-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle --json
+
+pause: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --pause $(if $(MINS),$(MINS),15)
+
+pause-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --pause $(if $(MINS),$(MINS),15) --json
+
+resume: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --resume
+
+resume-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --resume --json
+
 toggle-wake: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-lock-on-wake toggle
 
@@ -146,8 +168,14 @@ wake: toggle-wake
 reload: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --reload
 
+reload-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --reload --json
+
 reset-session: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --reset-session
+
+reset-session-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --reset-session --json
 
 check-app: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --check-app $(APP)
