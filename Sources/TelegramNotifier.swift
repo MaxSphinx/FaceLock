@@ -86,6 +86,30 @@ public final class TelegramNotifier {
             .replacingOccurrences(of: ">", with: "&gt;")
     }
 
+    public static func formatLockdownAlertCaption(reason: String, timestamp: Date = Date()) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss (dd.MM.yyyy)"
+        let timeStr = formatter.string(from: timestamp)
+        let safeReason = escapeHTML(reason)
+
+        return """
+        🚨 <b>FaceLock: Режим экстренной изоляции (Lockdown)!</b>
+        ⚠️ <b>Причина:</b> \(safeReason)
+        🕒 <b>Время:</b> \(timeStr)
+        🔒 Компьютер переведён в режим максимальной защиты: экран заблокирован, тайм-аут 5с, порог 0.18, тревога активна.
+        """
+    }
+
+    public func sendLockdownAlert(reason: String = "Активирован режим экстренной защиты", completion: ((Bool, String?) -> Void)? = nil) {
+        guard Config.shared.telegramEnabled else {
+            completion?(false, "Telegram alerts disabled")
+            return
+        }
+
+        let caption = TelegramNotifier.formatLockdownAlertCaption(reason: reason)
+        sendSecurityAlert(message: caption, completion: completion)
+    }
+
     public func sendTestMessage(token: String, chatId: String, completion: @escaping (Bool, String) -> Void) {
         guard let url = URL(string: "https://api.telegram.org/bot\(token)/sendMessage") else {
             completion(false, "Неверный URL бота")

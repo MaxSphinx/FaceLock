@@ -380,11 +380,19 @@ public final class Config: Codable {
     public func backupConfig(to destinationPath: String) throws -> String {
         let expanded = NSString(string: destinationPath).expandingTildeInPath
         let destURL = URL(fileURLWithPath: expanded)
+        let parentDir = destURL.deletingLastPathComponent()
+        if !FileManager.default.fileExists(atPath: parentDir.path) {
+            try FileManager.default.createDirectory(at: parentDir, withIntermediateDirectories: true)
+        }
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
         let data = try encoder.encode(self)
         try data.write(to: destURL, options: .atomic)
         return destURL.path
+    }
+
+    public func exportConfig(to destinationPath: String) throws -> String {
+        return try backupConfig(to: destinationPath)
     }
 
     public func restoreConfig(from sourcePath: String) throws {
@@ -419,6 +427,10 @@ public final class Config: Codable {
         self.audibleAlerts = imported.audibleAlerts
         self.presentationModeSuppression = imported.presentationModeSuppression
         self.save()
+    }
+
+    public func importConfig(from sourcePath: String) throws {
+        try restoreConfig(from: sourcePath)
     }
 
     public var hasEnrolledFace: Bool {

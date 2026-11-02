@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health toggle toggle-json pause pause-json resume resume-json toggle-wake wake reload reload-json reset-session reset-session-json check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents export-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-gui prune-audit clear-audit export-audit pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config restore-config test profiles profile profile-json toggle-shoulder toggle-audible toggle-battery toggle-presentation battery-status battery-status-json
+.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health toggle toggle-json pause pause-json resume resume-json toggle-wake wake reload reload-json reset-session reset-session-json check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents export-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-gui prune-audit clear-audit export-audit pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config export-config restore-config import-config test profiles profile profile-json toggle-shoulder toggle-audible toggle-battery toggle-presentation battery-status battery-status-json
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -260,12 +260,16 @@ backup-config: build
 	fi
 	@build/FaceLock.app/Contents/MacOS/FaceLock --backup-config "$(DEST)"
 
+export-config: backup-config
+
 restore-config: build
 	@if [ -z "$(SRC)" ]; then \
 		echo "Usage: make restore-config SRC=/path/to/backup.json"; \
 		exit 1; \
 	fi
 	@build/FaceLock.app/Contents/MacOS/FaceLock --restore-config "$(SRC)"
+
+import-config: restore-config
 
 vectors: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --vectors
@@ -381,6 +385,7 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-camera default --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --reset-camera --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --backup-config /tmp/facelock_cfg_test.json > /dev/null && rm -f /tmp/facelock_cfg_test.json
+	@build/FaceLock.app/Contents/MacOS/FaceLock --export-config /tmp/facelock_cfg_alias_test.json > /dev/null && rm -f /tmp/facelock_cfg_alias_test.json
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-walkaway 45 --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-walkaway --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-walkaway toggle --json > /dev/null

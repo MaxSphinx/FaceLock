@@ -501,6 +501,7 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         Config.shared.applyProfile(.lockdown)
         updateIcon()
         SecurityAuditLogger.shared.logEmergencyLockdown(details: "Triggered via menu bar item")
+        TelegramNotifier.shared.sendLockdownAlert(reason: "Экстренная блокировка вызвана из статус-бара")
         HUDController.shared.showProfile(name: "LOCKDOWN: Экстренная блокировка")
         if Config.shared.audibleAlerts {
             HUDController.playAlertSound(type: "warning")

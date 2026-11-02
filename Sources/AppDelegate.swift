@@ -87,6 +87,12 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--reset-session", "--json"])
             case "--profile-json", "--set-profile-json":
                 args.append(contentsOf: ["--profiles", "--json"])
+            case "--verify-face-json":
+                args.append(contentsOf: ["--verify-face", "--json"])
+            case "--export-config":
+                args.append("--backup-config")
+            case "--import-config":
+                args.append("--restore-config")
             default:
                 args.append(arg)
             }
@@ -138,8 +144,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --reset-session            Invalidate active biometric session and force re-authentication
               --check-app <bundleId>     Inspect whether bundle ID triggers biometric shield
               --config [--json]          Display active FaceLock configuration
-              --backup-config <path>     Export active FaceLock configuration to JSON file
-              --restore-config <path>    Import and apply FaceLock configuration from JSON file
+              --backup-config, --export-config <path> Export active FaceLock configuration to JSON file
+              --restore-config, --import-config <path> Import and apply FaceLock configuration from JSON file
               --apps [--json]            List protected and ignored application bundle IDs
               --apps-gui, --apps-window  Open interactive application protection policy window
               --protect-app <bundleId>   Add application bundle ID to protected list
@@ -768,7 +774,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(0)
         }
 
-        if let idx = args.firstIndex(of: "--backup-config"), idx + 1 < args.count {
+        if let idx = (args.firstIndex(of: "--backup-config") ?? args.firstIndex(of: "--export-config")), idx + 1 < args.count {
             let path = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
             guard !path.isEmpty else {
                 print("Error: Usage: facelock --backup-config <path>")
@@ -776,6 +782,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             do {
                 let savedPath = try Config.shared.backupConfig(to: path)
+                SecurityAuditLogger.shared.logConfigChanged(setting: "backupConfig", value: savedPath, details: "Exported configuration to \(savedPath)")
                 if args.contains("--json") {
                     print("{\"success\":true,\"path\":\"\(savedPath)\"}")
                 } else {
@@ -792,7 +799,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        if let idx = args.firstIndex(of: "--restore-config"), idx + 1 < args.count {
+        if let idx = (args.firstIndex(of: "--restore-config") ?? args.firstIndex(of: "--import-config")), idx + 1 < args.count {
             let path = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
             guard !path.isEmpty else {
                 print("Error: Usage: facelock --restore-config <path>")
@@ -800,6 +807,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             do {
                 try Config.shared.restoreConfig(from: path)
+                SecurityAuditLogger.shared.logConfigChanged(setting: "restoreConfig", value: path, details: "Imported configuration from \(path)")
                 notifyDaemonIfRunning()
                 if args.contains("--json") {
                     print("{\"success\":true,\"path\":\"\(path)\"}")
@@ -2472,6 +2480,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         if isAlreadyRunning {
             if args.contains("--lockdown") || args.contains("--emergency-lockdown") {
                 Config.shared.applyProfile(.lockdown)
+                TelegramNotifier.shared.sendLockdownAlert(reason: "Экстренная блокировка запущена через CLI")
                 DistributedNotificationCenter.default().postNotificationName(
                     AppDelegate.commandNotificationName,
                     object: nil,
@@ -2641,6 +2650,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if args.contains("--lockdown") || args.contains("--emergency-lockdown") {
             Config.shared.applyProfile(.lockdown)
+            TelegramNotifier.shared.sendLockdownAlert(reason: "Экстренная блокировка запущена через CLI")
             SecurityAuditLogger.shared.logEmergencyLockdown(details: "Emergency lockdown profile activated via CLI")
             if args.contains("--json") {
                 let out: [String: Any] = [

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.4] - 2026-11-02
 
 ### Added
+- **Config Export / Import CLI Ergonomics & Directory Resilience (`Config.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Added `--export-config` and `--import-config` aliases alongside `--backup-config` and `--restore-config`.
+  - Added automatic parent directory creation in `Config.backupConfig(to:)` ensuring exports to nested subpaths succeed cleanly.
+  - Added Makefile targets `make export-config DEST=` and `make import-config SRC=`.
+- **Telegram Emergency Lockdown Alerting (`TelegramNotifier.swift`, `StatusBarController.swift`, `AppDelegate.swift`)**:
+  - Implemented `sendLockdownAlert(reason:completion:)` and `formatLockdownAlertCaption(reason:timestamp:)` to dispatch instant high-priority alerts with HTML sanitization when emergency lockdown is engaged via CLI or menu bar.
+- **Automated Test Suite Expansion (`Tests/FaceLockTests.swift`)**:
+  - Scaled automated test suite to 260 unit tests across 21 specialized test suites covering config export/import roundtrip, Telegram lockdown payload escaping, and CLI normalizers with 100% pass rate.
 - **macOS Low Power Mode & Power-Constrained Throttling (`WalkAwayMonitor.swift`, `Diagnostics.swift`, `DiagnosticsWindow.swift`)**:
   - Integrated `ProcessInfo.processInfo.isLowPowerModeEnabled` and `WalkAwayMonitor.isPowerConstrained()` combining battery power and macOS Low Power Mode.
   - Automatically throttles background idle sweep interval to 10s and debounce to 45s whenever power is constrained.

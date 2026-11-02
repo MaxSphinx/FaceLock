@@ -63,6 +63,9 @@ public final class FaceLockTestSuite {
         testIncidentCaptureClassification()
         testPauseTimerTracking()
         testEmergencyLockdownAndAuditFiltering()
+        testConfigExportAndRestoreRoundtrip()
+        testTelegramLockdownAlertPayload()
+        testExportImportCliAliases()
         testVectorMatchingBenchmark()
 
         let elapsed = Date().timeIntervalSince(startTime)
@@ -639,6 +642,72 @@ public final class FaceLockTestSuite {
         } else {
             config.applyProfile(.normal)
         }
+    }
+
+    // MARK: - 9. Config Export/Restore & Telegram Lockdown
+    private func testConfigExportAndRestoreRoundtrip() {
+        print("\n▶ Test Suite: Config Export, Restore & Alias Roundtrip")
+
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let exportPath = tempDir.appendingPathComponent("nested/config_backup.json").path
+
+        let config = Config.shared
+        let originalThreshold = config.similarityThreshold
+        let originalTimeout = config.walkAwayIdleSeconds
+        let originalProfile = config.activeProfile
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+            config.similarityThreshold = originalThreshold
+            config.walkAwayIdleSeconds = originalTimeout
+            _ = config.setProfile(originalProfile)
+            config.save()
+        }
+
+        config.similarityThreshold = 0.28
+        config.walkAwayIdleSeconds = 55.0
+
+        do {
+            let savedPath = try config.exportConfig(to: exportPath)
+            assert(FileManager.default.fileExists(atPath: savedPath), "exportConfig successfully creates file including missing parent directories")
+
+            // Mutate config in memory
+            config.similarityThreshold = 0.15
+            config.walkAwayIdleSeconds = 25.0
+
+            // Restore from backup
+            try config.importConfig(from: savedPath)
+            assertAccuracy(config.similarityThreshold, 0.28, accuracy: 0.001, "importConfig restores similarityThreshold accurately")
+            assertEqual(config.walkAwayIdleSeconds, 55.0, "importConfig restores walkAwayIdleSeconds accurately")
+        } catch {
+            assert(false, "Config export/import roundtrip failed with error: \(error.localizedDescription)")
+        }
+    }
+
+    private func testTelegramLockdownAlertPayload() {
+        print("\n▶ Test Suite: Telegram Emergency Lockdown Alert Formatting")
+
+        let testDate = Date(timeIntervalSince1970: 1730588400) // Fixed timestamp for deterministic testing
+        let rawReason = "Terminal <admin> session & untrusted network"
+        let caption = TelegramNotifier.formatLockdownAlertCaption(reason: rawReason, timestamp: testDate)
+
+        assert(caption.contains("🚨 <b>FaceLock: Режим экстренной изоляции (Lockdown)!</b>"), "Lockdown alert has distinct high-priority header")
+        assert(caption.contains("&lt;admin&gt;"), "Special HTML characters '<' and '>' are safely escaped in lockdown alert")
+        assert(caption.contains("Terminal &lt;admin&gt; session &amp; untrusted network"), "Ampersand '&' is safely escaped in lockdown alert")
+        assert(caption.contains("тайм-аут 5с, порог 0.18"), "Lockdown alert reflects strict timeout and biometric threshold parameters")
+    }
+
+    private func testExportImportCliAliases() {
+        print("\n▶ Test Suite: CLI Export / Import Aliases & Flag Normalization")
+
+        let normalizedExport = AppDelegate.normalizeArguments(["--export-config", "/tmp/cfg.json"])
+        assertEqual(normalizedExport, ["--backup-config", "/tmp/cfg.json"], "--export-config normalizes to --backup-config")
+
+        let normalizedImport = AppDelegate.normalizeArguments(["--import-config", "/tmp/cfg.json"])
+        assertEqual(normalizedImport, ["--restore-config", "/tmp/cfg.json"], "--import-config normalizes to --restore-config")
+
+        let normalizedFaceJson = AppDelegate.normalizeArguments(["--verify-face-json"])
+        assertEqual(normalizedFaceJson, ["--verify-face", "--json"], "--verify-face-json normalizes to --verify-face --json")
     }
 
     // MARK: - 10. Performance Benchmark

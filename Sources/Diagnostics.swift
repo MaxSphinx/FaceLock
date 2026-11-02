@@ -62,7 +62,7 @@ public struct Diagnostics {
             }
         }
 
-        // 6. Storage & Vector Datasets
+        // 7. Storage & Vector Datasets
         let home = FileManager.default.homeDirectoryForCurrentUser
         let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
         let configPath = facelockDir.appendingPathComponent("config.json").path
@@ -92,7 +92,7 @@ public struct Diagnostics {
             }
         }
 
-        // 7. Telegram Integration & Autonomous Workers
+        // 8. Telegram Integration & Autonomous Workers
         let tgConfigured = !config.telegramBotToken.isEmpty && !config.telegramChatId.isEmpty
         var telegramReachable: Bool? = nil
         if tgConfigured {

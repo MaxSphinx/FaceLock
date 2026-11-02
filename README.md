@@ -210,8 +210,8 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --set-touchid <on\|off>` | Toggle Touch ID fallback on lock screen |
 | `facelock --set-lock-on-wake <on\|off>` | Toggle biometric verification upon screen wake |
 | `facelock --reset-session` | Clear cached verification session & force immediate re-authentication |
-| `facelock --backup-config <path>` | Backup active FaceLock configuration to JSON |
-| `facelock --restore-config <path>` | Restore FaceLock configuration from JSON |
+| `facelock --backup-config, --export-config <path>` | Backup active FaceLock configuration to JSON |
+| `facelock --restore-config, --import-config <path>` | Restore FaceLock configuration from JSON |
 | `facelock --vectors [--json]` | Inspect enrolled biometric facial vectors & cluster metrics |
 | `facelock --optimize-vectors [--json]` | Prune redundant face vectors & outliers to optimize cluster compactness |
 | `facelock --export-vectors <path>` | Backup enrolled face vectors to JSON file |
