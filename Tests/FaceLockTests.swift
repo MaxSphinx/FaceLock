@@ -432,6 +432,8 @@ public final class FaceLockTestSuite {
         for (alias, expected) in aliasMap {
             assertEqual(expected.count, 2, "Alias \(alias) maps to exactly 2 arguments")
             assertEqual(expected.last, "--json", "Alias \(alias) normalized target contains --json")
+            let normalized = AppDelegate.normalizeArguments([alias])
+            assertEqual(normalized, expected, "AppDelegate.normalizeArguments correctly normalizes \(alias)")
         }
     }
 

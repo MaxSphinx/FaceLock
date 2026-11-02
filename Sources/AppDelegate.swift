@@ -13,10 +13,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         )
     }
 
-    public func applicationDidFinishLaunching(_ notification: Notification) {
-        // Handle command-line arguments and normalize --*-json alias flags
+    public static func normalizeArguments(_ rawArgs: [String]) -> [String] {
         var args: [String] = []
-        for arg in CommandLine.arguments {
+        for arg in rawArgs {
             switch arg {
             case "--status-json":
                 args.append(contentsOf: ["--status", "--json"])
@@ -72,10 +71,18 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--battery-status", "--json"])
             case "--toggle-presentation-json", "--toggle-presentation-mode-json":
                 args.append(contentsOf: ["--toggle-presentation", "--json"])
+            case "--lockdown-json", "--emergency-lockdown-json":
+                args.append(contentsOf: ["--lockdown", "--json"])
             default:
                 args.append(arg)
             }
         }
+        return args
+    }
+
+    public func applicationDidFinishLaunching(_ notification: Notification) {
+        // Handle command-line arguments and normalize --*-json alias flags
+        let args = AppDelegate.normalizeArguments(CommandLine.arguments)
 
         if args.contains("--help") || args.contains("-h") {
             print("""
@@ -107,6 +114,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --verify-face [--timeout]  One-shot face biometric check without locking
               --verify-pin <pin>         Verify whether given PIN matches lock screen PIN
               --lock, --test-lock        Trigger immediate fullscreen lock screen
+              --lockdown, --emergency-lockdown [--json] Engage emergency lockdown (lockdown profile & lock screen)
               --is-locked [--json]       Check whether lock screen is currently engaged
               --export-incidents <dir>   Export all captured intruder incident photos and manifest to directory
               --toggle                   Toggle protection between ACTIVE and PAUSED
@@ -2394,7 +2402,34 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if isAlreadyRunning {
-            if args.contains("--toggle") {
+            if args.contains("--lockdown") || args.contains("--emergency-lockdown") {
+                Config.shared.applyProfile(.lockdown)
+                DistributedNotificationCenter.default().postNotificationName(
+                    AppDelegate.commandNotificationName,
+                    object: nil,
+                    userInfo: ["action": "lockdown"],
+                    deliverImmediately: true
+                )
+                if args.contains("--json") {
+                    let out: [String: Any] = [
+                        "success": true,
+                        "status": "lockdown_engaged",
+                        "activeProfile": "lockdown",
+                        "walkAwayIdleSeconds": Config.shared.walkAwayIdleSeconds,
+                        "similarityThreshold": Double(Config.shared.similarityThreshold),
+                        "shoulderSurfingDefense": Config.shared.shoulderSurfingDefense,
+                        "audibleAlerts": Config.shared.audibleAlerts,
+                        "screenLocked": true
+                    ]
+                    if let d = try? JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys]),
+                       let s = String(data: d, encoding: .utf8) {
+                        print(s)
+                    }
+                } else {
+                    print("[FaceLock] 🚨 Emergency Lockdown dispatched to running instance.")
+                }
+                exit(0)
+            } else if args.contains("--toggle") {
                 DistributedNotificationCenter.default().postNotificationName(
                     AppDelegate.commandNotificationName,
                     object: nil,
@@ -2484,6 +2519,28 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(0)
         }
 
+        if args.contains("--lockdown") || args.contains("--emergency-lockdown") {
+            Config.shared.applyProfile(.lockdown)
+            SecurityAuditLogger.shared.logEmergencyLockdown(details: "Emergency lockdown profile activated via CLI")
+            if args.contains("--json") {
+                let out: [String: Any] = [
+                    "success": true,
+                    "status": "lockdown_engaged",
+                    "activeProfile": "lockdown",
+                    "walkAwayIdleSeconds": Config.shared.walkAwayIdleSeconds,
+                    "similarityThreshold": Double(Config.shared.similarityThreshold),
+                    "shoulderSurfingDefense": Config.shared.shoulderSurfingDefense,
+                    "audibleAlerts": Config.shared.audibleAlerts,
+                    "daemonRunning": false
+                ]
+                if let d = try? JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys]),
+                   let s = String(data: d, encoding: .utf8) {
+                    print(s)
+                }
+                exit(0)
+            }
+        }
+
         // Request camera permission if needed
         checkCameraAuthorization()
 
@@ -2504,7 +2561,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 EnrollmentController.shared.show()
             }
-        } else if args.contains("--test-lock") || args.contains("--lock") {
+        } else if args.contains("--test-lock") || args.contains("--lock") || args.contains("--lockdown") || args.contains("--emergency-lockdown") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 LockScreenController.shared.showLock()
             }
@@ -2569,6 +2626,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 ApplicationsManagerController.shared.show()
             case "diagnostics", "diagnostics-gui", "diagnostics-window", "diagnostics-ui":
                 DiagnosticsController.shared.show()
+            case "lockdown":
+                StatusBarController.shared.triggerLockdown()
             case "profile", "set-profile":
                 if let prof = notif.userInfo?["profile"] as? String,
                    let p = Config.SecurityProfile(rawValue: prof) {
