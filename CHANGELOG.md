@@ -4,9 +4,22 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.4] - 2026-11-01
+## [1.1.4] - 2026-11-02
 
 ### Added
+- **macOS Low Power Mode & Power-Constrained Throttling (`WalkAwayMonitor.swift`, `Diagnostics.swift`, `DiagnosticsWindow.swift`)**:
+  - Integrated `ProcessInfo.processInfo.isLowPowerModeEnabled` and `WalkAwayMonitor.isPowerConstrained()` combining battery power and macOS Low Power Mode.
+  - Automatically throttles background idle sweep interval to 10s and debounce to 45s whenever power is constrained.
+  - Added live display of Power Source and Low Power Mode state in Diagnostics GUI card and telemetry dictionary.
+- **Dedicated Power & Battery CLI Telemetry (`AppDelegate.swift`, `Makefile`)**:
+  - Added CLI options `--battery-status` and `--power-status` with both formatted terminal summary and structured `--json` output.
+  - Added aliases `--battery-status-json` and `--power-status-json` in argument normalizer.
+  - Added Makefile targets `make battery-status` and `make battery-status-json`.
+- **Security Audit Log Automated Quota Pruning (`SecurityAuditLogger.swift`)**:
+  - Implemented `autoPruneIfNeeded()` to automatically check and prune audit log to the most recent 5,000 entries when file size exceeds 5MB.
+  - Added `autoPruneLogs(maxBytes:keeping:)` with atomic write safety to prevent disk exhaustion.
+- **Conferencing & Screen Sharing Auto-Suppression Expansion (`WalkAwayMonitor.swift`)**:
+  - Expanded meeting bundle identifiers with RingCentral (`us.zoom.ringcentral`), AnyDesk (`com.anydesk.anydesk`, `com.anydesk.anydeskmac`), TeamViewer (`com.teamviewer.TeamViewer`), Screenleap (`com.screenleap.Screenleap`), Viber (`com.viber.osx`), Brave Google Meet PWA, and Edge Google Meet PWA.
 - **Incident Gallery Classification & Filtering (`IncidentGalleryWindow.swift`)**:
   - Differentiated Shoulder-Surfing bystander captures (`bystander_*.jpg`) and unauthorized intruder captures (`intruder_*.jpg`) with tailored visual cards, color codes (orange vs red), and Russian/English status badges.
   - Added multi-criteria filter selector: "Все инциденты", "За последние 24ч", "За последние 7 дней", "Только подглядывания (Shoulder)", and "Только нарушители (Intruders)".
@@ -18,15 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Protection Pause Management & Countdown Ergonomics (`StatusBarController.swift`)**:
   - Added interactive "Таймер паузы..." submenu with quick presets (15 мин, 30 мин, 1 час, 4 часа / Полдня).
   - Integrated live remaining pause minutes countdown in menu item header, status bar button tooltip (`~X мин осталось`), and added "+15 мин" extension button when paused.
-- **Diagnostics Window & Power Sensing Parity (`DiagnosticsWindow.swift`, `Diagnostics.swift`, `WalkAwayMonitor.swift`)**:
-  - Added `powerConstrained` check combining battery power and macOS Low Power Mode (`isLowPowerModeEnabled`).
-  - Added live display of Power Source and Low Power Mode state in Diagnostics GUI card and telemetry dictionary.
-  - Synchronized version string across Diagnostics window and telemetry to 1.1.4.
 - **Audit Log Categorization Expansion (`AuditLogWindow.swift`)**:
   - Added dedicated filters for "Подглядывание (Shoulder-Surfing)" and "Профили и Lockdown (Profiles & Lockdown)".
   - Enhanced badge visuals for `emergency_lockdown`, `shoulder_surfing_alert`, and `profile_switched`.
-- **Automated Test Suite Expansion to 144 Tests (`Tests/FaceLockTests.swift`)**:
-  - Added test suites for incident capture classification, date parsing, filter isolation, and pause countdown math (144 passing tests, 100% reliability).
+- **Automated Test Suite Expansion to 201 Tests (`Tests/FaceLockTests.swift`)**:
+  - Added test suites for Low Power Mode sensing, power-constrained sweep throttling, meeting & media playback bundle expansion, config dictionary serialization, audit log auto-pruning, incident capture classification, date parsing, emergency lockdown profile, and pause countdown math (201 passing tests, 100% reliability).
 
 ## [1.1.3] - 2026-11-01
 

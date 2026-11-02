@@ -68,6 +68,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--toggle-audible", "--json"])
             case "--toggle-battery-aware-json":
                 args.append(contentsOf: ["--toggle-battery-aware", "--json"])
+            case "--battery-status-json", "--power-status-json":
+                args.append(contentsOf: ["--battery-status", "--json"])
             case "--toggle-presentation-json", "--toggle-presentation-mode-json":
                 args.append(contentsOf: ["--toggle-presentation", "--json"])
             default:
@@ -141,6 +143,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --set-audible <on|off>     Enable or disable audible alarm & sound cues
               --toggle-battery-aware     Toggle battery-aware adaptive idle sweep throttling
               --set-battery-aware <on|off> Enable or disable battery-aware adaptive scanning
+              --battery-status [--json]  Inspect battery power source & adaptive throttling state
               --toggle-presentation, --toggle-presentation-mode Toggle meeting / presentation lock auto-suppression
               --set-presentation-mode <on|off|toggle> Enable or disable meeting lock auto-suppression
               --test, --run-tests        Execute automated unit test suite and benchmarks
@@ -453,6 +456,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     "isEnabled": config.isEnabled,
                     "strictFaceMatch": config.strictFaceMatch,
                     "protectionMode": config.protectionMode,
+                    "activeProfile": config.activeProfile,
+                    "shoulderSurfingDefense": config.shoulderSurfingDefense,
+                    "batteryAwareScanning": config.batteryAwareScanning,
+                    "audibleAlerts": config.audibleAlerts,
+                    "presentationModeSuppression": config.presentationModeSuppression,
                     "walkAwayLockEnabled": config.walkAwayLockEnabled,
                     "walkAwayIdleSeconds": config.walkAwayIdleSeconds,
                     "telegramEnabled": config.telegramEnabled,
@@ -476,6 +484,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             FaceLock Configuration:
               Protection State: \(config.isEnabled ? "ACTIVE 🛡️" : "PAUSED ⏸️")
               Protection Mode: \(config.protectionMode)
+              Active Profile: \(config.activeProfile.uppercased()) (\(Config.SecurityProfile(rawValue: config.activeProfile)?.title ?? config.activeProfile))
+              Shoulder-Surfing Defense: \(config.shoulderSurfingDefense ? "Enabled" : "Disabled")
+              Battery-Aware Polling: \(config.batteryAwareScanning ? "Enabled" : "Disabled")
+              Audible Alerts: \(config.audibleAlerts ? "Enabled" : "Disabled")
+              Meeting Auto-Suppression: \(config.presentationModeSuppression ? "Enabled" : "Disabled")
               Decision Threshold: \(config.similarityThreshold)
               Verification Timeout: \(config.verificationTimeout)s
               Switch Debounce: \(config.debounceSeconds)s
@@ -1173,6 +1186,24 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 exit(1)
             }
             exit(0)
+        } else if args.contains("--profile") || args.contains("--set-profile") {
+            let valid = Config.SecurityProfile.allCases.map { $0.rawValue }.joined(separator: ", ")
+            if args.contains("--json") {
+                let profiles = Config.SecurityProfile.allCases.map { $0.rawValue }
+                let dict: [String: Any] = [
+                    "activeProfile": Config.shared.activeProfile,
+                    "availableProfiles": profiles
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                print("Current Active Profile: \(Config.shared.activeProfile)")
+                print("Available profiles: \(valid)")
+                print("Usage: facelock --profile <name>")
+            }
+            exit(0)
         }
 
         if args.contains("--toggle-shoulder-defense") || args.contains("--toggle-shoulder") {
@@ -1268,6 +1299,41 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 print("✓ Battery-aware adaptive scanning set to \(enabled ? "enabled" : "disabled").")
             }
+            exit(0)
+        }
+
+        if args.contains("--battery-status") || args.contains("--power-status") {
+            let onBattery = WalkAwayMonitor.isOnBatteryPower()
+            let lowPower = WalkAwayMonitor.isLowPowerModeEnabled()
+            let constrained = WalkAwayMonitor.isPowerConstrained()
+            let batteryAware = Config.shared.batteryAwareScanning
+            let adaptiveInterval: Double = (batteryAware && constrained) ? 10.0 : 5.0
+            let idleDebounce: Double = (batteryAware && constrained) ? 45.0 : 20.0
+
+            if args.contains("--json") {
+                let dict: [String: Any] = [
+                    "onBattery": onBattery,
+                    "lowPowerMode": lowPower,
+                    "powerConstrained": constrained,
+                    "batteryAwareScanning": batteryAware,
+                    "adaptiveIntervalSeconds": adaptiveInterval,
+                    "idleDebounceSeconds": idleDebounce
+                ]
+                if let jsonData = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
+                   let jsonStr = String(data: jsonData, encoding: .utf8) {
+                    print(jsonStr)
+                }
+                exit(0)
+            }
+            print("""
+            FaceLock Battery & Power Telemetry:
+              Power Source: \(onBattery ? "Battery Power 🔋" : "AC Power (Plugged In) 🔌")
+              Low Power Mode: \(lowPower ? "Enabled ⚡" : "Disabled")
+              Power Constrained: \(constrained ? "Yes" : "No")
+              Battery-Aware Scanning: \(batteryAware ? "Enabled" : "Disabled")
+              Adaptive Walk-Away Polling Interval: \(Int(adaptiveInterval))s
+              Adaptive Idle Debounce: \(Int(idleDebounce))s
+            """)
             exit(0)
         }
 

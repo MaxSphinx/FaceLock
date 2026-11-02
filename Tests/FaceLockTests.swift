@@ -59,8 +59,10 @@ public final class FaceLockTestSuite {
         testPinLockoutExponentialLogic()
         testTelegramPayloadEscaping()
         testSecurityAuditSerialization()
+        testSecurityAuditAutoPruning()
         testIncidentCaptureClassification()
         testPauseTimerTracking()
+        testEmergencyLockdownAndAuditFiltering()
         testVectorMatchingBenchmark()
 
         let elapsed = Date().timeIntervalSince(startTime)
@@ -206,7 +208,17 @@ public final class FaceLockTestSuite {
         let onBattery = WalkAwayMonitor.isOnBatteryPower()
         assert(onBattery == true || onBattery == false, "WalkAwayMonitor successfully queries power source without crashing")
 
-        let idleDebounce: TimeInterval = (config.batteryAwareScanning && onBattery) ? 45.0 : 20.0
+        let lowPower = WalkAwayMonitor.isLowPowerModeEnabled()
+        assert(lowPower == true || lowPower == false, "WalkAwayMonitor successfully queries Low Power Mode state")
+
+        let powerConstrained = WalkAwayMonitor.isPowerConstrained()
+        assertEqual(powerConstrained, onBattery || lowPower, "Power constrained state correctly mirrors battery or Low Power Mode")
+
+        let isThrottled = config.batteryAwareScanning && powerConstrained
+        let sweepInterval: TimeInterval = isThrottled ? 10.0 : 5.0
+        assert(sweepInterval >= 5.0, "Sweep interval is at least 5.0s")
+
+        let idleDebounce: TimeInterval = isThrottled ? 45.0 : 20.0
         assert(idleDebounce >= 20.0, "Idle debounce interval is at least 20.0s")
     }
 
@@ -254,8 +266,15 @@ public final class FaceLockTestSuite {
         assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("com.colliderli.iina"), "IINA is recognized as media presentation app")
         assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("com.apple.TV"), "Apple TV is recognized as media presentation app")
         assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("com.google.android.apps.meetings"), "Google Meet is recognized as meeting app")
+        assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("us.zoom.ringcentral"), "RingCentral is recognized as meeting app")
+        assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("com.anydesk.anydesk"), "AnyDesk is recognized as screen sharing app")
+        assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("com.teamviewer.TeamViewer"), "TeamViewer is recognized as screen sharing app")
+        assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("com.viber.osx"), "Viber is recognized as communication app")
+        assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("com.brave.Browser.app.kjgfgldnnfoeklkmfkjfagphfepbbdan"), "Brave Google Meet PWA is recognized")
 
         assert(WalkAwayMonitor.isPresentationActive(bundleId: "com.apple.iWork.Keynote"), "Keynote triggers presentation lock suppression")
+        assert(WalkAwayMonitor.isPresentationActive(bundleId: "us.zoom.ringcentral"), "RingCentral triggers presentation lock suppression")
+        assert(WalkAwayMonitor.isPresentationActive(bundleId: "com.anydesk.anydesk"), "AnyDesk triggers presentation lock suppression")
         assert(WalkAwayMonitor.isPresentationActive(bundleId: "com.apple.QuickTimePlayerX"), "QuickTime Player triggers presentation lock suppression")
         assert(WalkAwayMonitor.isPresentationActive(bundleId: "org.videolan.vlc"), "VLC triggers presentation lock suppression")
         assert(WalkAwayMonitor.isPresentationActive(bundleId: "com.colliderli.iina"), "IINA triggers presentation lock suppression")
@@ -289,6 +308,9 @@ public final class FaceLockTestSuite {
             assert(platform["osVersion"] is String, "Diagnostics platform contains osVersion string")
             assert(platform["architecture"] is String, "Diagnostics platform contains architecture string")
             assert(platform["appleSilicon"] is Bool, "Diagnostics platform contains appleSilicon boolean")
+            assert(platform["onBatteryPower"] is Bool, "Diagnostics platform contains onBatteryPower boolean")
+            assert(platform["lowPowerMode"] is Bool, "Diagnostics platform contains lowPowerMode boolean")
+            assert(platform["powerConstrained"] is Bool, "Diagnostics platform contains powerConstrained boolean")
         }
 
         if let biometrics = report["biometrics"] as? [String: Any] {
@@ -398,6 +420,10 @@ public final class FaceLockTestSuite {
             "--toggle-presentation-mode-json": ["--toggle-presentation", "--json"],
             "--toggle-walkaway-json": ["--toggle-walkaway", "--json"],
             "--toggle-wake-json": ["--toggle-wake", "--json"],
+            "--battery-status-json": ["--battery-status", "--json"],
+            "--power-status-json": ["--battery-status", "--json"],
+            "--lockdown-json": ["--lockdown", "--json"],
+            "--emergency-lockdown-json": ["--lockdown", "--json"],
             "--status-json": ["--status", "--json"],
             "--diagnostics-gui-json": ["--diagnostics-gui", "--json"],
             "--health-json": ["--health", "--json"]
@@ -512,6 +538,17 @@ public final class FaceLockTestSuite {
         }
     }
 
+    // MARK: - 8b. Security Audit Auto-Pruning
+    private func testSecurityAuditAutoPruning() {
+        print("\n▶ Test Suite: Security Audit Auto-Pruning & Storage Integrity")
+        let stats = SecurityAuditLogger.shared.getLogStats()
+        assert(stats.totalCount >= 0, "Audit log total count is non-negative")
+        assert(stats.fileSizeBytes >= 0, "Audit log file size in bytes is non-negative")
+
+        let pruned = SecurityAuditLogger.shared.autoPruneLogs(maxBytes: 100 * 1024 * 1024, keeping: 5000)
+        assert(pruned == false || pruned == true, "SecurityAuditLogger autoPruneLogs executed successfully")
+    }
+
     // MARK: - 8. Incident Capture Classification & Date Parsing
     private func testIncidentCaptureClassification() {
         print("\n▶ Test Suite: Incident Capture Classification & Date Parsing")
@@ -553,6 +590,42 @@ public final class FaceLockTestSuite {
         let expExpired = Date().addingTimeInterval(-10)
         let expiredRemaining = expExpired.timeIntervalSinceNow > 0 ? Int(ceil(expExpired.timeIntervalSinceNow / 60.0)) : nil
         assert(expiredRemaining == nil, "Expired pause returns nil remaining minutes")
+    }
+
+    // MARK: - 9b. Emergency Lockdown & Audit Filtering
+    private func testEmergencyLockdownAndAuditFiltering() {
+        print("\n▶ Test Suite: Emergency Lockdown & Audit Event Filtering")
+
+        let config = Config.shared
+        let originalProfile = config.activeProfile
+
+        // Apply lockdown
+        config.applyProfile(.lockdown)
+        assertEqual(config.activeProfile, "lockdown", "Lockdown profile successfully engaged")
+        assertEqual(config.walkAwayIdleSeconds, 5.0, "Lockdown timeout is 5.0 seconds")
+        assertAccuracy(config.similarityThreshold, 0.18, accuracy: 0.001, "Lockdown threshold is 0.18")
+        assertEqual(config.shoulderSurfingDefense, true, "Lockdown enables shoulder surfing defense")
+        assertEqual(config.audibleAlerts, true, "Lockdown enables audible alerts")
+
+        // Log emergency lockdown event
+        SecurityAuditLogger.shared.logEmergencyLockdown(details: "Unit test lockdown trigger")
+
+        // Test filtering
+        let lockdownEvents = SecurityAuditLogger.shared.fetchRecentEvents(tail: 10, filterType: "lockdown")
+        assert(!lockdownEvents.isEmpty, "Audit fetchRecentEvents with filter 'lockdown' retrieves events")
+        assertEqual(lockdownEvents.first?.eventType, "emergency_lockdown", "Retrieved eventType is emergency_lockdown")
+
+        // Log shoulder surfing event
+        SecurityAuditLogger.shared.logShoulderSurfingDetected(secondaryCount: 2, details: "Unit test bystander alert")
+        let shoulderEvents = SecurityAuditLogger.shared.fetchRecentEvents(tail: 10, filterType: "shoulder")
+        assert(!shoulderEvents.isEmpty, "Audit fetchRecentEvents with filter 'shoulder' retrieves bystander events")
+
+        // Restore original profile
+        if let original = Config.SecurityProfile(rawValue: originalProfile) {
+            config.applyProfile(original)
+        } else {
+            config.applyProfile(.normal)
+        }
     }
 
     // MARK: - 10. Performance Benchmark

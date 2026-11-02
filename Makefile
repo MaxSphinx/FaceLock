@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health toggle toggle-wake wake reload reset-session check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents export-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-gui prune-audit clear-audit export-audit pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config restore-config test profiles profile toggle-shoulder toggle-audible toggle-battery toggle-presentation battery-status battery-status-json
+.PHONY: all build run enroll test-lock lock lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health toggle toggle-wake wake reload reset-session check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents export-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-gui prune-audit clear-audit export-audit pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config restore-config test profiles profile toggle-shoulder toggle-audible toggle-battery toggle-presentation battery-status battery-status-json
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -22,6 +22,7 @@ help:
 	@echo "  make gallery        - Open intruder incident log"
 	@echo "  make test-lock      - Trigger immediate fullscreen lock test"
 	@echo "  make lock           - Trigger lock screen via daemon or standalone"
+	@echo "  make lockdown       - Engage emergency lockdown (lockdown profile & lock screen)"
 	@echo "  make is-locked      - Check if screen lock is currently active"
 	@echo "  make toggle         - Toggle protection between ACTIVE and PAUSED"
 	@echo "  make toggle-wake    - Toggle lock verification upon Mac screen wake"
@@ -120,6 +121,13 @@ test-lock: build
 lock: build
 	@echo "Triggering Lock Screen..."
 	@build/FaceLock.app/Contents/MacOS/FaceLock --lock
+
+lockdown: build
+	@echo "Engaging Emergency Lockdown..."
+	@build/FaceLock.app/Contents/MacOS/FaceLock --lockdown
+
+lockdown-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --lockdown --json
 
 is-locked: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --is-locked || true
