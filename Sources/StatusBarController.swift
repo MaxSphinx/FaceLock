@@ -6,6 +6,13 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
 
     private var statusItem: NSStatusItem?
     private var pauseTimer: Timer?
+    private var pauseExpirationDate: Date?
+
+    public var remainingPauseMinutes: Int? {
+        guard let exp = pauseExpirationDate else { return nil }
+        let rem = exp.timeIntervalSinceNow
+        return rem > 0 ? Int(ceil(rem / 60.0)) : nil
+    }
 
     private override init() {
         super.init()
@@ -50,9 +57,13 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
             button.contentTintColor = isEnabled ? nil : NSColor.systemOrange
         }
 
-        button.toolTip = isEnabled
-            ? "FaceLock: Защита активна (кликните для меню)"
-            : "FaceLock: На паузе (кликните для меню)"
+        if isEnabled {
+            button.toolTip = "FaceLock: Защита активна (кликните для меню)"
+        } else if let rem = remainingPauseMinutes {
+            button.toolTip = "FaceLock: На паузе (осталось ~\(rem) мин)"
+        } else {
+            button.toolTip = "FaceLock: На паузе (кликните для меню)"
+        }
     }
 
     public func toggleEnabled() {
@@ -60,6 +71,7 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         Config.shared.save()
         pauseTimer?.invalidate()
         pauseTimer = nil
+        pauseExpirationDate = nil
 
         SecurityAuditLogger.shared.logShieldStateChanged(enabled: Config.shared.isEnabled, reason: "Toggled via menu bar icon")
 
@@ -77,22 +89,57 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
 
         let isEnabled = Config.shared.isEnabled
         let hasFace = Config.shared.hasEnrolledFace
-        let statusTitle = isEnabled
-            ? (hasFace ? "✓ FaceLock: Активно (Лицо обучено)" : "✓ FaceLock: Активно (Детекция лица)")
-            : "○ FaceLock: На паузе"
+        let statusTitle: String
+        if isEnabled {
+            statusTitle = hasFace ? "✓ FaceLock: Активно (Лицо обучено)" : "✓ FaceLock: Активно (Детекция лица)"
+        } else if let rem = remainingPauseMinutes {
+            statusTitle = "○ FaceLock: На паузе (~\(rem) мин осталось)"
+        } else {
+            statusTitle = "○ FaceLock: На паузе"
+        }
 
         let statusHeader = NSMenuItem(title: statusTitle, action: nil, keyEquivalent: "")
         statusHeader.isEnabled = false
         menu.addItem(statusHeader)
 
-        let toggleTitle = isEnabled ? "Приостановить защиту" : "Включить защиту"
-        let toggleItem = NSMenuItem(title: toggleTitle, action: #selector(menuToggleClicked), keyEquivalent: "s")
-        toggleItem.target = self
-        menu.addItem(toggleItem)
+        if isEnabled {
+            let toggleTitle = "Приостановить защиту"
+            let toggleItem = NSMenuItem(title: toggleTitle, action: #selector(menuToggleClicked), keyEquivalent: "s")
+            toggleItem.target = self
+            menu.addItem(toggleItem)
 
-        let pause15 = NSMenuItem(title: "Пауза на 15 минут", action: #selector(pauseFor15Min), keyEquivalent: "")
-        pause15.target = self
-        menu.addItem(pause15)
+            let pauseSubItem = NSMenuItem(title: "Таймер паузы...", action: nil, keyEquivalent: "")
+            let pauseMenu = NSMenu()
+
+            let p15 = NSMenuItem(title: "15 минут", action: #selector(pauseFor15Min), keyEquivalent: "")
+            p15.target = self
+            pauseMenu.addItem(p15)
+
+            let p30 = NSMenuItem(title: "30 минут", action: #selector(pauseFor30Min), keyEquivalent: "")
+            p30.target = self
+            pauseMenu.addItem(p30)
+
+            let p60 = NSMenuItem(title: "1 час", action: #selector(pauseFor60Min), keyEquivalent: "")
+            p60.target = self
+            pauseMenu.addItem(p60)
+
+            let p240 = NSMenuItem(title: "4 часа (Полдня)", action: #selector(pauseFor240Min), keyEquivalent: "")
+            p240.target = self
+            pauseMenu.addItem(p240)
+
+            pauseSubItem.submenu = pauseMenu
+            menu.addItem(pauseSubItem)
+        } else {
+            let resumeItem = NSMenuItem(title: "Возобновить защиту", action: #selector(resumeProtection), keyEquivalent: "s")
+            resumeItem.target = self
+            menu.addItem(resumeItem)
+
+            if pauseTimer != nil {
+                let extendItem = NSMenuItem(title: "Продлить паузу на +15 мин", action: #selector(extendPause15Min), keyEquivalent: "")
+                extendItem.target = self
+                menu.addItem(extendItem)
+            }
+        }
 
         let isSelective = (Config.shared.protectionMode == "selective")
         let modeTitle = isSelective ? "Режим: Только секретные приложения (Telegram, Safari...)" : "Режим: Все приложения подряд"
@@ -177,6 +224,10 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         let immediateLockItem = NSMenuItem(title: "Заблокировать экран сейчас", action: #selector(immediateLock), keyEquivalent: "l")
         immediateLockItem.target = self
         menu.addItem(immediateLockItem)
+
+        let lockdownItem = NSMenuItem(title: "🚨 Экстренная блокировка (Lockdown)...", action: #selector(triggerLockdown), keyEquivalent: "L")
+        lockdownItem.target = self
+        menu.addItem(lockdownItem)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -390,6 +441,7 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
     public func pauseFor(minutes: Double) {
         Config.shared.isEnabled = false
         Config.shared.save()
+        pauseExpirationDate = Date().addingTimeInterval(max(1.0, minutes * 60))
         updateIcon()
         HUDController.shared.showToggleStatus(isEnabled: false)
         SecurityAuditLogger.shared.logShieldStateChanged(enabled: false, reason: "Paused protection for \(Int(minutes)) minutes")
@@ -400,9 +452,10 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         }
     }
 
-    public func resumeProtection() {
+    @objc public func resumeProtection() {
         pauseTimer?.invalidate()
         pauseTimer = nil
+        pauseExpirationDate = nil
         Config.shared.isEnabled = true
         Config.shared.save()
         updateIcon()
@@ -415,6 +468,23 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
         pauseFor(minutes: 15)
     }
 
+    @objc private func pauseFor30Min() {
+        pauseFor(minutes: 30)
+    }
+
+    @objc private func pauseFor60Min() {
+        pauseFor(minutes: 60)
+    }
+
+    @objc private func pauseFor240Min() {
+        pauseFor(minutes: 240)
+    }
+
+    @objc private func extendPause15Min() {
+        let currentRem = remainingPauseMinutes ?? 0
+        pauseFor(minutes: Double(currentRem + 15))
+    }
+
     @objc private func openEnrollment() {
         EnrollmentController.shared.show()
     }
@@ -424,6 +494,17 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
     }
 
     @objc private func immediateLock() {
+        LockScreenController.shared.showLock()
+    }
+
+    @objc public func triggerLockdown() {
+        Config.shared.applyProfile(.lockdown)
+        updateIcon()
+        SecurityAuditLogger.shared.logEmergencyLockdown(details: "Triggered via menu bar item")
+        HUDController.shared.showProfile(name: "LOCKDOWN: Экстренная блокировка")
+        if Config.shared.audibleAlerts {
+            HUDController.playAlertSound(type: "warning")
+        }
         LockScreenController.shared.showLock()
     }
 

@@ -116,11 +116,11 @@ public final class IncidentGalleryController: NSObject {
         header.addSubview(clearBtn)
 
         // Filter & Prune Row
-        let filterLabel = NSTextField(frame: NSRect(x: width - 435, y: 14, width: 55, height: 20))
+        let filterLabel = NSTextField(frame: NSRect(x: width - 445, y: 14, width: 65, height: 20))
         filterLabel.isEditable = false
         filterLabel.isBordered = false
         filterLabel.backgroundColor = .clear
-        filterLabel.stringValue = "Период:"
+        filterLabel.stringValue = "Фильтр:"
         filterLabel.textColor = .secondaryLabelColor
         filterLabel.font = .systemFont(ofSize: 12)
         filterLabel.autoresizingMask = [.minXMargin]
@@ -131,6 +131,8 @@ public final class IncidentGalleryController: NSObject {
         popup.addItem(withTitle: "Все инциденты (All)")
         popup.addItem(withTitle: "За последние 24ч (24h)")
         popup.addItem(withTitle: "За последние 7 дней (7d)")
+        popup.addItem(withTitle: "Только подглядывания (Shoulder)")
+        popup.addItem(withTitle: "Только нарушители (Intruders)")
         popup.target = self
         popup.action = #selector(filterChanged(_:))
         header.addSubview(popup)
@@ -171,6 +173,8 @@ public final class IncidentGalleryController: NSObject {
         switch sender.indexOfSelectedItem {
         case 1: currentFilter = "24h"
         case 2: currentFilter = "7d"
+        case 3: currentFilter = "shoulder"
+        case 4: currentFilter = "intruders"
         default: currentFilter = "all"
         }
         reloadIncidents()
@@ -239,18 +243,28 @@ public final class IncidentGalleryController: NSObject {
             : "Всего: \(files.count) инцидентов (\(past24Count) за 24ч) • Память: \(String(format: "%.2f", sizeMB)) МБ"
         statsLabel?.stringValue = metricsStr
 
-        // Apply period filter
+        // Apply filter
         var displayFiles: [String] = []
         for file in files {
             let p = dir.appendingPathComponent(file).path
             let modDate = (try? FileManager.default.attributesOfItem(atPath: p)[.modificationDate] as? Date) ?? .distantPast
             let ageSeconds = now.timeIntervalSince(modDate)
+            let isBystander = file.hasPrefix("bystander_")
+
             if currentFilter == "24h" {
                 if ageSeconds <= 86400 {
                     displayFiles.append(file)
                 }
             } else if currentFilter == "7d" {
                 if ageSeconds <= 7 * 86400 {
+                    displayFiles.append(file)
+                }
+            } else if currentFilter == "shoulder" {
+                if isBystander {
+                    displayFiles.append(file)
+                }
+            } else if currentFilter == "intruders" {
+                if !isBystander {
                     displayFiles.append(file)
                 }
             } else {
@@ -266,7 +280,11 @@ public final class IncidentGalleryController: NSObject {
             emptyLabel.textColor = .secondaryLabelColor
             emptyLabel.font = .systemFont(ofSize: 15, weight: .medium)
             emptyLabel.alignment = .center
-            if currentFilter != "all" {
+            if currentFilter == "shoulder" {
+                emptyLabel.stringValue = "🔍 Нет снимков подглядываний (Shoulder-Surfing)."
+            } else if currentFilter == "intruders" {
+                emptyLabel.stringValue = "🔍 Нет снимков несанкционированного доступа."
+            } else if currentFilter != "all" {
                 emptyLabel.stringValue = "🔍 Нет инцидентов за выбранный период времени."
             } else {
                 emptyLabel.stringValue = "🎉 Журнал чист! Ни одного постороннего не зафиксировано."
@@ -315,14 +333,15 @@ public final class IncidentGalleryController: NSObject {
         card.addSubview(thumbBtn)
 
         let filename = fileURL.lastPathComponent
-        let dateStr = parseDateFromFilename(filename)
+        let isBystander = filename.hasPrefix("bystander_")
+        let dateStr = IncidentGalleryController.parseDateFromFilename(filename)
 
         let titleLabel = NSTextField(frame: NSRect(x: 122, y: frame.height - 38, width: frame.width - 370, height: 22))
         titleLabel.isEditable = false
         titleLabel.isBordered = false
         titleLabel.backgroundColor = .clear
-        titleLabel.textColor = .systemRed
-        titleLabel.stringValue = "⚠️ Обнаружено неизвестное лицо"
+        titleLabel.textColor = isBystander ? .systemOrange : .systemRed
+        titleLabel.stringValue = isBystander ? "👥 Внимание: лицо за спиной (Shoulder-Surfing)" : "⚠️ Обнаружено неизвестное лицо (Нарушитель)"
         titleLabel.font = .systemFont(ofSize: 14, weight: .bold)
         card.addSubview(titleLabel)
 
@@ -335,12 +354,13 @@ public final class IncidentGalleryController: NSObject {
         dateLabel.font = .systemFont(ofSize: 13, weight: .medium)
         card.addSubview(dateLabel)
 
-        let statusBadge = NSTextField(frame: NSRect(x: 122, y: 16, width: 170, height: 22))
+        let badgeWidth: CGFloat = isBystander ? 220 : 170
+        let statusBadge = NSTextField(frame: NSRect(x: 122, y: 16, width: badgeWidth, height: 22))
         statusBadge.isEditable = false
         statusBadge.isBordered = false
-        statusBadge.backgroundColor = NSColor.systemRed.withAlphaComponent(0.2)
-        statusBadge.textColor = .systemRed
-        statusBadge.stringValue = "Доступ заблокирован"
+        statusBadge.backgroundColor = isBystander ? NSColor.systemOrange.withAlphaComponent(0.2) : NSColor.systemRed.withAlphaComponent(0.2)
+        statusBadge.textColor = isBystander ? .systemOrange : .systemRed
+        statusBadge.stringValue = isBystander ? "Подглядывание зафиксировано" : "Доступ заблокирован"
         statusBadge.font = .systemFont(ofSize: 11, weight: .semibold)
         statusBadge.alignment = .center
         statusBadge.wantsLayer = true
@@ -379,8 +399,11 @@ public final class IncidentGalleryController: NSObject {
         return card
     }
 
-    private func parseDateFromFilename(_ name: String) -> String {
-        let clean = name.replacingOccurrences(of: "intruder_", with: "").replacingOccurrences(of: ".jpg", with: "").replacingOccurrences(of: ".jpeg", with: "")
+    public static func parseDateFromFilename(_ name: String) -> String {
+        let clean = name.replacingOccurrences(of: "intruder_", with: "")
+                        .replacingOccurrences(of: "bystander_", with: "")
+                        .replacingOccurrences(of: ".jpg", with: "")
+                        .replacingOccurrences(of: ".jpeg", with: "")
         let parts = clean.split(separator: "_")
         if parts.count >= 2 {
             let date = parts[0]

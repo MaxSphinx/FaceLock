@@ -236,8 +236,11 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
         title.isBordered = false
         title.backgroundColor = .clear
         title.textColor = .white
+        let isLockdown = (Config.shared.activeProfile == "lockdown")
         let appTitle = targetApp?.localizedName ?? "Компьютер"
-        let defaultTitle = (targetApp == nil) ? "Сеанс заблокирован" : "\(appTitle) заблокировано"
+        let defaultTitle = isLockdown
+            ? "Режим Lockdown: Защита активна"
+            : ((targetApp == nil) ? "Сеанс заблокирован" : "\(appTitle) заблокировано")
         title.stringValue = hasIntruder ? "Обнаружен посторонний!" : defaultTitle
         title.font = .systemFont(ofSize: 23, weight: .bold)
         title.alignment = .center
@@ -249,9 +252,14 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
         subtitle.isBordered = false
         subtitle.backgroundColor = .clear
         subtitle.textColor = NSColor(white: 0.85, alpha: 1.0)
-        let defaultSubtitle = (targetApp == nil)
-            ? "Автоматическая блокировка (Walk-Away). Приложите Touch ID или введите PIN-код:"
-            : "Лицо не распознано. Приложите Touch ID или введите PIN-код:"
+        let defaultSubtitle: String
+        if isLockdown {
+            defaultSubtitle = "Максимальный уровень безопасности.\nРазблокируйте через Touch ID или введите PIN-код:"
+        } else if targetApp == nil {
+            defaultSubtitle = "Автоматическая блокировка (Walk-Away). Приложите Touch ID или введите PIN-код:"
+        } else {
+            defaultSubtitle = "Лицо не распознано. Приложите Touch ID или введите PIN-код:"
+        }
         subtitle.stringValue = hasIntruder
             ? "Зафиксировано чужое лицо перед экраном.\nРазблокируйте через Touch ID или введите PIN-код:"
             : defaultSubtitle

@@ -43,6 +43,7 @@ public final class SecurityAuditLogger {
 
     private let logQueue = DispatchQueue(label: "io.github.facelock.auditQueue", qos: .utility)
     private let logFileURL: URL
+    private var writeCountSinceCheck: Int = 0
 
     private init() {
         let home = FileManager.default.homeDirectoryForCurrentUser
@@ -116,6 +117,18 @@ public final class SecurityAuditLogger {
                 }
             } else {
                 FileManager.default.createFile(atPath: self.logFileURL.path, contents: lineData, attributes: nil)
+            }
+            self.autoPruneIfNeeded()
+        }
+    }
+
+    private func autoPruneIfNeeded() {
+        writeCountSinceCheck += 1
+        if writeCountSinceCheck >= 50 {
+            writeCountSinceCheck = 0
+            if let attrs = try? FileManager.default.attributesOfItem(atPath: self.logFileURL.path),
+               let size = attrs[.size] as? UInt64, size > 5 * 1024 * 1024 {
+                _ = self.pruneLogsInternal(keeping: 5000)
             }
         }
     }
@@ -212,6 +225,15 @@ public final class SecurityAuditLogger {
             appName: "FaceLock",
             details: "Security profile changed from '\(oldProfile)' to '\(newProfile)'",
             isSuccess: true
+        )
+    }
+
+    public func logEmergencyLockdown(details: String? = nil) {
+        log(
+            eventType: "emergency_lockdown",
+            appName: "FaceLock",
+            details: details ?? "Emergency security lockdown engaged",
+            isSuccess: false
         )
     }
 
@@ -344,6 +366,12 @@ public final class SecurityAuditLogger {
                             match = evType.contains("incident") || evType.contains("intruder")
                         case "telegram", "tg":
                             match = evType.contains("telegram")
+                        case "shoulder", "shoulder_surfing", "bystander":
+                            match = evType.contains("shoulder") || evType.contains("bystander")
+                        case "profile", "profiles":
+                            match = evType.contains("profile")
+                        case "emergency", "lockdown":
+                            match = evType.contains("lockdown") || evType.contains("emergency")
                         case "success":
                             match = event.isSuccess
                         case "failure", "failed":
@@ -365,36 +393,50 @@ public final class SecurityAuditLogger {
         return results
     }
 
+    @discardableResult
+    private func pruneLogsInternal(keeping: Int) -> (prunedCount: Int, remainingCount: Int, freedBytes: UInt64) {
+        guard let content = try? String(contentsOf: self.logFileURL, encoding: .utf8) else {
+            return (0, 0, 0)
+        }
+        let lines = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        let initialCount = lines.count
+        let initialSize = (try? FileManager.default.attributesOfItem(atPath: self.logFileURL.path)[.size] as? UInt64) ?? 0
+
+        if initialCount <= keeping {
+            return (0, initialCount, 0)
+        }
+
+        let keptLines = Array(lines.suffix(keeping))
+        let newContent = keptLines.joined(separator: "\n") + "\n"
+
+        if let data = newContent.data(using: .utf8) {
+            try? data.write(to: self.logFileURL, options: .atomic)
+            let newSize = (try? FileManager.default.attributesOfItem(atPath: self.logFileURL.path)[.size] as? UInt64) ?? 0
+            let freed = (initialSize > newSize) ? (initialSize - newSize) : 0
+            return (initialCount - keptLines.count, keptLines.count, freed)
+        }
+        return (0, initialCount, 0)
+    }
+
     public func pruneLogs(keeping: Int) -> (prunedCount: Int, remainingCount: Int, freedBytes: UInt64) {
-        var pruned = 0
-        var remaining = 0
-        var freed: UInt64 = 0
-
+        var result: (prunedCount: Int, remainingCount: Int, freedBytes: UInt64) = (0, 0, 0)
         logQueue.sync {
-            guard let content = try? String(contentsOf: self.logFileURL, encoding: .utf8) else {
-                return
-            }
-            let lines = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-            let initialCount = lines.count
-            let initialSize = (try? FileManager.default.attributesOfItem(atPath: self.logFileURL.path)[.size] as? UInt64) ?? 0
+            result = self.pruneLogsInternal(keeping: keeping)
+        }
+        return result
+    }
 
-            if initialCount <= keeping {
-                remaining = initialCount
-                return
-            }
-
-            let keptLines = Array(lines.suffix(keeping))
-            let newContent = keptLines.joined(separator: "\n") + "\n"
-
-            if let data = newContent.data(using: .utf8) {
-                try? data.write(to: self.logFileURL, options: .atomic)
-                let newSize = (try? FileManager.default.attributesOfItem(atPath: self.logFileURL.path)[.size] as? UInt64) ?? 0
-                freed = (initialSize > newSize) ? (initialSize - newSize) : 0
-                pruned = initialCount - keptLines.count
-                remaining = keptLines.count
+    @discardableResult
+    public func autoPruneLogs(maxBytes: UInt64 = 5 * 1024 * 1024, keeping: Int = 5000) -> Bool {
+        var didPrune = false
+        logQueue.sync {
+            if let attrs = try? FileManager.default.attributesOfItem(atPath: self.logFileURL.path),
+               let size = attrs[.size] as? UInt64, size > maxBytes {
+                let res = self.pruneLogsInternal(keeping: keeping)
+                didPrune = res.prunedCount > 0
             }
         }
-        return (pruned, remaining, freed)
+        return didPrune
     }
 
     public func clearLogs() -> (deletedCount: Int, freedBytes: UInt64) {

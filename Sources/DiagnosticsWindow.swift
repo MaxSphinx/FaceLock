@@ -208,13 +208,17 @@ public final class DiagnosticsController: NSObject {
 
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm:ss (dd.MM.yyyy)"
-        lastUpdatedLabel?.stringValue = "Данные обновлены: \(formatter.string(from: Date())) • Версия: 1.1.3"
+        lastUpdatedLabel?.stringValue = "Данные обновлены: \(formatter.string(from: Date())) • Версия: 1.1.4"
 
         // Card 1: Platform & Process
         let osVer = platform["osVersion"] as? String ?? "macOS"
         let arch = platform["architecture"] as? String ?? "arm64"
         let pid = platform["pid"] as? Int32 ?? 0
         let pids = (daemon["pids"] as? [Int32] ?? []).map { "\($0)" }.joined(separator: ", ")
+        let onBattery = platform["onBatteryPower"] as? Bool ?? false
+        let lowPower = platform["lowPowerMode"] as? Bool ?? false
+        let powerSourceStr = onBattery ? "Аккумулятор (Battery) 🔋" : "Сетевой адаптер (AC Power) 🔌"
+        let lowPowerStr = lowPower ? "Включен (Режим энергосбережения) ⚡️" : "Выключен"
 
         currentY += addCard(
             to: container,
@@ -226,6 +230,8 @@ public final class DiagnosticsController: NSObject {
             rows: [
                 ("Операционная система", "\(osVer)"),
                 ("Архитектура процессора", "\(arch) (\(isAppleSilicon ? "Apple Silicon Neural Engine Active ✅" : "Intel Legacy ⚠️"))"),
+                ("Источник питания", "\(powerSourceStr)"),
+                ("Режим энергосбережения (Low Power)", "\(lowPowerStr)"),
                 ("Фоновый демон FaceLock", isRunning ? "АКТИВЕН (PID: \(pids.isEmpty ? "\(pid)" : pids)) ✅" : "ОСТАНОВЛЕН ℹ️"),
                 ("PID текущего процесса", "\(pid)")
             ]

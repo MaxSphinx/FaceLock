@@ -4,6 +4,30 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.4] - 2026-11-01
+
+### Added
+- **Incident Gallery Classification & Filtering (`IncidentGalleryWindow.swift`)**:
+  - Differentiated Shoulder-Surfing bystander captures (`bystander_*.jpg`) and unauthorized intruder captures (`intruder_*.jpg`) with tailored visual cards, color codes (orange vs red), and Russian/English status badges.
+  - Added multi-criteria filter selector: "Все инциденты", "За последние 24ч", "За последние 7 дней", "Только подглядывания (Shoulder)", and "Только нарушители (Intruders)".
+  - Fixed timestamp parsing for bystander filenames (`IncidentGalleryController.parseDateFromFilename`).
+- **Telemetry & CLI Incident Classification (`AppDelegate.swift`)**:
+  - Extended `--incidents` to support `--type <intruder|bystander>` filtering and added `"type"` attribute to each JSON incident capture entry.
+  - Enriched `--incidents-summary` and `--incidents-summary-json` with distinct `intrudersCount` and `bystandersCount` metrics.
+  - Added JSON response support for `--pause` and `--resume` CLI commands.
+- **Protection Pause Management & Countdown Ergonomics (`StatusBarController.swift`)**:
+  - Added interactive "Таймер паузы..." submenu with quick presets (15 мин, 30 мин, 1 час, 4 часа / Полдня).
+  - Integrated live remaining pause minutes countdown in menu item header, status bar button tooltip (`~X мин осталось`), and added "+15 мин" extension button when paused.
+- **Diagnostics Window & Power Sensing Parity (`DiagnosticsWindow.swift`, `Diagnostics.swift`, `WalkAwayMonitor.swift`)**:
+  - Added `powerConstrained` check combining battery power and macOS Low Power Mode (`isLowPowerModeEnabled`).
+  - Added live display of Power Source and Low Power Mode state in Diagnostics GUI card and telemetry dictionary.
+  - Synchronized version string across Diagnostics window and telemetry to 1.1.4.
+- **Audit Log Categorization Expansion (`AuditLogWindow.swift`)**:
+  - Added dedicated filters for "Подглядывание (Shoulder-Surfing)" and "Профили и Lockdown (Profiles & Lockdown)".
+  - Enhanced badge visuals for `emergency_lockdown`, `shoulder_surfing_alert`, and `profile_switched`.
+- **Automated Test Suite Expansion to 144 Tests (`Tests/FaceLockTests.swift`)**:
+  - Added test suites for incident capture classification, date parsing, filter isolation, and pause countdown math (144 passing tests, 100% reliability).
+
 ## [1.1.3] - 2026-11-01
 
 ### Added

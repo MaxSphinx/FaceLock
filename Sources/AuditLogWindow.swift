@@ -148,6 +148,8 @@ public final class AuditLogController: NSObject {
         popup.addItem(withTitle: "Векторы биометрии (Vectors)")
         popup.addItem(withTitle: "Brute-force и блокировки (Lockouts)")
         popup.addItem(withTitle: "Telegram оповещения (Telegram)")
+        popup.addItem(withTitle: "Подглядывание (Shoulder-Surfing)")
+        popup.addItem(withTitle: "Профили и Lockdown (Profiles & Lockdown)")
         popup.target = self
         popup.action = #selector(filterChanged(_:))
         header.addSubview(popup)
@@ -266,6 +268,18 @@ public final class AuditLogController: NSObject {
             badgeTitle = "🔄❌ Повторный Face ID отклонён"
             badgeColor = .systemRed
             isCritical = true
+        case "emergency_lockdown":
+            badgeTitle = "🛑 Экстренный Lockdown"
+            badgeColor = .systemRed
+            isCritical = true
+        case "shoulder_surfing_alert":
+            badgeTitle = "👀 Подглядывание (Shoulder-Surfing)"
+            badgeColor = .systemOrange
+            isCritical = true
+        case "profile_switched":
+            badgeTitle = "🔄 Профиль безопасности"
+            badgeColor = .systemIndigo
+            isCritical = false
         case "shield_enabled":
             badgeTitle = "🛡️ Защита включена"
             badgeColor = .systemGreen
@@ -412,6 +426,8 @@ public final class AuditLogController: NSObject {
         case 8: currentFilter = "vectors"
         case 9: currentFilter = "lock"
         case 10: currentFilter = "telegram"
+        case 11: currentFilter = "shoulder"
+        case 12: currentFilter = "lockdown"
         default: currentFilter = nil
         }
         reloadLogs()

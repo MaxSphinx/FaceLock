@@ -19,11 +19,22 @@ public final class WalkAwayMonitor {
         return powerSourceType == kIOPMBatteryPowerKey
     }
 
+    public static func isLowPowerModeEnabled() -> Bool {
+        if #available(macOS 12.0, *) {
+            return ProcessInfo.processInfo.isLowPowerModeEnabled
+        }
+        return false
+    }
+
+    public static func isPowerConstrained() -> Bool {
+        return isOnBatteryPower() || isLowPowerModeEnabled()
+    }
+
     public func start() {
         guard timer == nil else { return }
 
-        // Adaptive polling interval: 10s if battery-aware on battery power, otherwise 5s
-        let interval: TimeInterval = (Config.shared.batteryAwareScanning && WalkAwayMonitor.isOnBatteryPower()) ? 10.0 : 5.0
+        // Adaptive polling interval: 10s if power is constrained (battery power or Low Power Mode) and battery-aware scanning is active, otherwise 5s
+        let interval: TimeInterval = (Config.shared.batteryAwareScanning && WalkAwayMonitor.isPowerConstrained()) ? 10.0 : 5.0
         timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             self?.checkIdleState()
         }
@@ -50,8 +61,8 @@ public final class WalkAwayMonitor {
 
         guard idleSeconds >= Config.shared.walkAwayIdleSeconds else { return }
 
-        // Adaptive debounce: 45 seconds when on battery power, 20 seconds on AC power
-        let minDebounce: TimeInterval = (Config.shared.batteryAwareScanning && WalkAwayMonitor.isOnBatteryPower()) ? 45.0 : 20.0
+        // Adaptive debounce: 45 seconds when power is constrained (battery power or Low Power Mode), 20 seconds on AC power
+        let minDebounce: TimeInterval = (Config.shared.batteryAwareScanning && WalkAwayMonitor.isPowerConstrained()) ? 45.0 : 20.0
         let now = Date()
         guard now.timeIntervalSince(lastCheckTime) >= minDebounce else { return }
         lastCheckTime = now
@@ -95,6 +106,7 @@ public final class WalkAwayMonitor {
         "com.microsoft.Powerpoint",
         "us.zoom.xos",
         "us.zoom.ZoomPresence",
+        "us.zoom.ringcentral",
         "com.apple.FaceTime",
         "com.apple.QuickTimePlayerX",
         "com.microsoft.teams",
@@ -103,12 +115,26 @@ public final class WalkAwayMonitor {
         "com.cisco.webex.Cisco-WebEx-Start",
         "com.tinyspeck.slackmacgap",
         "com.discord.Discord",
+        "com.hnc.Discord",
         "com.skype.skype",
         "ru.yandex.telemost",
         "com.obsproject.obs-studio",
         "com.loom.desktop",
         "com.apple.freeform",
-        "com.google.Chrome.app.kjgfgldnnfoeklkmfkjfagphfepbbdan"
+        "com.viber.osx",
+        "com.anydesk.anydesk",
+        "com.anydesk.anydeskmac",
+        "com.teamviewer.TeamViewer",
+        "com.screenleap.Screenleap",
+        "com.google.Chrome.app.kjgfgldnnfoeklkmfkjfagphfepbbdan",
+        "com.brave.Browser.app.kjgfgldnnfoeklkmfkjfagphfepbbdan",
+        "com.microsoft.edgemac.app.kjgfgldnnfoeklkmfkjfagphfepbbdan",
+        "com.google.android.apps.meetings",
+        "us.zoom.videomeetings",
+        "com.apple.TV",
+        "org.videolan.vlc",
+        "com.colliderli.iina",
+        "org.whispersystems.signal-desktop"
     ]
 
     public static func hasDisplaySleepAssertion() -> Bool {

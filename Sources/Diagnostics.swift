@@ -42,7 +42,12 @@ public struct Diagnostics {
         // 4. Apple Neural Vision & Face Recognition
         let hasFaceprintReq = (NSClassFromString("VNCreateFaceprintRequest") != nil)
 
-        // 5. Biometric Authentication (Touch ID)
+        // 5. Power & Battery Status
+        let onBattery = WalkAwayMonitor.isOnBatteryPower()
+        let lowPowerMode = WalkAwayMonitor.isLowPowerModeEnabled()
+        let powerConstrained = WalkAwayMonitor.isPowerConstrained()
+
+        // 6. Biometric Authentication (Touch ID)
         let laContext = LAContext()
         var laError: NSError?
         let canTouchID = laContext.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &laError)
@@ -120,7 +125,10 @@ public struct Diagnostics {
                 "osVersion": osVer,
                 "architecture": arch,
                 "appleSilicon": isAppleSilicon,
-                "pid": ProcessInfo.processInfo.processIdentifier
+                "pid": ProcessInfo.processInfo.processIdentifier,
+                "onBatteryPower": onBattery,
+                "lowPowerMode": lowPowerMode,
+                "powerConstrained": powerConstrained
             ],
             "daemon": [
                 "running": isRunning,
@@ -203,6 +211,10 @@ public struct Diagnostics {
         let arch = platform["architecture"] as? String ?? "N/A"
         let isAppleSilicon = platform["appleSilicon"] as? Bool ?? false
         let pid = platform["pid"] as? Int32 ?? 0
+        let onBattery = platform["onBatteryPower"] as? Bool ?? false
+        let lowPower = platform["lowPowerMode"] as? Bool ?? false
+        let powerSourceStr = onBattery ? "Battery 🔋" : "AC Power 🔌"
+        let lowPowerStr = lowPower ? "ACTIVE ⚡️" : "Disabled"
 
         let isRunning = daemon["running"] as? Bool ?? false
         let pids = (daemon["pids"] as? [Int32] ?? []).map { "\($0)" }.joined(separator: ", ")
@@ -255,6 +267,8 @@ public struct Diagnostics {
         print("  • OS Version: \(osVer)")
         print("  • Architecture: \(arch) (\(isAppleSilicon ? "Apple Silicon Neural Engine Active ✅" : "Intel Legacy ⚠️"))")
         print("  • PID: \(pid)")
+        print("  • Power Source: \(powerSourceStr)")
+        print("  • macOS Low Power Mode: \(lowPowerStr)")
 
         print("\n[2] Process & Daemon State:")
         if isRunning {

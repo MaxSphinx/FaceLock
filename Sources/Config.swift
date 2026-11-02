@@ -425,6 +425,41 @@ public final class Config: Codable {
         return !loadEnrolledVectors().isEmpty
     }
 
+    public func toDictionary() -> [String: Any] {
+        return [
+            "pin": pin,
+            "similarityThreshold": Double(similarityThreshold),
+            "verificationTimeout": verificationTimeout,
+            "debounceSeconds": debounceSeconds,
+            "isEnabled": isEnabled,
+            "strictFaceMatch": strictFaceMatch,
+            "showHUD": showHUD,
+            "autoTriggerTouchID": autoTriggerTouchID,
+            "ignoredBundleIdentifiers": ignoredBundleIdentifiers,
+            "telegramBotToken": telegramBotToken.isEmpty ? "" : "••••••••",
+            "telegramChatId": telegramChatId,
+            "telegramEnabled": telegramEnabled,
+            "protectionMode": protectionMode,
+            "protectedBundleIdentifiers": protectedBundleIdentifiers,
+            "livenessDetectionEnabled": livenessDetectionEnabled,
+            "walkAwayLockEnabled": walkAwayLockEnabled,
+            "walkAwayIdleSeconds": walkAwayIdleSeconds,
+            "lockOnWake": lockOnWake,
+            "maxFailedPinAttempts": maxFailedPinAttempts,
+            "pinLockoutSeconds": pinLockoutSeconds,
+            "preferredCameraID": preferredCameraID.isEmpty ? "default" : preferredCameraID,
+            "activeProfile": activeProfile,
+            "shoulderSurfingDefense": shoulderSurfingDefense,
+            "batteryAwareScanning": batteryAwareScanning,
+            "audibleAlerts": audibleAlerts,
+            "presentationModeSuppression": presentationModeSuppression,
+            "hasEnrolledFace": hasEnrolledFace,
+            "protectedAppsCount": protectedBundleIdentifiers.count,
+            "ignoredAppsCount": ignoredBundleIdentifiers.count,
+            "enrolledVectorsCount": loadEnrolledVectors().count
+        ]
+    }
+
     public func loadEnrolledVectors() -> [[Float]] {
         let url = Config.vectorsURL
         guard let data = try? Data(contentsOf: url),

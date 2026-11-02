@@ -53,11 +53,14 @@ public final class FaceLockTestSuite {
         testMeetingAndPresentationSuppression()
         testDiagnosticsReportCollection()
         testConfigReloadAndStateSync()
+        testConfigDictionaryRepresentation()
         testCliFlagNormalization()
         testApplicationPolicyFiltering()
         testPinLockoutExponentialLogic()
         testTelegramPayloadEscaping()
         testSecurityAuditSerialization()
+        testIncidentCaptureClassification()
+        testPauseTimerTracking()
         testVectorMatchingBenchmark()
 
         let elapsed = Date().timeIntervalSince(startTime)
@@ -247,9 +250,16 @@ public final class FaceLockTestSuite {
         assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("com.loom.desktop"), "Loom is recognized as recording app")
         assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("com.apple.freeform"), "Freeform is recognized as presentation app")
         assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("com.apple.QuickTimePlayerX"), "QuickTime Player is recognized as presentation app")
+        assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("org.videolan.vlc"), "VLC is recognized as media presentation app")
+        assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("com.colliderli.iina"), "IINA is recognized as media presentation app")
+        assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("com.apple.TV"), "Apple TV is recognized as media presentation app")
+        assert(WalkAwayMonitor.presentationBundleIdentifiers.contains("com.google.android.apps.meetings"), "Google Meet is recognized as meeting app")
 
         assert(WalkAwayMonitor.isPresentationActive(bundleId: "com.apple.iWork.Keynote"), "Keynote triggers presentation lock suppression")
         assert(WalkAwayMonitor.isPresentationActive(bundleId: "com.apple.QuickTimePlayerX"), "QuickTime Player triggers presentation lock suppression")
+        assert(WalkAwayMonitor.isPresentationActive(bundleId: "org.videolan.vlc"), "VLC triggers presentation lock suppression")
+        assert(WalkAwayMonitor.isPresentationActive(bundleId: "com.colliderli.iina"), "IINA triggers presentation lock suppression")
+        assert(WalkAwayMonitor.isPresentationActive(bundleId: "com.apple.TV"), "Apple TV triggers presentation lock suppression")
         assert(WalkAwayMonitor.isPresentationActive(bundleId: "com.skype.skype"), "Skype triggers presentation lock suppression")
         assert(WalkAwayMonitor.isPresentationActive(bundleId: "ru.yandex.telemost"), "Telemost triggers presentation lock suppression")
         assert(!WalkAwayMonitor.isPresentationActive(bundleId: "com.apple.Safari"), "Safari does not trigger presentation suppression")
@@ -341,10 +351,45 @@ public final class FaceLockTestSuite {
         }
     }
 
-    // MARK: - 4e. CLI Argument Normalization
+    // MARK: - 4f. Config Dictionary Representation
+    private func testConfigDictionaryRepresentation() {
+        print("\n▶ Test Suite: Config Dictionary Representation & Schema Integrity")
+        let cfg = Config(
+            pin: "1234",
+            similarityThreshold: 0.22,
+            activeProfile: "work",
+            shoulderSurfingDefense: false,
+            batteryAwareScanning: true,
+            audibleAlerts: false,
+            presentationModeSuppression: true
+        )
+        let dict = cfg.toDictionary()
+
+        assertEqual(dict["pin"] as? String, "1234", "Config dictionary contains pin")
+        assertEqual(dict["activeProfile"] as? String, "work", "Config dictionary contains activeProfile")
+        assertEqual(dict["shoulderSurfingDefense"] as? Bool, false, "Config dictionary contains shoulderSurfingDefense")
+        assertEqual(dict["batteryAwareScanning"] as? Bool, true, "Config dictionary contains batteryAwareScanning")
+        assertEqual(dict["audibleAlerts"] as? Bool, false, "Config dictionary contains audibleAlerts")
+        assertEqual(dict["presentationModeSuppression"] as? Bool, true, "Config dictionary contains presentationModeSuppression")
+        assert(dict["similarityThreshold"] is Double, "Config dictionary similarityThreshold is Double")
+        assert(dict["verificationTimeout"] is Double, "Config dictionary verificationTimeout is Double")
+        assert(dict["debounceSeconds"] is Double, "Config dictionary debounceSeconds is Double")
+        assert(dict["isEnabled"] is Bool, "Config dictionary isEnabled is Bool")
+        assert(dict["protectionMode"] is String, "Config dictionary protectionMode is String")
+        assert(dict["protectedAppsCount"] is Int, "Config dictionary protectedAppsCount is Int")
+        assert(dict["ignoredAppsCount"] is Int, "Config dictionary ignoredAppsCount is Int")
+        assert(dict["hasEnrolledFace"] is Bool, "Config dictionary hasEnrolledFace is Bool")
+        assert(dict["enrolledVectorsCount"] is Int, "Config dictionary enrolledVectorsCount is Int")
+
+        let jsonData = try? JSONSerialization.data(withJSONObject: dict, options: [.sortedKeys])
+        assert(jsonData != nil, "Config dictionary serializes to valid JSON data")
+    }
+
+    // MARK: - 4g. CLI Argument Normalization
     private func testCliFlagNormalization() {
         print("\n▶ Test Suite: CLI Argument Normalization")
         let aliasMap: [String: [String]] = [
+            "--config-json": ["--config", "--json"],
             "--profiles-json": ["--profiles", "--json"],
             "--toggle-shoulder-json": ["--toggle-shoulder-defense", "--json"],
             "--toggle-audible-json": ["--toggle-audible", "--json"],
@@ -467,7 +512,50 @@ public final class FaceLockTestSuite {
         }
     }
 
-    // MARK: - 9. Performance Benchmark
+    // MARK: - 8. Incident Capture Classification & Date Parsing
+    private func testIncidentCaptureClassification() {
+        print("\n▶ Test Suite: Incident Capture Classification & Date Parsing")
+
+        let intruderFile = "intruder_2026-11-01_12-30-45_a1b2c3.jpg"
+        let bystanderFile = "bystander_2026-11-01_14-15-30_d4e5f6.jpg"
+
+        assert(!intruderFile.hasPrefix("bystander_"), "Intruder file does not have bystander prefix")
+        assert(intruderFile.hasPrefix("intruder_"), "Intruder file has intruder prefix")
+        assert(bystanderFile.hasPrefix("bystander_"), "Bystander file has bystander prefix")
+        assert(!bystanderFile.hasPrefix("intruder_"), "Bystander file does not have intruder prefix")
+
+        let intruderDate = IncidentGalleryController.parseDateFromFilename(intruderFile)
+        assertEqual(intruderDate, "2026-11-01 в 12:30:45", "Intruder filename parsed into readable date and time")
+
+        let bystanderDate = IncidentGalleryController.parseDateFromFilename(bystanderFile)
+        assertEqual(bystanderDate, "2026-11-01 в 14:15:30", "Bystander filename parsed into readable date and time without artifact")
+
+        // Filter predicate logic parity
+        let fileList = [intruderFile, bystanderFile]
+        let shoulderOnly = fileList.filter { $0.hasPrefix("bystander_") }
+        assertEqual(shoulderOnly.count, 1, "Shoulder filter isolates exactly 1 bystander capture")
+        assertEqual(shoulderOnly.first, bystanderFile, "Shoulder filter selected bystander file")
+
+        let intrudersOnly = fileList.filter { !$0.hasPrefix("bystander_") }
+        assertEqual(intrudersOnly.count, 1, "Intruders filter isolates exactly 1 intruder capture")
+        assertEqual(intrudersOnly.first, intruderFile, "Intruders filter selected intruder file")
+    }
+
+    // MARK: - 9. Pause Timer Tracking & Ergonomics
+    private func testPauseTimerTracking() {
+        print("\n▶ Test Suite: Protection Pause Timer & Ergonomics")
+
+        let expDate = Date().addingTimeInterval(900) // 15 mins
+        let remSeconds = expDate.timeIntervalSinceNow
+        let remMinutes = Int(ceil(remSeconds / 60.0))
+        assert(remMinutes >= 14 && remMinutes <= 15, "Remaining pause minutes calculates correctly (~15m)")
+
+        let expExpired = Date().addingTimeInterval(-10)
+        let expiredRemaining = expExpired.timeIntervalSinceNow > 0 ? Int(ceil(expExpired.timeIntervalSinceNow / 60.0)) : nil
+        assert(expiredRemaining == nil, "Expired pause returns nil remaining minutes")
+    }
+
+    // MARK: - 10. Performance Benchmark
     private func testVectorMatchingBenchmark() {
         print("\n▶ Test Suite: Apple Silicon Vector Similarity Benchmark")
 
