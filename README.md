@@ -179,6 +179,7 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --settings` | Open configuration GUI (Telegram, PIN, App lists) |
 | `facelock --gallery` | Open captured intruder incident gallery |
 | `facelock --lock` | Trigger immediate fullscreen security shield |
+| `facelock --lockdown` | Engage emergency lockdown: switch to lockdown profile & seal screen |
 | `facelock --toggle` | Toggle protection between ACTIVE and PAUSED |
 | `facelock --pause [mins]` | Pause protection for N minutes (default: 15) |
 | `facelock --resume` | Resume protection immediately |

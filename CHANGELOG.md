@@ -31,9 +31,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Protection Pause Management & Countdown Ergonomics (`StatusBarController.swift`)**:
   - Added interactive "Таймер паузы..." submenu with quick presets (15 мин, 30 мин, 1 час, 4 часа / Полдня).
   - Integrated live remaining pause minutes countdown in menu item header, status bar button tooltip (`~X мин осталось`), and added "+15 мин" extension button when paused.
-- **Audit Log Categorization Expansion (`AuditLogWindow.swift`)**:
-  - Added dedicated filters for "Подглядывание (Shoulder-Surfing)" and "Профили и Lockdown (Profiles & Lockdown)".
-  - Enhanced badge visuals for `emergency_lockdown`, `shoulder_surfing_alert`, and `profile_switched`.
+- **Emergency Lockdown Trigger & Ergonomics (`AppDelegate.swift`, `LockScreenWindow.swift`, `StatusBarController.swift`, `Makefile`)**:
+  - Added atomic `--lockdown` and `--emergency-lockdown` CLI flags and normalizer alias `--lockdown-json` to immediately engage maximum security profile and seal the screen.
+  - Added Makefile targets `make lockdown` and `make lockdown-json`.
+  - Added menu bar status item "🚨 Экстренная блокировка (Lockdown)..." (`Cmd+Shift+L`) with sound alert and HUD notice.
+  - Added dedicated distributed IPC action `"lockdown"` to seamlessly lock the screen via running daemon.
+  - Enhanced lock screen card to display tailored lockdown mode badge ("Режим Lockdown: Защита активна") when strict lockdown profile is active.
+- **CLI Ergonomics & Profile Quick-Query Fallback (`AppDelegate.swift`)**:
+  - Enhanced `--profile` / `--set-profile` so querying without an argument cleanly lists the active profile and all available profiles in formatted text or JSON without error.
+- **Audit Log Categorization & Event Coverage Expansion (`SecurityAuditLogger.swift`, `AuditLogWindow.swift`, `AppDelegate.swift`)**:
+  - Implemented `logEmergencyLockdown()` in `SecurityAuditLogger`.
+  - Added dedicated audit log filters for "Подглядывание (Shoulder-Surfing)" and "Профили и Lockdown (Profiles & Lockdown)".
+  - Added icon and badge support for `emergency_lockdown`, `shoulder_surfing_alert`, and `profile_switched` across CLI `--logs` and GUI `AuditLogWindow`.
 - **Automated Test Suite Expansion to 201 Tests (`Tests/FaceLockTests.swift`)**:
   - Added test suites for Low Power Mode sensing, power-constrained sweep throttling, meeting & media playback bundle expansion, config dictionary serialization, audit log auto-pruning, incident capture classification, date parsing, emergency lockdown profile, and pause countdown math (201 passing tests, 100% reliability).
 

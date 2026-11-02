@@ -176,9 +176,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if args.contains("--version") || args.contains("-v") {
             if args.contains("--json") {
-                print("{\"name\":\"FaceLock\",\"version\":\"1.1.3\",\"platform\":\"darwin-arm64\"}")
+                print("{\"name\":\"FaceLock\",\"version\":\"1.1.4\",\"platform\":\"darwin-arm64\"}")
             } else {
-                print("FaceLock v1.1.3 (darwin-arm64)")
+                print("FaceLock v1.1.4 (darwin-arm64)")
             }
             exit(0)
         }
@@ -356,7 +356,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
             if args.contains("--json") {
                 let statusDict: [String: Any] = [
-                    "version": "1.1.3",
+                    "version": "1.1.4",
                     "daemon": isAlreadyRunning ? "running" : "stopped",
                     "shieldState": Config.shared.isEnabled ? "active" : "paused",
                     "protectionMode": Config.shared.protectionMode,
@@ -388,7 +388,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             let recent24hStr = recent24hCount > 0 ? " (\(recent24hCount) in past 24h)" : ""
             print("""
             FaceLock Status:
-              Version: 1.1.3 (darwin-arm64)
+              Version: 1.1.4 (darwin-arm64)
               Daemon: \(isAlreadyRunning ? "RUNNING" : "STOPPED")
               Shield: \(Config.shared.isEnabled ? "ACTIVE" : "PAUSED")
               Mode: \(Config.shared.protectionMode)
@@ -1171,7 +1171,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(0)
         }
 
-        if let idx = (args.firstIndex(of: "--profile") ?? args.firstIndex(of: "--set-profile")), idx + 1 < args.count {
+        if let idx = (args.firstIndex(of: "--profile") ?? args.firstIndex(of: "--set-profile")),
+           idx + 1 < args.count,
+           !args[idx + 1].starts(with: "-") {
             let targetName = args[idx + 1].lowercased()
             if Config.shared.setProfile(targetName) {
                 notifyDaemonIfRunning()
