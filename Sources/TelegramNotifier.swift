@@ -100,6 +100,45 @@ public final class TelegramNotifier {
         """
     }
 
+    public static func formatPinBruteforceAlertCaption(attempts: Int, appName: String, timestamp: Date = Date(), lockoutSeconds: Int = 5) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss (dd.MM.yyyy)"
+        let timeStr = formatter.string(from: timestamp)
+        let safeAppName = escapeHTML(appName)
+
+        return """
+        🚨 <b>FaceLock: Подозрительная активность (PIN Brute-force)!</b>
+        ⚠️ Зафиксировано <b>\(attempts)</b> неверных попыток ввода PIN подряд.
+        💻 <b>Приложение:</b> \(safeAppName)
+        🕒 <b>Время:</b> \(timeStr)
+        🔒 Введена временная блокировка клавиатуры на \(lockoutSeconds)с.
+        """
+    }
+
+    public func sendPinBruteforceAlert(photo: NSImage?, attempts: Int, appName: String, lockoutSeconds: Int = 5, completion: ((Bool, String?) -> Void)? = nil) {
+        guard Config.shared.telegramEnabled else {
+            completion?(false, "Telegram alerts disabled")
+            return
+        }
+
+        let caption = TelegramNotifier.formatPinBruteforceAlertCaption(attempts: attempts, appName: appName, lockoutSeconds: lockoutSeconds)
+
+        if let photo = photo,
+           let tiff = photo.tiffRepresentation,
+           let rep = NSBitmapImageRep(data: tiff),
+           let jpegData = rep.representation(using: .jpeg, properties: [.compressionFactor: 0.85]) {
+            let token = Config.shared.telegramBotToken.trimmingCharacters(in: .whitespacesAndNewlines)
+            let chatId = Config.shared.telegramChatId.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !token.isEmpty, !chatId.isEmpty else {
+                completion?(false, "Bot Token or Chat ID is empty")
+                return
+            }
+            sendPhotoRequest(token: token, chatId: chatId, photoData: jpegData, caption: caption, completion: completion)
+        } else {
+            sendSecurityAlert(message: caption, completion: completion)
+        }
+    }
+
     public func sendLockdownAlert(reason: String = "Активирован режим экстренной защиты", completion: ((Bool, String?) -> Void)? = nil) {
         guard Config.shared.telegramEnabled else {
             completion?(false, "Telegram alerts disabled")

@@ -212,6 +212,14 @@ public final class Config: Codable {
         self.presentationModeSuppression = try container.decodeIfPresent(Bool.self, forKey: .presentationModeSuppression) ?? true
     }
 
+    public static func isValidProfile(_ profileName: String) -> Bool {
+        return SecurityProfile(rawValue: profileName.lowercased()) != nil
+    }
+
+    public static var allProfileNames: [String] {
+        return SecurityProfile.allCases.map { $0.rawValue }
+    }
+
     public func setProfile(_ profileName: String) -> Bool {
         guard let profile = SecurityProfile(rawValue: profileName.lowercased()) else {
             return false

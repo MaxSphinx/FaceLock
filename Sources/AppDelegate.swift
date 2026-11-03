@@ -89,6 +89,46 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--profiles", "--json"])
             case "--verify-face-json":
                 args.append(contentsOf: ["--verify-face", "--json"])
+            case "--audit-stats-json":
+                args.append(contentsOf: ["--audit-stats", "--json"])
+            case "--audit-gui-json", "--audit-ui-json", "--audit-window-json":
+                args.append(contentsOf: ["--audit-gui", "--json"])
+            case "--apps-gui-json", "--apps-ui-json", "--apps-window-json":
+                args.append(contentsOf: ["--apps-gui", "--json"])
+            case "--clear-audit-json", "--clear-logs-json":
+                args.append(contentsOf: ["--clear-audit", "--json"])
+            case "--clear-incidents-json":
+                args.append(contentsOf: ["--clear-incidents", "--json"])
+            case "--test-telegram-json":
+                args.append(contentsOf: ["--test-telegram", "--json"])
+            case "--settings-json":
+                args.append(contentsOf: ["--settings", "--json"])
+            case "--gallery-json":
+                args.append(contentsOf: ["--gallery", "--json"])
+            case "--enroll-json":
+                args.append(contentsOf: ["--enroll", "--json"])
+            case "--backup-config-json", "--export-config-json":
+                args.append(contentsOf: ["--backup-config", "--json"])
+            case "--restore-config-json", "--import-config-json":
+                args.append(contentsOf: ["--restore-config", "--json"])
+            case "--export-vectors-json":
+                args.append(contentsOf: ["--export-vectors", "--json"])
+            case "--import-vectors-json":
+                args.append(contentsOf: ["--import-vectors", "--json"])
+            case "--export-incidents-json":
+                args.append(contentsOf: ["--export-incidents", "--json"])
+            case "--export-audit-json", "--export-logs-json":
+                args.append(contentsOf: ["--export-audit", "--json"])
+            case "--prune-incidents-json":
+                args.append(contentsOf: ["--prune-incidents", "--json"])
+            case "--prune-audit-json", "--prune-logs-json":
+                args.append(contentsOf: ["--prune-audit", "--json"])
+            case "--verify-pin-json":
+                args.append(contentsOf: ["--verify-pin", "--json"])
+            case "--set-pin-attempts-json":
+                args.append(contentsOf: ["--set-pin-attempts", "--json"])
+            case "--set-pin-lockout-json":
+                args.append(contentsOf: ["--set-pin-lockout", "--json"])
             case "--export-config":
                 args.append("--backup-config")
             case "--import-config":
@@ -2556,7 +2596,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     userInfo: ["action": "settings"],
                     deliverImmediately: true
                 )
-                print("[FaceLock] Dispatched settings command to running instance.")
+                if args.contains("--json") {
+                    print("{\"success\":true,\"daemonRunning\":true,\"message\":\"Opened Settings window via running FaceLock daemon\"}")
+                } else {
+                    print("[FaceLock] Dispatched settings command to running instance.")
+                }
                 exit(0)
             } else if args.contains("--enroll") {
                 DistributedNotificationCenter.default().postNotificationName(
@@ -2565,7 +2609,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     userInfo: ["action": "enroll"],
                     deliverImmediately: true
                 )
-                print("[FaceLock] Dispatched enrollment command to running instance.")
+                if args.contains("--json") {
+                    print("{\"success\":true,\"daemonRunning\":true,\"message\":\"Opened Face Enrollment wizard via running FaceLock daemon\"}")
+                } else {
+                    print("[FaceLock] Dispatched enrollment command to running instance.")
+                }
                 exit(0)
             } else if args.contains("--gallery") {
                 DistributedNotificationCenter.default().postNotificationName(
@@ -2574,7 +2622,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     userInfo: ["action": "gallery"],
                     deliverImmediately: true
                 )
-                print("[FaceLock] Dispatched gallery command to running instance.")
+                if args.contains("--json") {
+                    print("{\"success\":true,\"daemonRunning\":true,\"message\":\"Opened Incident Gallery via running FaceLock daemon\"}")
+                } else {
+                    print("[FaceLock] Dispatched gallery command to running instance.")
+                }
                 exit(0)
             } else if args.contains("--audit-gui") || args.contains("--audit-ui") || args.contains("--audit-window") {
                 DistributedNotificationCenter.default().postNotificationName(
@@ -2583,7 +2635,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     userInfo: ["action": "audit-log"],
                     deliverImmediately: true
                 )
-                print("[FaceLock] Dispatched audit log command to running instance.")
+                if args.contains("--json") {
+                    print("{\"success\":true,\"daemonRunning\":true,\"message\":\"Opened Security Audit window via running FaceLock daemon\"}")
+                } else {
+                    print("[FaceLock] Dispatched audit log command to running instance.")
+                }
                 exit(0)
             } else if args.contains("--apps-gui") || args.contains("--apps-window") {
                 DistributedNotificationCenter.default().postNotificationName(
@@ -2592,7 +2648,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     userInfo: ["action": "apps-gui"],
                     deliverImmediately: true
                 )
-                print("[FaceLock] Dispatched applications manager command to running instance.")
+                if args.contains("--json") {
+                    print("{\"success\":true,\"daemonRunning\":true,\"message\":\"Opened Applications Manager via running FaceLock daemon\"}")
+                } else {
+                    print("[FaceLock] Dispatched applications manager command to running instance.")
+                }
                 exit(0)
             } else if !args.contains("--reset") {
                 let unhandledArgs = args.dropFirst().filter { $0.starts(with: "-") }

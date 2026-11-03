@@ -65,6 +65,8 @@ public final class FaceLockTestSuite {
         testEmergencyLockdownAndAuditFiltering()
         testConfigExportAndRestoreRoundtrip()
         testTelegramLockdownAlertPayload()
+        testTelegramPinBruteforceAlertPayload()
+        testSecurityProfileValidationAndEnumeration()
         testExportImportCliAliases()
         testVectorMatchingBenchmark()
 
@@ -697,6 +699,37 @@ public final class FaceLockTestSuite {
         assert(caption.contains("тайм-аут 5с, порог 0.18"), "Lockdown alert reflects strict timeout and biometric threshold parameters")
     }
 
+    private func testTelegramPinBruteforceAlertPayload() {
+        print("\n▶ Test Suite: Telegram PIN Brute-force Alert Formatting")
+
+        let testDate = Date(timeIntervalSince1970: 1730588400)
+        let rawAppName = "Keychain <Sensitive> & Admin"
+        let caption = TelegramNotifier.formatPinBruteforceAlertCaption(attempts: 3, appName: rawAppName, timestamp: testDate, lockoutSeconds: 10)
+
+        assert(caption.contains("🚨 <b>FaceLock: Подозрительная активность (PIN Brute-force)!</b>"), "Brute force alert has distinct high-priority header")
+        assert(caption.contains("&lt;Sensitive&gt;"), "Special HTML characters '<' and '>' are safely escaped in PIN brute force alert")
+        assert(caption.contains("&amp;"), "Ampersand '&' is safely escaped in PIN brute force alert")
+        assert(caption.contains("3"), "PIN brute force alert specifies exact failed attempts count")
+        assert(caption.contains("10с"), "PIN brute force alert reflects cooling lockout delay in seconds")
+    }
+
+    private func testSecurityProfileValidationAndEnumeration() {
+        print("\n▶ Test Suite: Security Profile Validation & Enumeration")
+
+        assert(Config.isValidProfile("normal"), "Profile 'normal' is recognized as valid")
+        assert(Config.isValidProfile("CAFE"), "Profile validation is case-insensitive ('CAFE')")
+        assert(Config.isValidProfile("lockdown"), "Profile 'lockdown' is recognized as valid")
+        assert(Config.isValidProfile("work"), "Profile 'work' is recognized as valid")
+        assert(Config.isValidProfile("home"), "Profile 'home' is recognized as valid")
+        assert(Config.isValidProfile("presentation"), "Profile 'presentation' is recognized as valid")
+        assert(!Config.isValidProfile("non_existent_profile"), "Invalid profile name returns false")
+
+        let allProfiles = Config.allProfileNames
+        assertEqual(allProfiles.count, 6, "Total 6 profiles enumerated")
+        assert(allProfiles.contains("normal"), "Enumerated profiles contain 'normal'")
+        assert(allProfiles.contains("lockdown"), "Enumerated profiles contain 'lockdown'")
+    }
+
     private func testExportImportCliAliases() {
         print("\n▶ Test Suite: CLI Export / Import Aliases & Flag Normalization")
 
@@ -708,6 +741,42 @@ public final class FaceLockTestSuite {
 
         let normalizedFaceJson = AppDelegate.normalizeArguments(["--verify-face-json"])
         assertEqual(normalizedFaceJson, ["--verify-face", "--json"], "--verify-face-json normalizes to --verify-face --json")
+
+        let normalizedAuditStatsJson = AppDelegate.normalizeArguments(["--audit-stats-json"])
+        assertEqual(normalizedAuditStatsJson, ["--audit-stats", "--json"], "--audit-stats-json normalizes to --audit-stats --json")
+
+        let normalizedClearAuditJson = AppDelegate.normalizeArguments(["--clear-audit-json"])
+        assertEqual(normalizedClearAuditJson, ["--clear-audit", "--json"], "--clear-audit-json normalizes to --clear-audit --json")
+
+        let normalizedClearIncidentsJson = AppDelegate.normalizeArguments(["--clear-incidents-json"])
+        assertEqual(normalizedClearIncidentsJson, ["--clear-incidents", "--json"], "--clear-incidents-json normalizes to --clear-incidents --json")
+
+        let normalizedSettingsJson = AppDelegate.normalizeArguments(["--settings-json"])
+        assertEqual(normalizedSettingsJson, ["--settings", "--json"], "--settings-json normalizes to --settings --json")
+
+        let normalizedGalleryJson = AppDelegate.normalizeArguments(["--gallery-json"])
+        assertEqual(normalizedGalleryJson, ["--gallery", "--json"], "--gallery-json normalizes to --gallery --json")
+
+        let normalizedEnrollJson = AppDelegate.normalizeArguments(["--enroll-json"])
+        assertEqual(normalizedEnrollJson, ["--enroll", "--json"], "--enroll-json normalizes to --enroll --json")
+
+        let normalizedTestTelegramJson = AppDelegate.normalizeArguments(["--test-telegram-json"])
+        assertEqual(normalizedTestTelegramJson, ["--test-telegram", "--json"], "--test-telegram-json normalizes to --test-telegram --json")
+
+        let normalizedBackupConfigJson = AppDelegate.normalizeArguments(["--backup-config-json", "/tmp/cfg.json"])
+        assertEqual(normalizedBackupConfigJson, ["--backup-config", "--json", "/tmp/cfg.json"], "--backup-config-json normalizes to --backup-config --json")
+
+        let normalizedRestoreConfigJson = AppDelegate.normalizeArguments(["--restore-config-json", "/tmp/cfg.json"])
+        assertEqual(normalizedRestoreConfigJson, ["--restore-config", "--json", "/tmp/cfg.json"], "--restore-config-json normalizes to --restore-config --json")
+
+        let normalizedExportAuditJson = AppDelegate.normalizeArguments(["--export-audit-json", "/tmp/audit.jsonl"])
+        assertEqual(normalizedExportAuditJson, ["--export-audit", "--json", "/tmp/audit.jsonl"], "--export-audit-json normalizes to --export-audit --json")
+
+        let normalizedPruneIncidentsJson = AppDelegate.normalizeArguments(["--prune-incidents-json", "10"])
+        assertEqual(normalizedPruneIncidentsJson, ["--prune-incidents", "--json", "10"], "--prune-incidents-json normalizes to --prune-incidents --json")
+
+        let normalizedVerifyPinJson = AppDelegate.normalizeArguments(["--verify-pin-json", "1234"])
+        assertEqual(normalizedVerifyPinJson, ["--verify-pin", "--json", "1234"], "--verify-pin-json normalizes to --verify-pin --json")
     }
 
     // MARK: - 10. Performance Benchmark

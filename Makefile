@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health toggle toggle-json pause pause-json resume resume-json toggle-wake wake reload reload-json reset-session reset-session-json check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents prune-incidents export-incidents test-telegram incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-gui prune-audit clear-audit export-audit pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config export-config restore-config import-config test profiles profile profile-json toggle-shoulder toggle-audible toggle-battery toggle-presentation battery-status battery-status-json
+.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health toggle toggle-json pause pause-json resume resume-json toggle-wake wake reload reload-json reset-session reset-session-json check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents clear-incidents-json prune-incidents export-incidents test-telegram test-telegram-json incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-stats-json audit-gui prune-audit clear-audit clear-audit-json export-audit pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config backup-config-json export-config export-config-json restore-config restore-config-json import-config import-config-json test profiles profile profile-json toggle-shoulder toggle-audible toggle-battery toggle-presentation battery-status battery-status-json
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -260,7 +260,15 @@ backup-config: build
 	fi
 	@build/FaceLock.app/Contents/MacOS/FaceLock --backup-config "$(DEST)"
 
+backup-config-json: build
+	@if [ -z "$(DEST)" ]; then \
+		echo "Usage: make backup-config-json DEST=/path/to/backup.json"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --backup-config "$(DEST)" --json
+
 export-config: backup-config
+export-config-json: backup-config-json
 
 restore-config: build
 	@if [ -z "$(SRC)" ]; then \
@@ -269,7 +277,15 @@ restore-config: build
 	fi
 	@build/FaceLock.app/Contents/MacOS/FaceLock --restore-config "$(SRC)"
 
+restore-config-json: build
+	@if [ -z "$(SRC)" ]; then \
+		echo "Usage: make restore-config-json SRC=/path/to/backup.json"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --restore-config "$(SRC)" --json
+
 import-config: restore-config
+import-config-json: restore-config-json
 
 vectors: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --vectors
@@ -317,11 +333,17 @@ pin-lockout: build
 clear-incidents: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --clear-incidents
 
+clear-incidents-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --clear-incidents --json
+
 prune-incidents: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --prune-incidents $(or $(KEEP),30)
 
 test-telegram: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --test-telegram
+
+test-telegram-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --test-telegram --json
 
 audit: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --audit
@@ -332,6 +354,9 @@ audit-json: build
 audit-stats: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-stats
 
+audit-stats-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-stats --json
+
 audit-gui: build
 	@echo "Opening Security Audit Log..."
 	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-gui
@@ -341,6 +366,9 @@ prune-audit: build
 
 clear-audit: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --clear-audit
+
+clear-audit-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --clear-audit --json
 
 export-audit: build
 	@if [ -z "$(FILE)" ]; then \

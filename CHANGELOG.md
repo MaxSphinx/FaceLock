@@ -4,9 +4,23 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.4] - 2026-11-02
+## [1.1.4] - 2026-11-03
 
 ### Added
+- **Telegram PIN Brute-force Dedicated Alerting (`TelegramNotifier.swift`, `LockScreenWindow.swift`)**:
+  - Implemented `formatPinBruteforceAlertCaption(attempts:appName:timestamp:lockoutSeconds:)` with HTML sanitization and structured Russian notifications.
+  - Implemented unified `sendPinBruteforceAlert(photo:attempts:appName:lockoutSeconds:completion:)` supporting both photo snapshots and text fallback.
+- **Security Profile Validation & Enumeration (`Config.swift`)**:
+  - Added `Config.isValidProfile(_:)` with case-insensitive validation across all supported profiles.
+  - Added `Config.allProfileNames` static property returning all available security profile identifier strings.
+- **IPC GUI Window Dispatching JSON Ergonomics (`AppDelegate.swift`)**:
+  - Added structured JSON confirmation output when `--settings`, `--enroll`, `--gallery`, `--audit-gui`, and `--apps-gui` commands are dispatched to a running FaceLock background daemon.
+- **Extended CLI Argument Normalization & Makefile Targets (`AppDelegate.swift`, `Makefile`)**:
+  - Added flag normalization for `--audit-stats-json`, `--audit-gui-json`, `--apps-gui-json`, `--clear-audit-json`, `--clear-incidents-json`, `--test-telegram-json`, `--settings-json`, `--gallery-json`, `--enroll-json`, `--backup-config-json`, `--restore-config-json`, `--export-audit-json`, `--prune-incidents-json`, and `--verify-pin-json`.
+  - Added Makefile targets `make audit-stats-json`, `make clear-audit-json`, `make clear-incidents-json`, `make test-telegram-json`, `make backup-config-json`, `make export-config-json`, `make restore-config-json`, and `make import-config-json`.
+- **Automated Test Suite Expansion (`Tests/FaceLockTests.swift`)**:
+  - Scaled automated test suite to 287 unit tests (up from 260) with 100% pass rate across 23 test suites, covering PIN brute-force alert escaping, profile validation, and expanded CLI aliases.
+
 - **Config Export / Import CLI Ergonomics & Directory Resilience (`Config.swift`, `AppDelegate.swift`, `Makefile`)**:
   - Added `--export-config` and `--import-config` aliases alongside `--backup-config` and `--restore-config`.
   - Added automatic parent directory creation in `Config.backupConfig(to:)` ensuring exports to nested subpaths succeed cleanly.

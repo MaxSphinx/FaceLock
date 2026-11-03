@@ -437,34 +437,26 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
         // Capture intruder snapshot via camera immediately
         CameraScanner.shared.scanFace(timeout: 1.5) { [weak self] (_, _, intruderPhoto) in
             DispatchQueue.main.async {
+                let lockoutSecs = max(1, Int(Config.shared.pinLockoutSeconds))
+                let targetName = self?.targetApp?.localizedName ?? "Lock Screen"
+
+                TelegramNotifier.shared.sendPinBruteforceAlert(
+                    photo: intruderPhoto,
+                    attempts: attempts,
+                    appName: targetName,
+                    lockoutSeconds: lockoutSecs
+                )
+
                 if let photo = intruderPhoto {
                     let photoURL = CameraScanner.shared.saveIntruderPhoto(photo)
                     let photoName = photoURL?.lastPathComponent
-                    TelegramNotifier.shared.sendIntruderAlert(
-                        photo: photo,
-                        appName: "Lock Screen PIN Brute Force (\(attempts) attempts)"
-                    )
                     SecurityAuditLogger.shared.log(
                         eventType: "pin_bruteforce_intruder",
-                        appName: self?.targetApp?.localizedName ?? "Lock Screen",
+                        appName: targetName,
                         intruderPhoto: photoName,
                         details: "Intruder snapshot captured after \(attempts) failed PIN attempts",
                         isSuccess: false
                     )
-                } else {
-                    let formatter = DateFormatter()
-                    formatter.dateFormat = "HH:mm:ss (dd.MM.yyyy)"
-                    let timeStr = formatter.string(from: Date())
-                    let targetName = self?.targetApp?.localizedName ?? "Lock Screen"
-                    let safeTargetName = TelegramNotifier.escapeHTML(targetName)
-                    let alertMsg = """
-                    🚨 <b>FaceLock: Подозрительная активность!</b>
-                    ⚠️ Зафиксировано <b>\(attempts)</b> неверных попыток ввода PIN подряд.
-                    💻 <b>Приложение:</b> \(safeTargetName)
-                    🕒 <b>Время:</b> \(timeStr)
-                    🔒 Введена временная блокировка клавиатуры.
-                    """
-                    TelegramNotifier.shared.sendSecurityAlert(message: alertMsg)
                 }
             }
         }
