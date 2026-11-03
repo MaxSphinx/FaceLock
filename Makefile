@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health toggle toggle-json pause pause-json resume resume-json toggle-wake wake reload reload-json reset-session reset-session-json check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents clear-incidents-json prune-incidents export-incidents test-telegram test-telegram-json incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-stats-json audit-gui prune-audit clear-audit clear-audit-json export-audit pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config backup-config-json export-config export-config-json restore-config restore-config-json import-config import-config-json test profiles profile profile-json toggle-shoulder toggle-audible toggle-battery toggle-presentation battery-status battery-status-json
+.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health toggle toggle-json pause pause-json resume resume-json toggle-wake wake reload reload-json reset-session reset-session-json check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents clear-incidents-json prune-incidents export-incidents test-telegram test-telegram-json incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-stats-json audit-gui prune-audit clear-audit clear-audit-json export-audit export-audit-json export-logs export-logs-json pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config backup-config-json export-config export-config-json restore-config restore-config-json import-config import-config-json export-vectors export-vectors-json backup-vectors backup-vectors-json import-vectors import-vectors-json restore-vectors restore-vectors-json test profiles profile profile-json toggle-shoulder toggle-audible toggle-battery toggle-presentation battery-status battery-status-json
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -57,6 +57,8 @@ help:
 	@echo "  make restore-config SRC= - Restore FaceLock configuration from JSON file"
 	@echo "  make vectors        - Inspect enrolled facial templates and cluster metrics"
 	@echo "  make optimize-vectors - Prune redundant vectors and outliers to optimize cluster"
+	@echo "  make export-vectors DEST= - Export biometric face vectors to JSON file"
+	@echo "  make import-vectors SRC= - Import biometric face vectors from JSON file"
 	@echo "  make audit          - View security audit event log"
 	@echo "  make audit-gui      - Open security audit log GUI window"
 	@echo "  make audit-stats    - View security audit statistics"
@@ -299,6 +301,40 @@ optimize-vectors: build
 optimize-vectors-json: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --optimize-vectors --json
 
+export-vectors: build
+	@if [ -z "$(DEST)" ]; then \
+		echo "Usage: make export-vectors DEST=/path/to/vectors.json"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --export-vectors "$(DEST)"
+
+export-vectors-json: build
+	@if [ -z "$(DEST)" ]; then \
+		echo "Usage: make export-vectors-json DEST=/path/to/vectors.json"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --export-vectors "$(DEST)" --json
+
+backup-vectors: export-vectors
+backup-vectors-json: export-vectors-json
+
+import-vectors: build
+	@if [ -z "$(SRC)" ]; then \
+		echo "Usage: make import-vectors SRC=/path/to/vectors.json"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --import-vectors "$(SRC)"
+
+import-vectors-json: build
+	@if [ -z "$(SRC)" ]; then \
+		echo "Usage: make import-vectors-json SRC=/path/to/vectors.json"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --import-vectors "$(SRC)" --json
+
+restore-vectors: import-vectors
+restore-vectors-json: import-vectors-json
+
 incidents: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents
 
@@ -377,6 +413,16 @@ export-audit: build
 	fi
 	@build/FaceLock.app/Contents/MacOS/FaceLock --export-audit "$(FILE)"
 
+export-audit-json: build
+	@if [ -z "$(FILE)" ]; then \
+		echo "Usage: make export-audit-json FILE=/path/to/destination.jsonl"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --export-audit "$(FILE)" --json
+
+export-logs: export-audit
+export-logs-json: export-audit-json
+
 test: build
 	@echo "==> Running FaceLock Automated Unit Tests & Benchmarks..."
 	@build/FaceLock.app/Contents/MacOS/FaceLock --test
@@ -444,6 +490,8 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-pin-lockout 5 --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --prune-audit 1000 --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --export-audit /tmp/facelock_audit_test.jsonl --json > /dev/null && rm -f /tmp/facelock_audit_test.jsonl
+	@build/FaceLock.app/Contents/MacOS/FaceLock --export-logs /tmp/facelock_audit_test.jsonl --json > /dev/null && rm -f /tmp/facelock_audit_test.jsonl
+	@build/FaceLock.app/Contents/MacOS/FaceLock --backup-vectors /tmp/facelock_vec_test.json > /dev/null 2>&1 || true; rm -f /tmp/facelock_vec_test.json
 	@mkdir -p /tmp/facelock_test_export && build/FaceLock.app/Contents/MacOS/FaceLock --export-incidents /tmp/facelock_test_export --json > /dev/null && rm -rf /tmp/facelock_test_export
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-shoulder-defense --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-audible --json > /dev/null

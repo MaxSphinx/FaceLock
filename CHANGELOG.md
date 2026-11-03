@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.4] - 2026-11-03
 
 ### Added
+- **Biometric Vector & Audit Export Resilience (`Config.swift`, `SecurityAuditLogger.swift`)**:
+  - Added automatic parent directory creation in `Config.exportVectors(to:)` and `SecurityAuditLogger.exportLogs(to:)` ensuring exports to deeply nested subdirectories succeed reliably.
+  - Added `Config.backupVectors(to:)` and `Config.restoreVectors(from:merge:)` aliases alongside `SecurityAuditLogger.exportAudit(to:)`.
+- **Typed PIN Brute-force Audit Event Logging (`SecurityAuditLogger.swift`, `LockScreenWindow.swift`)**:
+  - Implemented `SecurityAuditLogger.logPinBruteforce(appName:attempts:lockoutSeconds:)` providing structured, typed audit logging for failed PIN lockout events.
+- **Biometric Vector CLI Aliases & Makefile Targets (`AppDelegate.swift`, `Makefile`)**:
+  - Added CLI flag normalization for `--backup-vectors`, `--restore-vectors`, `--backup-vectors-json`, `--restore-vectors-json`, `--export-logs`, and `--prune-logs`.
+  - Added Makefile targets `make export-vectors DEST=`, `make export-vectors-json DEST=`, `make backup-vectors`, `make backup-vectors-json`, `make import-vectors SRC=`, `make import-vectors-json SRC=`, `make restore-vectors`, `make restore-vectors-json`, `make export-audit-json FILE=`, `make export-logs`, and `make export-logs-json`.
+- **Automated Test Suite Expansion (`Tests/FaceLockTests.swift`)**:
+  - Scaled automated test suite to 305 unit tests (up from 287) across 24 specialized test suites with 100% pass rate, adding dedicated vector and audit export resilience verification.
 - **Telegram PIN Brute-force Dedicated Alerting (`TelegramNotifier.swift`, `LockScreenWindow.swift`)**:
   - Implemented `formatPinBruteforceAlertCaption(attempts:appName:timestamp:lockoutSeconds:)` with HTML sanitization and structured Russian notifications.
   - Implemented unified `sendPinBruteforceAlert(photo:attempts:appName:lockoutSeconds:completion:)` supporting both photo snapshots and text fallback.

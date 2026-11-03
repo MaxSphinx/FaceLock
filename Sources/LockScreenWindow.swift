@@ -427,19 +427,13 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
 
     private func handlePinBruteForceDetected() {
         let attempts = failedPinAttempts
-        SecurityAuditLogger.shared.log(
-            eventType: "pin_bruteforce_attempt",
-            appName: targetApp?.localizedName ?? "Lock Screen",
-            details: "\(attempts) consecutive failed PIN attempts detected",
-            isSuccess: false
-        )
+        let lockoutSecs = max(1, Int(Config.shared.pinLockoutSeconds))
+        let targetName = targetApp?.localizedName ?? "Lock Screen"
+        SecurityAuditLogger.shared.logPinBruteforce(appName: targetName, attempts: attempts, lockoutSeconds: lockoutSecs)
 
         // Capture intruder snapshot via camera immediately
-        CameraScanner.shared.scanFace(timeout: 1.5) { [weak self] (_, _, intruderPhoto) in
+        CameraScanner.shared.scanFace(timeout: 1.5) { (_, _, intruderPhoto) in
             DispatchQueue.main.async {
-                let lockoutSecs = max(1, Int(Config.shared.pinLockoutSeconds))
-                let targetName = self?.targetApp?.localizedName ?? "Lock Screen"
-
                 TelegramNotifier.shared.sendPinBruteforceAlert(
                     photo: intruderPhoto,
                     attempts: attempts,
@@ -462,7 +456,6 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
         }
 
         // Apply temporary lockout
-        let lockoutSecs = max(1, Int(Config.shared.pinLockoutSeconds))
         lockoutSecondsRemaining = lockoutSecs
         pinField?.isEnabled = false
         errorLabel?.stringValue = "Слишком много попыток. Заблокировано на \(lockoutSecondsRemaining) сек..."

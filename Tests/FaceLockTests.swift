@@ -68,6 +68,7 @@ public final class FaceLockTestSuite {
         testTelegramPinBruteforceAlertPayload()
         testSecurityProfileValidationAndEnumeration()
         testExportImportCliAliases()
+        testVectorAndAuditExportResilience()
         testVectorMatchingBenchmark()
 
         let elapsed = Date().timeIntervalSince(startTime)
@@ -777,6 +778,80 @@ public final class FaceLockTestSuite {
 
         let normalizedVerifyPinJson = AppDelegate.normalizeArguments(["--verify-pin-json", "1234"])
         assertEqual(normalizedVerifyPinJson, ["--verify-pin", "--json", "1234"], "--verify-pin-json normalizes to --verify-pin --json")
+
+        let normalizedBackupVectors = AppDelegate.normalizeArguments(["--backup-vectors", "/tmp/vecs.json"])
+        assertEqual(normalizedBackupVectors, ["--export-vectors", "/tmp/vecs.json"], "--backup-vectors normalizes to --export-vectors")
+
+        let normalizedRestoreVectors = AppDelegate.normalizeArguments(["--restore-vectors", "/tmp/vecs.json"])
+        assertEqual(normalizedRestoreVectors, ["--import-vectors", "/tmp/vecs.json"], "--restore-vectors normalizes to --import-vectors")
+
+        let normalizedBackupVectorsJson = AppDelegate.normalizeArguments(["--backup-vectors-json", "/tmp/vecs.json"])
+        assertEqual(normalizedBackupVectorsJson, ["--export-vectors", "--json", "/tmp/vecs.json"], "--backup-vectors-json normalizes to --export-vectors --json")
+
+        let normalizedRestoreVectorsJson = AppDelegate.normalizeArguments(["--restore-vectors-json", "/tmp/vecs.json"])
+        assertEqual(normalizedRestoreVectorsJson, ["--import-vectors", "--json", "/tmp/vecs.json"], "--restore-vectors-json normalizes to --import-vectors --json")
+
+        let normalizedExportLogs = AppDelegate.normalizeArguments(["--export-logs", "/tmp/audit.jsonl"])
+        assertEqual(normalizedExportLogs, ["--export-audit", "/tmp/audit.jsonl"], "--export-logs normalizes to --export-audit")
+
+        let normalizedPruneLogs = AppDelegate.normalizeArguments(["--prune-logs", "50"])
+        assertEqual(normalizedPruneLogs, ["--prune-audit", "50"], "--prune-logs normalizes to --prune-audit")
+    }
+
+    private func testVectorAndAuditExportResilience() {
+        print("\n▶ Test Suite: Biometric Vector & Audit Export Resilience")
+
+        let config = Config.shared
+        let originalVectors = config.loadEnrolledVectors()
+
+        // Temporarily seed a dummy vector if none enrolled
+        let dummyVector = (0..<128).map { Float($0) / 128.0 }
+        config.saveEnrolledVectors([dummyVector])
+
+        let testSubdir = "/tmp/facelock_test_export_resilience_\(UUID().uuidString.prefix(6))"
+        let nestedVecPath = "\(testSubdir)/nested/vectors.json"
+        let nestedAuditPath = "\(testSubdir)/nested/audit.jsonl"
+
+        defer {
+            try? FileManager.default.removeItem(atPath: testSubdir)
+            config.saveEnrolledVectors(originalVectors)
+        }
+
+        do {
+            let exportedCount = try config.exportVectors(to: nestedVecPath)
+            assert(exportedCount > 0, "exportVectors exports enrolled templates successfully")
+            assert(FileManager.default.fileExists(atPath: nestedVecPath), "exportVectors automatically creates missing parent directories")
+
+            let backupCount = try config.backupVectors(to: "\(testSubdir)/backup/vectors_backup.json")
+            assertEqual(backupCount, exportedCount, "backupVectors alias successfully forwards to exportVectors")
+
+            let importedCount = try config.restoreVectors(from: nestedVecPath, merge: false)
+            assertEqual(importedCount, exportedCount, "restoreVectors alias successfully imports vectors")
+        } catch {
+            assert(false, "Vector export/import resilience failed: \(error.localizedDescription)")
+        }
+
+        do {
+            let exportedAuditCount = try SecurityAuditLogger.shared.exportLogs(to: nestedAuditPath)
+            assert(exportedAuditCount >= 0, "exportLogs runs successfully")
+            assert(FileManager.default.fileExists(atPath: nestedAuditPath), "exportLogs automatically creates missing parent directories")
+
+            let aliasAuditCount = try SecurityAuditLogger.shared.exportAudit(to: "\(testSubdir)/backup/audit_backup.jsonl")
+            assertEqual(aliasAuditCount, exportedAuditCount, "exportAudit alias successfully forwards to exportLogs")
+        } catch {
+            assert(false, "Audit export resilience failed: \(error.localizedDescription)")
+        }
+
+        // Test logPinBruteforce typed audit event
+        SecurityAuditLogger.shared.logPinBruteforce(appName: "TestSecurityApp", attempts: 5, lockoutSeconds: 30)
+        let recentBruteforce = SecurityAuditLogger.shared.fetchRecentEvents(tail: 5, filterType: "bruteforce")
+        assert(!recentBruteforce.isEmpty, "fetchRecentEvents retrieves logged PIN brute force events")
+        if let ev = recentBruteforce.first {
+            assertEqual(ev.eventType, "pin_bruteforce_attempt", "logPinBruteforce records correct eventType")
+            assertEqual(ev.appName, "TestSecurityApp", "logPinBruteforce preserves appName")
+            assert(ev.details?.contains("5 consecutive failed PIN") == true, "logPinBruteforce details contain attempt count")
+            assert(ev.details?.contains("30s") == true, "logPinBruteforce details contain lockout delay")
+        }
     }
 
     // MARK: - 10. Performance Benchmark

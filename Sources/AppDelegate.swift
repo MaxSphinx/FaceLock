@@ -111,9 +111,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--backup-config", "--json"])
             case "--restore-config-json", "--import-config-json":
                 args.append(contentsOf: ["--restore-config", "--json"])
-            case "--export-vectors-json":
+            case "--backup-vectors-json", "--export-vectors-json":
                 args.append(contentsOf: ["--export-vectors", "--json"])
-            case "--import-vectors-json":
+            case "--restore-vectors-json", "--import-vectors-json":
                 args.append(contentsOf: ["--import-vectors", "--json"])
             case "--export-incidents-json":
                 args.append(contentsOf: ["--export-incidents", "--json"])
@@ -133,6 +133,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append("--backup-config")
             case "--import-config":
                 args.append("--restore-config")
+            case "--backup-vectors":
+                args.append("--export-vectors")
+            case "--restore-vectors":
+                args.append("--import-vectors")
+            case "--export-logs":
+                args.append("--export-audit")
+            case "--prune-logs":
+                args.append("--prune-audit")
             default:
                 args.append(arg)
             }
@@ -201,8 +209,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --toggle-wake              Toggle lock verification upon Mac screen wake
               --vectors [--json]         Inspect enrolled biometric facial vectors & cluster metrics
               --optimize-vectors [--json] Prune redundant templates & outliers to optimize cluster compactness
-              --export-vectors <path>    Export enrolled facial biometric vectors to JSON file
-              --import-vectors <path>    Import facial biometric vectors from JSON file
+              --export-vectors, --backup-vectors <path> Export enrolled facial biometric vectors to JSON file
+              --import-vectors, --restore-vectors <path> Import facial biometric vectors from JSON file
               --profiles [--json]        List available security profiles and current active profile
               --profile <name>           Activate security profile (normal, cafe, work, home, presentation, lockdown)
               --toggle-shoulder-defense  Toggle shoulder-surfing bystander defense

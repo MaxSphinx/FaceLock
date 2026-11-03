@@ -641,6 +641,10 @@ public final class Config: Codable {
     public func exportVectors(to destinationPath: String) throws -> Int {
         let expandedPath = NSString(string: destinationPath).expandingTildeInPath
         let destURL = URL(fileURLWithPath: expandedPath)
+        let parentDir = destURL.deletingLastPathComponent()
+        if !FileManager.default.fileExists(atPath: parentDir.path) {
+            try FileManager.default.createDirectory(at: parentDir, withIntermediateDirectories: true)
+        }
         let vectors = loadEnrolledVectors()
         guard !vectors.isEmpty else {
             throw NSError(domain: "io.github.facelock", code: 1, userInfo: [NSLocalizedDescriptionKey: "No enrolled face vectors found to export"])
@@ -648,6 +652,14 @@ public final class Config: Codable {
         let data = try JSONEncoder().encode(vectors)
         try data.write(to: destURL, options: .atomic)
         return vectors.count
+    }
+
+    public func backupVectors(to destinationPath: String) throws -> Int {
+        return try exportVectors(to: destinationPath)
+    }
+
+    public func restoreVectors(from sourcePath: String, merge: Bool = true) throws -> Int {
+        return try importVectors(from: sourcePath, merge: merge)
     }
 
     public func importVectors(from sourcePath: String, merge: Bool = true) throws -> Int {

@@ -246,6 +246,15 @@ public final class SecurityAuditLogger {
         )
     }
 
+    public func logPinBruteforce(appName: String?, attempts: Int, lockoutSeconds: Int) {
+        log(
+            eventType: "pin_bruteforce_attempt",
+            appName: appName ?? "FaceLock",
+            details: "\(attempts) consecutive failed PIN attempts detected (lockout: \(lockoutSeconds)s)",
+            isSuccess: false
+        )
+    }
+
     public func logFaceRetrySuccess(targetApp: String?) {
         log(
             eventType: "face_retry_success",
@@ -481,6 +490,10 @@ public final class SecurityAuditLogger {
     public func exportLogs(to destinationPath: String) throws -> Int {
         let expanded = NSString(string: destinationPath).expandingTildeInPath
         let destURL = URL(fileURLWithPath: expanded)
+        let parentDir = destURL.deletingLastPathComponent()
+        if !FileManager.default.fileExists(atPath: parentDir.path) {
+            try FileManager.default.createDirectory(at: parentDir, withIntermediateDirectories: true)
+        }
         var count = 0
 
         try logQueue.sync {
@@ -496,5 +509,9 @@ public final class SecurityAuditLogger {
             }
         }
         return count
+    }
+
+    public func exportAudit(to destinationPath: String) throws -> Int {
+        return try exportLogs(to: destinationPath)
     }
 }
