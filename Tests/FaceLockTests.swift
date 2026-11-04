@@ -735,6 +735,10 @@ public final class FaceLockTestSuite {
 
         assert(Config.isValidProfile("normal"), "Profile 'normal' is recognized as valid")
         assert(Config.isValidProfile("CAFE"), "Profile validation is case-insensitive ('CAFE')")
+        assert(Config.isValidProfile("  normal  "), "Profile validation trims surrounding whitespace")
+        assert(Config.isValidProfile("\ncafe\t"), "Profile validation trims tabs and newlines")
+        assert(Config.profile(named: "  LOCKDOWN  ") == .lockdown, "Config.profile resolves enum with whitespace and uppercase")
+        assert(Config.profile(named: "invalid_profile") == nil, "Config.profile returns nil for unknown profile")
         assert(Config.isValidProfile("lockdown"), "Profile 'lockdown' is recognized as valid")
         assert(Config.isValidProfile("work"), "Profile 'work' is recognized as valid")
         assert(Config.isValidProfile("home"), "Profile 'home' is recognized as valid")
@@ -842,6 +846,24 @@ public final class FaceLockTestSuite {
 
         let normalizedProfilesJson = AppDelegate.normalizeArguments(["--profiles-json"])
         assertEqual(normalizedProfilesJson, ["--profiles", "--json"], "--profiles-json normalizes to --profiles --json")
+
+        let normalizedToggleBattery = AppDelegate.normalizeArguments(["--toggle-battery"])
+        assertEqual(normalizedToggleBattery, ["--toggle-battery-aware"], "--toggle-battery normalizes to --toggle-battery-aware")
+
+        let normalizedToggleBatteryJson = AppDelegate.normalizeArguments(["--toggle-battery-json"])
+        assertEqual(normalizedToggleBatteryJson, ["--toggle-battery-aware", "--json"], "--toggle-battery-json normalizes to --toggle-battery-aware --json")
+
+        let normalizedToggleShoulder = AppDelegate.normalizeArguments(["--toggle-shoulder"])
+        assertEqual(normalizedToggleShoulder, ["--toggle-shoulder-defense"], "--toggle-shoulder normalizes to --toggle-shoulder-defense")
+
+        let normalizedTogglePresentationMode = AppDelegate.normalizeArguments(["--toggle-presentation-mode"])
+        assertEqual(normalizedTogglePresentationMode, ["--toggle-presentation"], "--toggle-presentation-mode normalizes to --toggle-presentation")
+
+        let normalizedPresentationModeJson = AppDelegate.normalizeArguments(["--presentation-mode-json"])
+        assertEqual(normalizedPresentationModeJson, ["--toggle-presentation", "--json"], "--presentation-mode-json normalizes to --toggle-presentation --json")
+
+        let normalizedExportIncidentsJson = AppDelegate.normalizeArguments(["--export-incidents-json", "/tmp/incidents"])
+        assertEqual(normalizedExportIncidentsJson, ["--export-incidents", "--json", "/tmp/incidents"], "--export-incidents-json normalizes to --export-incidents --json")
     }
 
     private func testVectorAndAuditExportResilience() {
@@ -971,6 +993,12 @@ public final class FaceLockTestSuite {
         assertEqual(CameraScanner.incidentType(for: "intruder_2026-11-04_12-00-00_abcdef.jpg"), "intruder", "intruder prefix maps to intruder type")
         assertEqual(CameraScanner.incidentType(for: "custom_2026-11-04_12-00-00_abcdef.jpg"), "intruder", "unknown prefix defaults to intruder type")
 
+        // Supported incident types and validation
+        assertEqual(CameraScanner.supportedIncidentTypes.count, 5, "Total 5 supported incident types")
+        assert(CameraScanner.isValidIncidentType("  INTRUDER  "), "isValidIncidentType is case-insensitive and trims whitespace")
+        assert(CameraScanner.isValidIncidentType("walkaway"), "isValidIncidentType matches walkaway")
+        assert(!CameraScanner.isValidIncidentType("unknown_custom_type"), "isValidIncidentType rejects invalid type")
+
         // 2. Incident Filtering Logic
         let mockFiles = [
             "bystander_2026-11-04_10-00-00_111111.jpg",
@@ -979,6 +1007,17 @@ public final class FaceLockTestSuite {
             "wake_2026-11-04_10-15-00_444444.jpg",
             "bruteforce_2026-11-04_10-20-00_555555.jpg"
         ]
+
+        var typeBreakdown: [String: Int] = [:]
+        for file in mockFiles {
+            let t = CameraScanner.incidentType(for: file)
+            typeBreakdown[t, default: 0] += 1
+        }
+        assertEqual(typeBreakdown["bystander"], 1, "Breakdown reflects 1 bystander")
+        assertEqual(typeBreakdown["intruder"], 1, "Breakdown reflects 1 intruder")
+        assertEqual(typeBreakdown["walkaway"], 1, "Breakdown reflects 1 walkaway")
+        assertEqual(typeBreakdown["wake"], 1, "Breakdown reflects 1 wake")
+        assertEqual(typeBreakdown["bruteforce"], 1, "Breakdown reflects 1 bruteforce")
 
         let shoulderFiltered = mockFiles.filter { $0.hasPrefix("bystander_") }
         assertEqual(shoulderFiltered.count, 1, "Shoulder filter matches 1 item")

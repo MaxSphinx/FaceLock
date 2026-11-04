@@ -494,6 +494,19 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         return url
     }
 
+    public static let supportedIncidentTypes: [String] = [
+        "intruder",
+        "walkaway",
+        "wake",
+        "bystander",
+        "bruteforce"
+    ]
+
+    public static func isValidIncidentType(_ type: String) -> Bool {
+        let normalized = type.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return supportedIncidentTypes.contains(normalized)
+    }
+
     public static func incidentType(for filename: String) -> String {
         if filename.hasPrefix("bystander_") {
             return "bystander"
@@ -531,6 +544,7 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
             return [
                 "count": 0,
                 "totalBytes": UInt64(0),
+                "typeBreakdown": [String: Int](),
                 "destination": destURL.path,
                 "manifestPath": ""
             ]
@@ -540,6 +554,7 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         var manifestEntries: [[String: Any]] = []
         var totalBytes: UInt64 = 0
         var exportedCount = 0
+        var typeBreakdown: [String: Int] = [:]
 
         for file in jpegFiles {
             let srcFile = sourceDir.appendingPathComponent(file)
@@ -552,6 +567,9 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
             try fileManager.copyItem(at: srcFile, to: dstFile)
             exportedCount += 1
 
+            let incType = CameraScanner.incidentType(for: file)
+            typeBreakdown[incType, default: 0] += 1
+
             var size: UInt64 = 0
             var modDate = ""
             if let attrs = try? fileManager.attributesOfItem(atPath: dstFile.path) {
@@ -563,6 +581,7 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
             }
             manifestEntries.append([
                 "filename": file,
+                "type": incType,
                 "sizeBytes": size,
                 "modified": modDate
             ])
@@ -573,6 +592,7 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
             "exportDate": ISO8601DateFormatter().string(from: Date()),
             "totalCount": exportedCount,
             "totalBytes": totalBytes,
+            "typeBreakdown": typeBreakdown,
             "incidents": manifestEntries
         ]
         let jsonData = try JSONSerialization.data(withJSONObject: manifestData, options: [.prettyPrinted])
@@ -581,6 +601,7 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         return [
             "count": exportedCount,
             "totalBytes": totalBytes,
+            "typeBreakdown": typeBreakdown,
             "destination": destURL.path,
             "manifestPath": manifestURL.path
         ]

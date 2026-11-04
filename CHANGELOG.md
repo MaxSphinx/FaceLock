@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.4] - 2026-11-04
 
 ### Added
+- **Incident Manifest Type Metadata & Breakdown Telemetry (`CameraScanner.swift`)**:
+  - Enhanced `CameraScanner.exportIncidents(to:)` to attach typed classification (`intruder`, `walkaway`, `wake`, `bystander`, `bruteforce`) to each manifest record and compute a comprehensive `typeBreakdown` summary.
+  - Added `CameraScanner.supportedIncidentTypes` and `CameraScanner.isValidIncidentType(_:)` with case-insensitive validation and whitespace trimming resilience.
+- **Security Profile Resolution & String Normalization (`Config.swift`)**:
+  - Added `Config.profile(named:)` safely mapping string identifiers to `SecurityProfile` with whitespace trimming and case normalization.
+  - Hardened `Config.isValidProfile(_:)` and `Config.setProfile(_:)` against leading/trailing whitespace inputs.
+- **CLI Flag Normalization & Extended Makefile Targets (`AppDelegate.swift`, `Makefile`)**:
+  - Added argument normalization for `--toggle-battery`, `--toggle-battery-json`, `--toggle-shoulder`, `--toggle-presentation-mode`, `--presentation-mode-json`, and `--export-incidents-json`.
+  - Added Makefile targets `make toggle-shoulder-json`, `make toggle-audible-json`, `make toggle-battery-json`, `make toggle-presentation-json`, `make toggle-liveness`, `make toggle-liveness-json`, `make toggle-touchid`, `make toggle-touchid-json`, `make toggle-wake-json`, `make toggle-walkaway`, `make toggle-walkaway-json`, and `make export-incidents-json DIR=`.
+- **Automated Test Suite Expansion (`Tests/FaceLockTests.swift`)**:
+  - Scaled automated test suite to 364 unit tests (up from 345) across 27 specialized test suites with 100% pass rate, adding coverage for incident manifest type telemetry, supported type validation, whitespace-resilient profile resolution, and expanded toggle CLI flag normalization.
 - **Incident Management Ergonomics, Type Classification & Slicing (`CameraScanner.swift`, `AppDelegate.swift`, `IncidentGalleryWindow.swift`)**:
   - Implemented `CameraScanner.incidentType(for:)` mapping capture prefixes (`bystander_`, `walkaway_`, `wake_`, `bruteforce_`, `intruder_`) into structured classification types.
   - Enhanced CLI `--incidents` with `--filter` / `--type` and `--tail` / `--limit` pagination, enriching JSON outputs with typed classification and ISO-8601 timestamp metadata.

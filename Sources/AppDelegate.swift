@@ -65,11 +65,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--toggle-shoulder-defense", "--json"])
             case "--toggle-audible-json":
                 args.append(contentsOf: ["--toggle-audible", "--json"])
-            case "--toggle-battery-aware-json":
+            case "--toggle-battery-aware-json", "--toggle-battery-json":
                 args.append(contentsOf: ["--toggle-battery-aware", "--json"])
             case "--battery-status-json", "--power-status-json":
                 args.append(contentsOf: ["--battery-status", "--json"])
-            case "--toggle-presentation-json", "--toggle-presentation-mode-json":
+            case "--toggle-presentation-json", "--toggle-presentation-mode-json", "--presentation-mode-json":
                 args.append(contentsOf: ["--toggle-presentation", "--json"])
             case "--lockdown-json", "--emergency-lockdown-json":
                 args.append(contentsOf: ["--lockdown", "--json"])
@@ -153,6 +153,12 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append("--export-audit")
             case "--prune-logs":
                 args.append("--prune-audit")
+            case "--toggle-battery":
+                args.append("--toggle-battery-aware")
+            case "--toggle-shoulder":
+                args.append("--toggle-shoulder-defense")
+            case "--toggle-presentation-mode":
+                args.append("--toggle-presentation")
             default:
                 args.append(arg)
             }
@@ -1361,7 +1367,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(0)
         }
 
-        if args.contains("--toggle-battery-aware") {
+        if args.contains("--toggle-battery-aware") || args.contains("--toggle-battery") {
             let enabled = !Config.shared.batteryAwareScanning
             Config.shared.batteryAwareScanning = enabled
             Config.shared.save()

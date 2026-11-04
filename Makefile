@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health health-json toggle toggle-json pause pause-json resume resume-json toggle-wake wake reload reload-json reset-session reset-session-json check-app vectors vectors-json optimize-vectors optimize-vectors-json clear-vectors clear-vectors-json reset-vectors reset-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents clear-incidents-json prune-incidents export-incidents test-telegram test-telegram-json incidents incidents-summary incidents-summary-json latest-incident latest-incident-json export-latest-incident export-latest-incident-json incident incident-json delete-incident delete-incident-json verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-stats-json audit-gui prune-audit clear-audit clear-audit-json export-audit export-audit-json export-logs export-logs-json pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config backup-config-json export-config export-config-json restore-config restore-config-json import-config import-config-json export-vectors export-vectors-json backup-vectors backup-vectors-json import-vectors import-vectors-json restore-vectors restore-vectors-json test profiles profiles-json profile profile-json toggle-shoulder toggle-audible toggle-battery toggle-presentation battery-status battery-status-json
+.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health health-json toggle toggle-json pause pause-json resume resume-json toggle-wake toggle-wake-json wake reload reload-json reset-session reset-session-json check-app vectors vectors-json optimize-vectors optimize-vectors-json clear-vectors clear-vectors-json reset-vectors reset-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents clear-incidents-json prune-incidents export-incidents export-incidents-json test-telegram test-telegram-json incidents incidents-summary incidents-summary-json latest-incident latest-incident-json export-latest-incident export-latest-incident-json incident incident-json delete-incident delete-incident-json verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-stats-json audit-gui prune-audit clear-audit clear-audit-json export-audit export-audit-json export-logs export-logs-json pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config backup-config-json export-config export-config-json restore-config restore-config-json import-config import-config-json export-vectors export-vectors-json backup-vectors backup-vectors-json import-vectors import-vectors-json restore-vectors restore-vectors-json test profiles profiles-json profile profile-json toggle-shoulder toggle-shoulder-json toggle-audible toggle-audible-json toggle-battery toggle-battery-json toggle-presentation toggle-presentation-json toggle-liveness toggle-liveness-json toggle-touchid toggle-touchid-json toggle-walkaway toggle-walkaway-json battery-status battery-status-json
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -100,11 +100,20 @@ profile-json: build
 toggle-shoulder: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-shoulder-defense
 
+toggle-shoulder-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-shoulder-defense --json
+
 toggle-audible: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-audible
 
+toggle-audible-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-audible --json
+
 toggle-battery: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-battery-aware
+
+toggle-battery-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-battery-aware --json
 
 battery-status: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --battery-status
@@ -114,6 +123,30 @@ battery-status-json: build
 
 toggle-presentation: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-presentation
+
+toggle-presentation-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-presentation --json
+
+toggle-liveness: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-liveness
+
+toggle-liveness-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-liveness --json
+
+toggle-touchid: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-touchid
+
+toggle-touchid-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-touchid --json
+
+toggle-wake-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-wake --json
+
+toggle-walkaway: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-walkaway
+
+toggle-walkaway-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-walkaway --json
 
 run: build
 	@echo "Launching FaceLock..."
@@ -366,6 +399,13 @@ export-incidents: build
 	fi
 	@build/FaceLock.app/Contents/MacOS/FaceLock --export-incidents "$(DIR)"
 
+export-incidents-json: build
+	@if [ -z "$(DIR)" ]; then \
+		echo "Usage: make export-incidents-json DIR=/path/to/destination"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --export-incidents "$(DIR)" --json
+
 latest-incident: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --latest-incident
 
@@ -553,8 +593,10 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --export-logs /tmp/facelock_audit_test.jsonl --json > /dev/null && rm -f /tmp/facelock_audit_test.jsonl
 	@build/FaceLock.app/Contents/MacOS/FaceLock --backup-vectors /tmp/facelock_vec_test.json > /dev/null 2>&1 || true; rm -f /tmp/facelock_vec_test.json
 	@mkdir -p /tmp/facelock_test_export && build/FaceLock.app/Contents/MacOS/FaceLock --export-incidents /tmp/facelock_test_export --json > /dev/null && rm -rf /tmp/facelock_test_export
+	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-shoulder --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-shoulder-defense --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-audible --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-battery --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-battery-aware --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-presentation --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-presentation-mode on --json > /dev/null
