@@ -4,6 +4,22 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.4] - 2026-11-04
+
+### Added
+- **Biometric Vector Dimensionality Validation & Finite Checks (`Config.swift`)**:
+  - Implemented `Config.isValidVector(_:)` ensuring enrolled and imported templates strictly adhere to 128 dimensions without NaN or Infinite floating-point values.
+  - Added robust validation in `addEnrolledVector(_:)` and `importVectors(from:merge:)` preventing template corruption and downstream SIMD mathematical failures.
+- **Biometric Template Purge Lifecycle & Typed Audit Logging (`Config.swift`, `SecurityAuditLogger.swift`, `AppDelegate.swift`)**:
+  - Enhanced `Config.clearEnrolledVectors()` to return the exact count of purged biometric templates (`@discardableResult`).
+  - Added typed `SecurityAuditLogger.logVectorsCleared(count:details:)` capturing `vectors_cleared` audit events.
+  - Upgraded CLI `--clear-vectors` and `--reset` with structured `--json` output (`clearedCount`, `action`, `success`) and deterministic `exit(0)` lifecycle termination.
+- **Vector Purge CLI Aliases & Makefile Targets (`AppDelegate.swift`, `Makefile`)**:
+  - Added argument normalization for `--clear-vectors-json`, `--reset-vectors-json`, `--reset-json`, `--reset-vectors`, and `--reset`.
+  - Added Makefile targets `make clear-vectors`, `make clear-vectors-json`, `make reset-vectors`, and `make reset-vectors-json`.
+- **Automated Test Suite Expansion (`Tests/FaceLockTests.swift`)**:
+  - Scaled automated test suite to 320 unit tests (up from 305) across 25 specialized test suites with 100% pass rate, verifying vector dimensionality validation, finite value constraints, purge metrics, and CLI normalization.
+
 ## [1.1.4] - 2026-11-03
 
 ### Added

@@ -69,6 +69,7 @@ public final class FaceLockTestSuite {
         testSecurityProfileValidationAndEnumeration()
         testExportImportCliAliases()
         testVectorAndAuditExportResilience()
+        testVectorValidationAndClearing()
         testVectorMatchingBenchmark()
 
         let elapsed = Date().timeIntervalSince(startTime)
@@ -796,6 +797,21 @@ public final class FaceLockTestSuite {
 
         let normalizedPruneLogs = AppDelegate.normalizeArguments(["--prune-logs", "50"])
         assertEqual(normalizedPruneLogs, ["--prune-audit", "50"], "--prune-logs normalizes to --prune-audit")
+
+        let normalizedClearVectorsJson = AppDelegate.normalizeArguments(["--clear-vectors-json"])
+        assertEqual(normalizedClearVectorsJson, ["--clear-vectors", "--json"], "--clear-vectors-json normalizes to --clear-vectors --json")
+
+        let normalizedResetVectorsJson = AppDelegate.normalizeArguments(["--reset-vectors-json"])
+        assertEqual(normalizedResetVectorsJson, ["--clear-vectors", "--json"], "--reset-vectors-json normalizes to --clear-vectors --json")
+
+        let normalizedResetJson = AppDelegate.normalizeArguments(["--reset-json"])
+        assertEqual(normalizedResetJson, ["--clear-vectors", "--json"], "--reset-json normalizes to --clear-vectors --json")
+
+        let normalizedResetVectors = AppDelegate.normalizeArguments(["--reset-vectors"])
+        assertEqual(normalizedResetVectors, ["--clear-vectors"], "--reset-vectors normalizes to --clear-vectors")
+
+        let normalizedReset = AppDelegate.normalizeArguments(["--reset"])
+        assertEqual(normalizedReset, ["--clear-vectors"], "--reset normalizes to --clear-vectors")
     }
 
     private func testVectorAndAuditExportResilience() {
@@ -852,6 +868,65 @@ public final class FaceLockTestSuite {
             assert(ev.details?.contains("5 consecutive failed PIN") == true, "logPinBruteforce details contain attempt count")
             assert(ev.details?.contains("30s") == true, "logPinBruteforce details contain lockout delay")
         }
+    }
+
+    // MARK: - 9d. Vector Validation, Dimensionality Integrity & Purge Lifecycle
+    private func testVectorValidationAndClearing() {
+        print("\n▶ Test Suite: Vector Validation, Dimensionality Integrity & Purge Lifecycle")
+
+        // 1. Valid 128-D vector
+        let validVec = (0..<128).map { Float($0) / 128.0 }
+        assert(Config.isValidVector(validVec), "Valid 128-D vector passes isValidVector")
+
+        // 2. Invalid dimensions
+        let shortVec = (0..<127).map { Float($0) }
+        assert(!Config.isValidVector(shortVec), "127-D vector fails isValidVector")
+
+        let emptyVec: [Float] = []
+        assert(!Config.isValidVector(emptyVec), "Empty vector fails isValidVector")
+
+        let longVec = (0..<129).map { Float($0) }
+        assert(!Config.isValidVector(longVec), "129-D vector fails isValidVector")
+
+        // 3. Non-finite values
+        var nanVec = validVec
+        nanVec[10] = Float.nan
+        assert(!Config.isValidVector(nanVec), "Vector with NaN fails isValidVector")
+
+        var infVec = validVec
+        infVec[20] = Float.infinity
+        assert(!Config.isValidVector(infVec), "Vector with Infinity fails isValidVector")
+
+        // 4. importVectors dimension validation
+        let testDir = "/tmp/facelock_test_validation_\(UUID().uuidString.prefix(6))"
+        try? FileManager.default.createDirectory(atPath: testDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: testDir) }
+
+        let invalidVecFile = "\(testDir)/invalid_vecs.json"
+        let invalidData = try? JSONEncoder().encode([[Float](repeating: 1.0, count: 50)])
+        try? invalidData?.write(to: URL(fileURLWithPath: invalidVecFile))
+
+        var importFailed = false
+        do {
+            _ = try Config.shared.importVectors(from: invalidVecFile, merge: false)
+        } catch {
+            importFailed = true
+        }
+        assert(importFailed, "importVectors rejects files without valid 128-D templates")
+
+        // 5. clearEnrolledVectors returns count and logs audit event
+        let original = Config.shared.loadEnrolledVectors()
+        Config.shared.saveEnrolledVectors([validVec, validVec])
+        let cleared = Config.shared.clearEnrolledVectors()
+        assertEqual(cleared, 2, "clearEnrolledVectors returns count of cleared vectors (2)")
+        assertEqual(Config.shared.loadEnrolledVectors().count, 0, "clearEnrolledVectors leaves zero enrolled vectors")
+
+        SecurityAuditLogger.shared.logVectorsCleared(count: cleared, details: "Automated test purge")
+        let recent = SecurityAuditLogger.shared.fetchRecentEvents(tail: 5, filterType: "vectors")
+        assert(recent.contains { $0.eventType == "vectors_cleared" }, "Audit log records typed vectors_cleared event")
+
+        // Restore original vectors
+        Config.shared.saveEnrolledVectors(original)
     }
 
     // MARK: - 10. Performance Benchmark

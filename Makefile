@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health toggle toggle-json pause pause-json resume resume-json toggle-wake wake reload reload-json reset-session reset-session-json check-app vectors vectors-json optimize-vectors optimize-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents clear-incidents-json prune-incidents export-incidents test-telegram test-telegram-json incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-stats-json audit-gui prune-audit clear-audit clear-audit-json export-audit export-audit-json export-logs export-logs-json pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config backup-config-json export-config export-config-json restore-config restore-config-json import-config import-config-json export-vectors export-vectors-json backup-vectors backup-vectors-json import-vectors import-vectors-json restore-vectors restore-vectors-json test profiles profile profile-json toggle-shoulder toggle-audible toggle-battery toggle-presentation battery-status battery-status-json
+.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health toggle toggle-json pause pause-json resume resume-json toggle-wake wake reload reload-json reset-session reset-session-json check-app vectors vectors-json optimize-vectors optimize-vectors-json clear-vectors clear-vectors-json reset-vectors reset-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents clear-incidents-json prune-incidents export-incidents test-telegram test-telegram-json incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-stats-json audit-gui prune-audit clear-audit clear-audit-json export-audit export-audit-json export-logs export-logs-json pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config backup-config-json export-config export-config-json restore-config restore-config-json import-config import-config-json export-vectors export-vectors-json backup-vectors backup-vectors-json import-vectors import-vectors-json restore-vectors restore-vectors-json test profiles profile profile-json toggle-shoulder toggle-audible toggle-battery toggle-presentation battery-status battery-status-json
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -57,6 +57,7 @@ help:
 	@echo "  make restore-config SRC= - Restore FaceLock configuration from JSON file"
 	@echo "  make vectors        - Inspect enrolled facial templates and cluster metrics"
 	@echo "  make optimize-vectors - Prune redundant vectors and outliers to optimize cluster"
+	@echo "  make clear-vectors  - Purge all enrolled facial templates from disk"
 	@echo "  make export-vectors DEST= - Export biometric face vectors to JSON file"
 	@echo "  make import-vectors SRC= - Import biometric face vectors from JSON file"
 	@echo "  make audit          - View security audit event log"
@@ -334,6 +335,15 @@ import-vectors-json: build
 
 restore-vectors: import-vectors
 restore-vectors-json: import-vectors-json
+
+clear-vectors: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --clear-vectors
+
+clear-vectors-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --clear-vectors --json
+
+reset-vectors: clear-vectors
+reset-vectors-json: clear-vectors-json
 
 incidents: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents

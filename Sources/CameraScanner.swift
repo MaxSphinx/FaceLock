@@ -494,6 +494,20 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         return url
     }
 
+    public static func incidentType(for filename: String) -> String {
+        if filename.hasPrefix("bystander_") {
+            return "bystander"
+        } else if filename.hasPrefix("walkaway_") {
+            return "walkaway"
+        } else if filename.hasPrefix("wake_") {
+            return "wake"
+        } else if filename.hasPrefix("bruteforce_") {
+            return "bruteforce"
+        } else {
+            return "intruder"
+        }
+    }
+
     @discardableResult
     public func pruneIntruderPhotos(maxRetained: Int = 150) -> Int {
         let home = FileManager.default.homeDirectoryForCurrentUser

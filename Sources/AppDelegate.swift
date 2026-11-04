@@ -129,6 +129,16 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--set-pin-attempts", "--json"])
             case "--set-pin-lockout-json":
                 args.append(contentsOf: ["--set-pin-lockout", "--json"])
+            case "--export-latest-incident-json":
+                args.append(contentsOf: ["--export-latest-incident", "--json"])
+            case "--export-incident-json":
+                args.append(contentsOf: ["--export-incident", "--json"])
+            case "--incident-json":
+                args.append(contentsOf: ["--incident", "--json"])
+            case "--delete-incident-json":
+                args.append(contentsOf: ["--delete-incident", "--json"])
+            case "--clear-vectors-json", "--reset-vectors-json", "--reset-json":
+                args.append(contentsOf: ["--clear-vectors", "--json"])
             case "--export-config":
                 args.append("--backup-config")
             case "--import-config":
@@ -137,6 +147,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append("--export-vectors")
             case "--restore-vectors":
                 args.append("--import-vectors")
+            case "--reset-vectors", "--reset":
+                args.append("--clear-vectors")
             case "--export-logs":
                 args.append("--export-audit")
             case "--prune-logs":
@@ -211,6 +223,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --optimize-vectors [--json] Prune redundant templates & outliers to optimize cluster compactness
               --export-vectors, --backup-vectors <path> Export enrolled facial biometric vectors to JSON file
               --import-vectors, --restore-vectors <path> Import facial biometric vectors from JSON file
+              --clear-vectors, --reset   Purge all enrolled facial templates from disk
               --profiles [--json]        List available security profiles and current active profile
               --profile <name>           Activate security profile (normal, cafe, work, home, presentation, lockdown)
               --toggle-shoulder-defense  Toggle shoulder-surfing bystander defense
@@ -1579,9 +1592,46 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         if args.contains("--incidents") {
             let home = FileManager.default.homeDirectoryForCurrentUser
             let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
-            let files = ((try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? [])
+            var files = ((try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? [])
                 .filter { $0.hasSuffix(".jpg") || $0.hasSuffix(".jpeg") }
                 .sorted(by: >)
+
+            let totalCount = files.count
+            var filterType: String? = nil
+            if let idx = (args.firstIndex(of: "--filter") ?? args.firstIndex(of: "--type")), idx + 1 < args.count {
+                filterType = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            }
+
+            if let filter = filterType, !filter.isEmpty && filter != "all" {
+                let now = Date()
+                files = files.filter { f in
+                    let p = dir.appendingPathComponent(f).path
+                    let modDate = (try? FileManager.default.attributesOfItem(atPath: p)[.modificationDate] as? Date) ?? .distantPast
+                    let ageSeconds = now.timeIntervalSince(modDate)
+                    switch filter {
+                    case "shoulder", "shoulder_surfing", "bystander", "bystanders":
+                        return f.hasPrefix("bystander_")
+                    case "intruder", "intruders":
+                        return f.hasPrefix("intruder_")
+                    case "walkaway", "walk_away":
+                        return f.hasPrefix("walkaway_")
+                    case "wake":
+                        return f.hasPrefix("wake_")
+                    case "bruteforce", "pin":
+                        return f.hasPrefix("bruteforce_")
+                    case "24h", "today":
+                        return ageSeconds <= 86400
+                    case "7d", "week":
+                        return ageSeconds <= 7 * 86400
+                    default:
+                        return f.lowercased().contains(filter)
+                    }
+                }
+            }
+
+            if let idx = (args.firstIndex(of: "--tail") ?? args.firstIndex(of: "--limit")), idx + 1 < args.count, let val = Int(args[idx + 1]), val > 0 {
+                files = Array(files.prefix(val))
+            }
 
             var totalBytes: UInt64 = 0
             var incidentsData: [[String: Any]] = []
@@ -1589,21 +1639,31 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             for f in files {
                 let p = dir.appendingPathComponent(f).path
                 var sz: UInt64 = 0
-                if let attrs = try? FileManager.default.attributesOfItem(atPath: p),
-                   let s = attrs[.size] as? UInt64 {
-                    sz = s
-                    totalBytes += s
+                var modDateStr = ""
+                if let attrs = try? FileManager.default.attributesOfItem(atPath: p) {
+                    if let s = attrs[.size] as? UInt64 {
+                        sz = s
+                        totalBytes += s
+                    }
+                    if let mod = attrs[.modificationDate] as? Date {
+                        modDateStr = ISO8601DateFormatter().string(from: mod)
+                    }
                 }
+                let incType = CameraScanner.incidentType(for: f)
                 incidentsData.append([
                     "filename": f,
                     "path": p,
-                    "sizeBytes": sz
+                    "sizeBytes": sz,
+                    "type": incType,
+                    "timestamp": modDateStr
                 ])
             }
 
             if args.contains("--json") {
                 let outputDict: [String: Any] = [
-                    "totalCaptures": files.count,
+                    "totalCaptures": totalCount,
+                    "retrievedCount": files.count,
+                    "filter": filterType ?? "all",
                     "totalSizeBytes": totalBytes,
                     "directory": dir.path,
                     "incidents": incidentsData
@@ -1616,17 +1676,26 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
 
             let sizeMB = Double(totalBytes) / (1024.0 * 1024.0)
+            let filterDesc = filterType != nil ? " [Filter: \(filterType!)]" : ""
             print("""
-            FaceLock Intruder Incident Log:
-              Total Captures: \(files.count) (\(String(format: "%.2f", sizeMB)) MB)
+            FaceLock Intruder Incident Log\(filterDesc):
+              Retrieved Captures: \(files.count) of \(totalCount) (\(String(format: "%.2f", sizeMB)) MB)
               Storage Directory: \(dir.path)
             """)
             if files.isEmpty {
-                print("  ✓ No intruder events logged.")
+                if let f = filterType {
+                    print("  ✓ No intruder events found matching filter '\(f)'.")
+                } else {
+                    print("  ✓ No intruder events logged.")
+                }
             } else {
-                print("  Recent Captures (latest \(min(5, files.count))):")
-                for f in files.prefix(5) {
-                    print("    - \(f)")
+                print("  Incidents (showing \(min(5, files.count))):")
+                for item in incidentsData.prefix(5) {
+                    let f = item["filename"] as? String ?? ""
+                    let t = item["type"] as? String ?? "intruder"
+                    let sz = item["sizeBytes"] as? UInt64 ?? 0
+                    let szKB = Double(sz) / 1024.0
+                    print("    - \(f) [\(t)] (\(String(format: "%.1f", szKB)) KB)")
                 }
             }
             exit(0)
@@ -1844,6 +1913,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             let destURL = URL(fileURLWithPath: expandedDest)
 
             do {
+                let parentDir = destURL.deletingLastPathComponent()
+                if !FileManager.default.fileExists(atPath: parentDir.path) {
+                    try FileManager.default.createDirectory(at: parentDir, withIntermediateDirectories: true)
+                }
                 if FileManager.default.fileExists(atPath: destURL.path) {
                     try FileManager.default.removeItem(at: destURL)
                 }
@@ -1891,6 +1964,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             let destURL = URL(fileURLWithPath: expandedDest)
 
             do {
+                let parentDir = destURL.deletingLastPathComponent()
+                if !FileManager.default.fileExists(atPath: parentDir.path) {
+                    try FileManager.default.createDirectory(at: parentDir, withIntermediateDirectories: true)
+                }
                 if FileManager.default.fileExists(atPath: destURL.path) {
                     try FileManager.default.removeItem(at: destURL)
                 }
@@ -2424,11 +2501,25 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(0)
         }
 
-        if args.contains("--reset") {
-            Config.shared.clearEnrolledVectors()
-            SecurityAuditLogger.shared.logVectorsModified(action: "Purged facial vectors", count: 0, details: "Reset via CLI")
+        if args.contains("--clear-vectors") || args.contains("--reset") {
+            let clearedCount = Config.shared.clearEnrolledVectors()
+            SecurityAuditLogger.shared.logVectorsCleared(count: clearedCount, details: "Reset via CLI")
             notifyDaemonIfRunning()
-            print("[FaceLock] Cleared all enrolled faces.")
+            if args.contains("--json") {
+                let out: [String: Any] = [
+                    "success": true,
+                    "action": "clear-vectors",
+                    "clearedCount": clearedCount,
+                    "message": "All enrolled facial vector templates have been cleared"
+                ]
+                if let d = try? JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys]),
+                   let s = String(data: d, encoding: .utf8) {
+                    print(s)
+                }
+            } else {
+                print("[FaceLock] Cleared all enrolled faces (\(clearedCount) templates removed).")
+            }
+            exit(0)
         }
 
         if let pauseIdx = args.firstIndex(of: "--pause") {

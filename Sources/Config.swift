@@ -497,7 +497,15 @@ public final class Config: Codable {
         }
     }
 
+    public static func isValidVector(_ vector: [Float]) -> Bool {
+        return vector.count == 128 && !vector.contains(where: { $0.isNaN || $0.isInfinite })
+    }
+
     public func addEnrolledVector(_ vector: [Float]) {
+        guard Config.isValidVector(vector) else {
+            print("[Config] Rejected invalid face vector (must be 128 finite floats).")
+            return
+        }
         var current = loadEnrolledVectors()
         current.append(vector)
         if current.count > 30 {
@@ -632,10 +640,13 @@ public final class Config: Codable {
         return fallback
     }
 
-    public func clearEnrolledVectors() {
+    @discardableResult
+    public func clearEnrolledVectors() -> Int {
+        let count = loadEnrolledVectors().count
         let url = Config.vectorsURL
         try? FileManager.default.removeItem(at: url)
         AppDelegate.notifyDaemonReload()
+        return count
     }
 
     public func exportVectors(to destinationPath: String) throws -> Int {
@@ -670,16 +681,20 @@ public final class Config: Codable {
         guard !imported.isEmpty else {
             throw NSError(domain: "io.github.facelock", code: 2, userInfo: [NSLocalizedDescriptionKey: "Imported vector file is empty"])
         }
+        let validVectors = imported.filter { Config.isValidVector($0) }
+        guard !validVectors.isEmpty else {
+            throw NSError(domain: "io.github.facelock", code: 3, userInfo: [NSLocalizedDescriptionKey: "Imported vector file contains no valid 128-dimensional biometric templates"])
+        }
         var combined: [[Float]]
         if merge {
             combined = loadEnrolledVectors()
-            for vec in imported {
-                if !vec.isEmpty && !combined.contains(where: { $0 == vec }) {
+            for vec in validVectors {
+                if !combined.contains(where: { $0 == vec }) {
                     combined.append(vec)
                 }
             }
         } else {
-            combined = imported
+            combined = validVectors
         }
         if combined.count > 30 {
             combined = Array(combined.suffix(30))

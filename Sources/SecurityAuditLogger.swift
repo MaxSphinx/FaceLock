@@ -310,6 +310,15 @@ public final class SecurityAuditLogger {
         )
     }
 
+    public func logVectorsCleared(count: Int, details: String? = nil) {
+        log(
+            eventType: "vectors_cleared",
+            appName: "FaceLock",
+            details: details ?? "Purged \(count) enrolled biometric face vector(s)",
+            isSuccess: true
+        )
+    }
+
     public func logIncidentsAction(action: String, count: Int, details: String? = nil) {
         log(
             eventType: "incidents_action",

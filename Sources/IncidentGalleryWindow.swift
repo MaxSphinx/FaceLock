@@ -400,10 +400,15 @@ public final class IncidentGalleryController: NSObject {
     }
 
     public static func parseDateFromFilename(_ name: String) -> String {
-        let clean = name.replacingOccurrences(of: "intruder_", with: "")
-                        .replacingOccurrences(of: "bystander_", with: "")
-                        .replacingOccurrences(of: ".jpg", with: "")
+        var clean = name.replacingOccurrences(of: ".jpg", with: "")
                         .replacingOccurrences(of: ".jpeg", with: "")
+        let prefixes = ["intruder_", "bystander_", "walkaway_", "wake_", "bruteforce_", "incident_"]
+        for p in prefixes {
+            if clean.hasPrefix(p) {
+                clean = String(clean.dropFirst(p.count))
+                break
+            }
+        }
         let parts = clean.split(separator: "_")
         if parts.count >= 2 {
             let date = parts[0]
