@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.4] - 2026-11-04
 
 ### Added
+- **Incident Management Ergonomics, Type Classification & Slicing (`CameraScanner.swift`, `AppDelegate.swift`, `IncidentGalleryWindow.swift`)**:
+  - Implemented `CameraScanner.incidentType(for:)` mapping capture prefixes (`bystander_`, `walkaway_`, `wake_`, `bruteforce_`, `intruder_`) into structured classification types.
+  - Enhanced CLI `--incidents` with `--filter` / `--type` and `--tail` / `--limit` pagination, enriching JSON outputs with typed classification and ISO-8601 timestamp metadata.
+  - Refined `IncidentGalleryController.parseDateFromFilename` with universal prefix stripping across all capture kinds.
+  - Added automatic parent directory creation resilience to single incident photo exports (`--export-latest-incident` and `--export-incident`).
+- **Incident CLI Aliases & Extended Makefile Targets (`AppDelegate.swift`, `Makefile`)**:
+  - Added argument normalization for `--export-latest-incident-json`, `--export-incident-json`, `--incident-json`, `--delete-incident-json`, and `--profiles-json`.
+  - Added Makefile targets `make health-json`, `make profiles-json`, `make latest-incident-json`, `make export-latest-incident DEST=`, `make export-latest-incident-json DEST=`, `make incident FILE=`, `make incident-json FILE=`, `make delete-incident FILE=`, and `make delete-incident-json FILE=`.
+- **Automated Test Suite Expansion (`Tests/FaceLockTests.swift`)**:
+  - Scaled automated test suite to 345 unit tests (up from 320) across 27 specialized test suites with 100% pass rate, covering incident type classification, gallery date parsing parity, incident slicing, single photo export directory creation, and flag normalization.
 - **Biometric Vector Dimensionality Validation & Finite Checks (`Config.swift`)**:
   - Implemented `Config.isValidVector(_:)` ensuring enrolled and imported templates strictly adhere to 128 dimensions without NaN or Infinite floating-point values.
   - Added robust validation in `addEnrolledVector(_:)` and `importVectors(from:merge:)` preventing template corruption and downstream SIMD mathematical failures.

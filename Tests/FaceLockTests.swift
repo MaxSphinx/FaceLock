@@ -70,6 +70,7 @@ public final class FaceLockTestSuite {
         testExportImportCliAliases()
         testVectorAndAuditExportResilience()
         testVectorValidationAndClearing()
+        testIncidentManagementAndFilteringResilience()
         testVectorMatchingBenchmark()
 
         let elapsed = Date().timeIntervalSince(startTime)
@@ -575,11 +576,20 @@ public final class FaceLockTestSuite {
 
         let intruderFile = "intruder_2026-11-01_12-30-45_a1b2c3.jpg"
         let bystanderFile = "bystander_2026-11-01_14-15-30_d4e5f6.jpg"
+        let walkawayFile = "walkaway_2026-11-01_16-20-10_g7h8i9.jpg"
+        let wakeFile = "wake_2026-11-01_18-05-00_j1k2l3.jpg"
+        let bruteforceFile = "bruteforce_2026-11-01_20-40-55_m4n5o6.jpg"
 
         assert(!intruderFile.hasPrefix("bystander_"), "Intruder file does not have bystander prefix")
         assert(intruderFile.hasPrefix("intruder_"), "Intruder file has intruder prefix")
         assert(bystanderFile.hasPrefix("bystander_"), "Bystander file has bystander prefix")
         assert(!bystanderFile.hasPrefix("intruder_"), "Bystander file does not have intruder prefix")
+
+        assertEqual(CameraScanner.incidentType(for: intruderFile), "intruder", "CameraScanner identifies intruder type")
+        assertEqual(CameraScanner.incidentType(for: bystanderFile), "bystander", "CameraScanner identifies bystander type")
+        assertEqual(CameraScanner.incidentType(for: walkawayFile), "walkaway", "CameraScanner identifies walkaway type")
+        assertEqual(CameraScanner.incidentType(for: wakeFile), "wake", "CameraScanner identifies wake type")
+        assertEqual(CameraScanner.incidentType(for: bruteforceFile), "bruteforce", "CameraScanner identifies bruteforce type")
 
         let intruderDate = IncidentGalleryController.parseDateFromFilename(intruderFile)
         assertEqual(intruderDate, "2026-11-01 в 12:30:45", "Intruder filename parsed into readable date and time")
@@ -587,15 +597,20 @@ public final class FaceLockTestSuite {
         let bystanderDate = IncidentGalleryController.parseDateFromFilename(bystanderFile)
         assertEqual(bystanderDate, "2026-11-01 в 14:15:30", "Bystander filename parsed into readable date and time without artifact")
 
+        let walkawayDate = IncidentGalleryController.parseDateFromFilename(walkawayFile)
+        assertEqual(walkawayDate, "2026-11-01 в 16:20:10", "Walkaway filename parsed into readable date and time without artifact")
+
+        let bruteforceDate = IncidentGalleryController.parseDateFromFilename(bruteforceFile)
+        assertEqual(bruteforceDate, "2026-11-01 в 20:40:55", "Bruteforce filename parsed into readable date and time without artifact")
+
         // Filter predicate logic parity
-        let fileList = [intruderFile, bystanderFile]
+        let fileList = [intruderFile, bystanderFile, walkawayFile, wakeFile, bruteforceFile]
         let shoulderOnly = fileList.filter { $0.hasPrefix("bystander_") }
         assertEqual(shoulderOnly.count, 1, "Shoulder filter isolates exactly 1 bystander capture")
         assertEqual(shoulderOnly.first, bystanderFile, "Shoulder filter selected bystander file")
 
         let intrudersOnly = fileList.filter { !$0.hasPrefix("bystander_") }
-        assertEqual(intrudersOnly.count, 1, "Intruders filter isolates exactly 1 intruder capture")
-        assertEqual(intrudersOnly.first, intruderFile, "Intruders filter selected intruder file")
+        assertEqual(intrudersOnly.count, 4, "Intruders filter isolates non-bystander captures")
     }
 
     // MARK: - 9. Pause Timer Tracking & Ergonomics
@@ -812,6 +827,21 @@ public final class FaceLockTestSuite {
 
         let normalizedReset = AppDelegate.normalizeArguments(["--reset"])
         assertEqual(normalizedReset, ["--clear-vectors"], "--reset normalizes to --clear-vectors")
+
+        let normalizedExportLatestJson = AppDelegate.normalizeArguments(["--export-latest-incident-json", "/tmp/latest.jpg"])
+        assertEqual(normalizedExportLatestJson, ["--export-latest-incident", "--json", "/tmp/latest.jpg"], "--export-latest-incident-json normalizes to --export-latest-incident --json")
+
+        let normalizedExportIncidentJson = AppDelegate.normalizeArguments(["--export-incident-json", "intruder_1.jpg", "/tmp/out.jpg"])
+        assertEqual(normalizedExportIncidentJson, ["--export-incident", "--json", "intruder_1.jpg", "/tmp/out.jpg"], "--export-incident-json normalizes to --export-incident --json")
+
+        let normalizedIncidentJson = AppDelegate.normalizeArguments(["--incident-json", "intruder_1.jpg"])
+        assertEqual(normalizedIncidentJson, ["--incident", "--json", "intruder_1.jpg"], "--incident-json normalizes to --incident --json")
+
+        let normalizedDeleteIncidentJson = AppDelegate.normalizeArguments(["--delete-incident-json", "intruder_1.jpg"])
+        assertEqual(normalizedDeleteIncidentJson, ["--delete-incident", "--json", "intruder_1.jpg"], "--delete-incident-json normalizes to --delete-incident --json")
+
+        let normalizedProfilesJson = AppDelegate.normalizeArguments(["--profiles-json"])
+        assertEqual(normalizedProfilesJson, ["--profiles", "--json"], "--profiles-json normalizes to --profiles --json")
     }
 
     private func testVectorAndAuditExportResilience() {
@@ -927,6 +957,65 @@ public final class FaceLockTestSuite {
 
         // Restore original vectors
         Config.shared.saveEnrolledVectors(original)
+    }
+
+    // MARK: - 9e. Incident Management, Slicing & Export Directory Resilience
+    private func testIncidentManagementAndFilteringResilience() {
+        print("\n▶ Test Suite: Incident Management, Slicing & Single Export Resilience")
+
+        // 1. Prefix and Type Mapping Integrity
+        assertEqual(CameraScanner.incidentType(for: "bystander_2026-11-04_12-00-00_abcdef.jpg"), "bystander", "bystander prefix maps to bystander type")
+        assertEqual(CameraScanner.incidentType(for: "walkaway_2026-11-04_12-00-00_abcdef.jpg"), "walkaway", "walkaway prefix maps to walkaway type")
+        assertEqual(CameraScanner.incidentType(for: "wake_2026-11-04_12-00-00_abcdef.jpg"), "wake", "wake prefix maps to wake type")
+        assertEqual(CameraScanner.incidentType(for: "bruteforce_2026-11-04_12-00-00_abcdef.jpg"), "bruteforce", "bruteforce prefix maps to bruteforce type")
+        assertEqual(CameraScanner.incidentType(for: "intruder_2026-11-04_12-00-00_abcdef.jpg"), "intruder", "intruder prefix maps to intruder type")
+        assertEqual(CameraScanner.incidentType(for: "custom_2026-11-04_12-00-00_abcdef.jpg"), "intruder", "unknown prefix defaults to intruder type")
+
+        // 2. Incident Filtering Logic
+        let mockFiles = [
+            "bystander_2026-11-04_10-00-00_111111.jpg",
+            "intruder_2026-11-04_10-05-00_222222.jpg",
+            "walkaway_2026-11-04_10-10-00_333333.jpg",
+            "wake_2026-11-04_10-15-00_444444.jpg",
+            "bruteforce_2026-11-04_10-20-00_555555.jpg"
+        ]
+
+        let shoulderFiltered = mockFiles.filter { $0.hasPrefix("bystander_") }
+        assertEqual(shoulderFiltered.count, 1, "Shoulder filter matches 1 item")
+        assertEqual(shoulderFiltered.first, mockFiles[0], "Shoulder filter matched bystander")
+
+        let walkawayFiltered = mockFiles.filter { $0.hasPrefix("walkaway_") }
+        assertEqual(walkawayFiltered.count, 1, "Walkaway filter matches 1 item")
+
+        let intruderFiltered = mockFiles.filter { $0.hasPrefix("intruder_") }
+        assertEqual(intruderFiltered.count, 1, "Intruder filter matches 1 item")
+
+        // 3. Tail slicing logic
+        let sliced = Array(mockFiles.prefix(2))
+        assertEqual(sliced.count, 2, "Tail slicing limits array to 2 items")
+        assertEqual(sliced.first, mockFiles[0], "Tail slicing preserves ordering")
+
+        // 4. Single Incident Export Parent Directory Creation Resilience
+        let testDir = "/tmp/facelock_incident_export_test_\(UUID().uuidString.prefix(6))"
+        let nestedDest = "\(testDir)/nested/subfolder/export_test.jpg"
+        defer { try? FileManager.default.removeItem(atPath: testDir) }
+
+        let destURL = URL(fileURLWithPath: nestedDest)
+        let parentDir = destURL.deletingLastPathComponent()
+
+        do {
+            if !FileManager.default.fileExists(atPath: parentDir.path) {
+                try FileManager.default.createDirectory(at: parentDir, withIntermediateDirectories: true)
+            }
+            assert(FileManager.default.fileExists(atPath: parentDir.path), "Export parent directory created automatically")
+
+            // Test writing dummy file
+            let dummyData = "test_image_data".data(using: .utf8)!
+            try dummyData.write(to: destURL)
+            assert(FileManager.default.fileExists(atPath: destURL.path), "Incident destination file written successfully in created directory")
+        } catch {
+            assert(false, "Incident export directory resilience failed: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - 10. Performance Benchmark

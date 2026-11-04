@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health toggle toggle-json pause pause-json resume resume-json toggle-wake wake reload reload-json reset-session reset-session-json check-app vectors vectors-json optimize-vectors optimize-vectors-json clear-vectors clear-vectors-json reset-vectors reset-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents clear-incidents-json prune-incidents export-incidents test-telegram test-telegram-json incidents incidents-summary incidents-summary-json latest-incident verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-stats-json audit-gui prune-audit clear-audit clear-audit-json export-audit export-audit-json export-logs export-logs-json pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config backup-config-json export-config export-config-json restore-config restore-config-json import-config import-config-json export-vectors export-vectors-json backup-vectors backup-vectors-json import-vectors import-vectors-json restore-vectors restore-vectors-json test profiles profile profile-json toggle-shoulder toggle-audible toggle-battery toggle-presentation battery-status battery-status-json
+.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health health-json toggle toggle-json pause pause-json resume resume-json toggle-wake wake reload reload-json reset-session reset-session-json check-app vectors vectors-json optimize-vectors optimize-vectors-json clear-vectors clear-vectors-json reset-vectors reset-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents clear-incidents-json prune-incidents export-incidents test-telegram test-telegram-json incidents incidents-summary incidents-summary-json latest-incident latest-incident-json export-latest-incident export-latest-incident-json incident incident-json delete-incident delete-incident-json verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-stats-json audit-gui prune-audit clear-audit clear-audit-json export-audit export-audit-json export-logs export-logs-json pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config backup-config-json export-config export-config-json restore-config restore-config-json import-config import-config-json export-vectors export-vectors-json backup-vectors backup-vectors-json import-vectors import-vectors-json restore-vectors restore-vectors-json test profiles profiles-json profile profile-json toggle-shoulder toggle-audible toggle-battery toggle-presentation battery-status battery-status-json
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -88,6 +88,8 @@ build:
 
 profiles: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --profiles
+
+profiles-json: profile-json
 
 profile: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --profile $(PROFILE)
@@ -199,6 +201,9 @@ status-json: build
 
 health: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --health || true
+
+health-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --health --json || true
 
 config: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --config
@@ -363,6 +368,51 @@ export-incidents: build
 
 latest-incident: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --latest-incident
+
+latest-incident-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --latest-incident --json
+
+export-latest-incident: build
+	@if [ -z "$(DEST)" ]; then \
+		echo "Usage: make export-latest-incident DEST=/path/to/destination.jpg"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --export-latest-incident "$(DEST)"
+
+export-latest-incident-json: build
+	@if [ -z "$(DEST)" ]; then \
+		echo "Usage: make export-latest-incident-json DEST=/path/to/destination.jpg"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --export-latest-incident "$(DEST)" --json
+
+incident: build
+	@if [ -z "$(FILE)" ]; then \
+		echo "Usage: make incident FILE=intruder_xxx.jpg"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --incident "$(FILE)"
+
+incident-json: build
+	@if [ -z "$(FILE)" ]; then \
+		echo "Usage: make incident-json FILE=intruder_xxx.jpg"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --incident "$(FILE)" --json
+
+delete-incident: build
+	@if [ -z "$(FILE)" ]; then \
+		echo "Usage: make delete-incident FILE=intruder_xxx.jpg"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --delete-incident "$(FILE)"
+
+delete-incident-json: build
+	@if [ -z "$(FILE)" ]; then \
+		echo "Usage: make delete-incident-json FILE=intruder_xxx.jpg"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --delete-incident "$(FILE)" --json
 
 verify-face: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --verify-face
