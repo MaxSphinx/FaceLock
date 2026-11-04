@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.4] - 2026-11-04
 
 ### Added
+- **Security Audit Telemetry & Event Category Validation (`SecurityAuditLogger.swift`)**:
+  - Added `SecurityAuditLogger.supportedEventFilters` enumerating 16 supported filter categories (`face`, `intruder`, `lock`, `pin`, `touchid`, `shield`, `policy`, `config`, `vectors`, `incidents`, `telegram`, `shoulder`, `profile`, `emergency`, `success`, `failure`).
+  - Added `SecurityAuditLogger.isValidEventFilter(_:)` with case-insensitive validation and alias mapping (e.g. `biometrics`, `touch_id`, `alerts`, `lockdown`, `settings`, etc.).
+  - Added `SecurityAuditLogger.getDetailedLogStats()` calculating comprehensive security metrics (`totalEvents`, `fileSizeBytes`, `lastEventTime`, `successCount`, `failureCount`, and `typeBreakdown`).
+- **Audit Stats CLI Enrichment & Argument Normalization (`AppDelegate.swift`, `Makefile`)**:
+  - Enriched `--audit-stats` (and `--audit-stats --json`) with breakdown of successful vs failure/alert events, top event types distribution, and comprehensive typed metrics.
+  - Added CLI argument normalization for `--log-stats-json` and `--log-stats`.
+  - Added Makefile targets `make log-stats` and `make log-stats-json` with `.PHONY` declarations.
+- **Automated Test Suite Expansion (`Tests/FaceLockTests.swift`)**:
+  - Scaled automated test suite to 395 unit tests (up from 364) across 28 specialized test suites with 100% pass rate, adding dedicated coverage for audit filter validation, log telemetry integrity, and CLI flag normalization.
 - **Incident Manifest Type Metadata & Breakdown Telemetry (`CameraScanner.swift`)**:
   - Enhanced `CameraScanner.exportIncidents(to:)` to attach typed classification (`intruder`, `walkaway`, `wake`, `bystander`, `bruteforce`) to each manifest record and compute a comprehensive `typeBreakdown` summary.
   - Added `CameraScanner.supportedIncidentTypes` and `CameraScanner.isValidIncidentType(_:)` with case-insensitive validation and whitespace trimming resilience.

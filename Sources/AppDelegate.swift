@@ -89,7 +89,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--profiles", "--json"])
             case "--verify-face-json":
                 args.append(contentsOf: ["--verify-face", "--json"])
-            case "--audit-stats-json":
+            case "--audit-stats-json", "--log-stats-json":
                 args.append(contentsOf: ["--audit-stats", "--json"])
             case "--audit-gui-json", "--audit-ui-json", "--audit-window-json":
                 args.append(contentsOf: ["--audit-gui", "--json"])
@@ -153,6 +153,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append("--export-audit")
             case "--prune-logs":
                 args.append("--prune-audit")
+            case "--log-stats":
+                args.append("--audit-stats")
             case "--toggle-battery":
                 args.append("--toggle-battery-aware")
             case "--toggle-shoulder":
@@ -2209,12 +2211,15 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if args.contains("--audit-stats") || args.contains("--log-stats") {
-            let stats = SecurityAuditLogger.shared.getLogStats()
+            let stats = SecurityAuditLogger.shared.getDetailedLogStats()
             if args.contains("--json") {
                 let dict: [String: Any] = [
                     "totalEvents": stats.totalCount,
                     "fileSizeBytes": stats.fileSizeBytes,
-                    "lastEventTime": stats.lastEventTime ?? ""
+                    "lastEventTime": stats.lastEventTime ?? "",
+                    "successCount": stats.successCount,
+                    "failureCount": stats.failureCount,
+                    "typeBreakdown": stats.typeBreakdown
                 ]
                 if let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
                    let str = String(data: data, encoding: .utf8) {
@@ -2225,10 +2230,17 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             let sizeKB = Double(stats.fileSizeBytes) / 1024.0
             print("""
             FaceLock Security Audit Log Statistics:
-              Total Logged Events: \(stats.totalCount)
+              Total Logged Events: \(stats.totalCount) (\(stats.successCount) success, \(stats.failureCount) failure/alert)
               Log File Size: \(String(format: "%.2f", sizeKB)) KB (~/.facelock/audit_log.jsonl)
               Last Event Timestamp: \(stats.lastEventTime ?? "None")
             """)
+            if !stats.typeBreakdown.isEmpty {
+                let sortedTypes = stats.typeBreakdown.sorted { $0.value > $1.value }.prefix(6)
+                print("  Top Event Types:")
+                for (type, cnt) in sortedTypes {
+                    print("    • \(type): \(cnt)")
+                }
+            }
             exit(0)
         }
 

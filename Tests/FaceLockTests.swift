@@ -71,6 +71,7 @@ public final class FaceLockTestSuite {
         testVectorAndAuditExportResilience()
         testVectorValidationAndClearing()
         testIncidentManagementAndFilteringResilience()
+        testSecurityAuditTelemetryAndFilterValidation()
         testVectorMatchingBenchmark()
 
         let elapsed = Date().timeIntervalSince(startTime)
@@ -864,6 +865,12 @@ public final class FaceLockTestSuite {
 
         let normalizedExportIncidentsJson = AppDelegate.normalizeArguments(["--export-incidents-json", "/tmp/incidents"])
         assertEqual(normalizedExportIncidentsJson, ["--export-incidents", "--json", "/tmp/incidents"], "--export-incidents-json normalizes to --export-incidents --json")
+
+        let normalizedLogStatsJson = AppDelegate.normalizeArguments(["--log-stats-json"])
+        assertEqual(normalizedLogStatsJson, ["--audit-stats", "--json"], "--log-stats-json normalizes to --audit-stats --json")
+
+        let normalizedLogStats = AppDelegate.normalizeArguments(["--log-stats"])
+        assertEqual(normalizedLogStats, ["--audit-stats"], "--log-stats normalizes to --audit-stats")
     }
 
     private func testVectorAndAuditExportResilience() {
@@ -1055,6 +1062,46 @@ public final class FaceLockTestSuite {
         } catch {
             assert(false, "Incident export directory resilience failed: \(error.localizedDescription)")
         }
+    }
+
+    // MARK: - 9d. Security Audit Telemetry & Filter Validation
+    private func testSecurityAuditTelemetryAndFilterValidation() {
+        print("\n▶ Test Suite: Security Audit Telemetry & Filter Validation")
+
+        let supportedFilters = SecurityAuditLogger.supportedEventFilters
+        assertEqual(supportedFilters.count, 16, "Total 16 supported audit event filters")
+        assert(supportedFilters.contains("face"), "Supported filters contain 'face'")
+        assert(supportedFilters.contains("intruder"), "Supported filters contain 'intruder'")
+        assert(supportedFilters.contains("lock"), "Supported filters contain 'lock'")
+        assert(supportedFilters.contains("pin"), "Supported filters contain 'pin'")
+        assert(supportedFilters.contains("touchid"), "Supported filters contain 'touchid'")
+        assert(supportedFilters.contains("shield"), "Supported filters contain 'shield'")
+        assert(supportedFilters.contains("policy"), "Supported filters contain 'policy'")
+        assert(supportedFilters.contains("config"), "Supported filters contain 'config'")
+        assert(supportedFilters.contains("vectors"), "Supported filters contain 'vectors'")
+        assert(supportedFilters.contains("incidents"), "Supported filters contain 'incidents'")
+        assert(supportedFilters.contains("telegram"), "Supported filters contain 'telegram'")
+        assert(supportedFilters.contains("shoulder"), "Supported filters contain 'shoulder'")
+        assert(supportedFilters.contains("profile"), "Supported filters contain 'profile'")
+        assert(supportedFilters.contains("emergency"), "Supported filters contain 'emergency'")
+        assert(supportedFilters.contains("success"), "Supported filters contain 'success'")
+        assert(supportedFilters.contains("failure"), "Supported filters contain 'failure'")
+
+        assert(SecurityAuditLogger.isValidEventFilter("face"), "Filter 'face' is valid")
+        assert(SecurityAuditLogger.isValidEventFilter("  INTRUDER  "), "Filter '  INTRUDER  ' is valid with whitespace trimming")
+        assert(SecurityAuditLogger.isValidEventFilter("biometrics"), "Alias filter 'biometrics' is valid")
+        assert(SecurityAuditLogger.isValidEventFilter("touch_id"), "Alias filter 'touch_id' is valid")
+        assert(SecurityAuditLogger.isValidEventFilter("lockdown"), "Alias filter 'lockdown' is valid")
+        assert(SecurityAuditLogger.isValidEventFilter("all"), "Filter 'all' is valid")
+        assert(!SecurityAuditLogger.isValidEventFilter("invalid_random_filter"), "Invalid filter returns false")
+        assert(!SecurityAuditLogger.isValidEventFilter(""), "Empty filter string returns false")
+
+        let detailed = SecurityAuditLogger.shared.getDetailedLogStats()
+        assert(detailed.totalCount >= 0, "Detailed total events count is non-negative")
+        assert(detailed.fileSizeBytes >= 0, "Detailed file size in bytes is non-negative")
+        assertEqual(detailed.successCount + detailed.failureCount, detailed.totalCount, "Success and failure counts sum to total events count")
+        let breakdownSum = detailed.typeBreakdown.values.reduce(0, +)
+        assertEqual(breakdownSum, detailed.totalCount, "Type breakdown counts sum to total events count")
     }
 
     // MARK: - 10. Performance Benchmark

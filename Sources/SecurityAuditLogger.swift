@@ -347,6 +347,36 @@ public final class SecurityAuditLogger {
         )
     }
 
+    public static let supportedEventFilters: [String] = [
+        "face", "intruder", "lock", "pin", "touchid", "shield",
+        "policy", "config", "vectors", "incidents", "telegram",
+        "shoulder", "profile", "emergency", "success", "failure"
+    ]
+
+    public static func isValidEventFilter(_ filter: String) -> Bool {
+        let normalized = filter.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !normalized.isEmpty else { return false }
+        if normalized == "all" { return true }
+        if supportedEventFilters.contains(normalized) { return true }
+        switch normalized {
+        case "biometric", "biometrics",
+             "intruders", "alert", "alerts",
+             "locks", "lockout", "lockouts", "bruteforce",
+             "touch_id",
+             "settings",
+             "vector", "enroll", "enrollment",
+             "incident",
+             "tg",
+             "shoulder_surfing", "bystander",
+             "profiles",
+             "lockdown",
+             "failed":
+            return true
+        default:
+            return false
+        }
+    }
+
     public func fetchRecentEvents(tail: Int = 20, filterType: String? = nil) -> [AuditEvent] {
         var results: [AuditEvent] = []
         logQueue.sync {
@@ -474,9 +504,17 @@ public final class SecurityAuditLogger {
     }
 
     public func getLogStats() -> (totalCount: Int, fileSizeBytes: UInt64, lastEventTime: String?) {
+        let detailed = getDetailedLogStats()
+        return (detailed.totalCount, detailed.fileSizeBytes, detailed.lastEventTime)
+    }
+
+    public func getDetailedLogStats() -> (totalCount: Int, fileSizeBytes: UInt64, lastEventTime: String?, successCount: Int, failureCount: Int, typeBreakdown: [String: Int]) {
         var count = 0
         var size: UInt64 = 0
         var lastTime: String? = nil
+        var successCount = 0
+        var failureCount = 0
+        var typeBreakdown: [String: Int] = [:]
 
         logQueue.sync {
             if let attrs = try? FileManager.default.attributesOfItem(atPath: self.logFileURL.path),
@@ -486,14 +524,22 @@ public final class SecurityAuditLogger {
             if let content = try? String(contentsOf: self.logFileURL, encoding: .utf8) {
                 let lines = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
                 count = lines.count
-                if let last = lines.last,
-                   let data = last.data(using: .utf8),
-                   let event = try? JSONDecoder().decode(AuditEvent.self, from: data) {
-                    lastTime = event.timestamp
+                let decoder = JSONDecoder()
+                for line in lines {
+                    if let data = line.data(using: .utf8),
+                       let event = try? decoder.decode(AuditEvent.self, from: data) {
+                        lastTime = event.timestamp
+                        if event.isSuccess {
+                            successCount += 1
+                        } else {
+                            failureCount += 1
+                        }
+                        typeBreakdown[event.eventType, default: 0] += 1
+                    }
                 }
             }
         }
-        return (count, size, lastTime)
+        return (count, size, lastTime, successCount, failureCount, typeBreakdown)
     }
 
     public func exportLogs(to destinationPath: String) throws -> Int {
