@@ -75,6 +75,7 @@ public final class FaceLockTestSuite {
         testIncidentTelemetryAndAuditSearch()
         testIncidentAndAuditAgePruning()
         testConfigValidationSuiteAndIncidentSearch()
+        testIncidentDeletionExportAndAuditStats()
         testVectorMatchingBenchmark()
 
         let elapsed = Date().timeIntervalSince(startTime)
@@ -1389,6 +1390,98 @@ public final class FaceLockTestSuite {
         assertEqual(AppDelegate.normalizeArguments(["--set-debounce-json"]), ["--set-debounce", "--json"], "Normalizes --set-debounce-json")
         assertEqual(AppDelegate.normalizeArguments(["--set-mode-json"]), ["--set-mode", "--json"], "Normalizes --set-mode-json")
         assertEqual(AppDelegate.normalizeArguments(["--set-walkaway-json"]), ["--set-walkaway", "--json"], "Normalizes --set-walkaway-json")
+    }
+
+    // MARK: - 9h. Incident Deletion, Export & Audit Stats
+    private func testIncidentDeletionExportAndAuditStats() {
+        print("\n▶ Test Suite: Incident Deletion, Export & Audit Stats")
+
+        // 1. Incident Deletion Validation
+        let invalidExtRes = CameraScanner.shared.deleteIncident(filename: "malicious.sh")
+        assert(!invalidExtRes.success, "deleteIncident rejects non-image extension")
+        assertEqual(invalidExtRes.freedBytes, UInt64(0), "deleteIncident with invalid extension frees 0 bytes")
+
+        let nonExistentRes = CameraScanner.shared.deleteIncident(filename: "non_existent_incident_999999.jpg")
+        assert(!nonExistentRes.success, "deleteIncident returns false for non-existent incident")
+
+        let traversalRes = CameraScanner.shared.deleteIncident(filename: "../../non_existent.jpg")
+        assert(!traversalRes.success, "deleteIncident sanitizes path traversal attempt safely")
+
+        // 2. Incident Creation, Verification & Deletion Lifecycle
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let intrudersDir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
+        try? FileManager.default.createDirectory(at: intrudersDir, withIntermediateDirectories: true)
+        let testFilename = "test_lifecycle_incident_\(Int(Date().timeIntervalSince1970)).jpg"
+        let testFileURL = intrudersDir.appendingPathComponent(testFilename)
+        let dummyData = Data(repeating: 0xFF, count: 2048)
+        try? dummyData.write(to: testFileURL)
+
+        assert(FileManager.default.fileExists(atPath: testFileURL.path), "Test incident file created successfully")
+
+        // Verify getIncidentDetails finds it
+        let details = CameraScanner.shared.getIncidentDetails(filename: testFilename)
+        assert(details != nil, "getIncidentDetails finds created incident")
+        assertEqual(details?.filename, testFilename, "Incident details filename matches")
+        assertEqual(details?.sizeBytes, UInt64(2048), "Incident details sizeBytes matches written bytes")
+
+        // Export the incident to a temp file
+        let tempExportDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("facelock_test_export_\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: tempExportDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempExportDir) }
+
+        do {
+            let exportRes = try CameraScanner.shared.exportIncident(filename: testFilename, to: tempExportDir.path)
+            assertEqual(exportRes.source, testFilename, "exportIncident source matches")
+            assertEqual(exportRes.sizeBytes, UInt64(2048), "exportIncident sizeBytes matches")
+            assert(FileManager.default.fileExists(atPath: exportRes.destination), "Exported file exists at destination")
+        } catch {
+            assert(false, "exportIncident should succeed: \(error.localizedDescription)")
+        }
+
+        // Test export non-existent file
+        do {
+            _ = try CameraScanner.shared.exportIncident(filename: "non_existent_file.jpg", to: tempExportDir.path)
+            assert(false, "exportIncident should throw for non-existent file")
+        } catch {
+            assert(true, "exportIncident throws error for non-existent file")
+        }
+
+        // Delete the test incident
+        let deleteRes = CameraScanner.shared.deleteIncident(filename: testFilename)
+        assert(deleteRes.success, "deleteIncident succeeds for existing incident")
+        assertEqual(deleteRes.freedBytes, UInt64(2048), "deleteIncident reports correct freed bytes")
+        assert(!FileManager.default.fileExists(atPath: testFileURL.path), "Incident file is removed from disk")
+
+        // 3. SecurityAuditLogger AuditStats Struct & Date Queries
+        let auditStats = SecurityAuditLogger.shared.getAuditStats()
+        assert(auditStats.totalEvents >= 0, "AuditStats totalEvents is non-negative")
+        assert(auditStats.todayCount >= 0, "AuditStats todayCount is non-negative")
+        assert(auditStats.past24HoursCount >= 0, "AuditStats past24HoursCount is non-negative")
+        assert(auditStats.todayCount <= auditStats.totalEvents, "AuditStats todayCount <= totalEvents")
+        assert(auditStats.past24HoursCount <= auditStats.totalEvents, "AuditStats past24HoursCount <= totalEvents")
+
+        let auditDict = auditStats.toDictionary()
+        assert(auditDict["totalEvents"] != nil, "AuditStats dictionary contains totalEvents")
+        assert(auditDict["todayCount"] != nil, "AuditStats dictionary contains todayCount")
+        assert(auditDict["past24HoursCount"] != nil, "AuditStats dictionary contains past24HoursCount")
+        assert(auditDict["typeBreakdown"] != nil, "AuditStats dictionary contains typeBreakdown")
+
+        // 4. Diagnostics Enrichment
+        let diag = Diagnostics.collectReport()
+        let daemon = diag["daemon"] as? [String: Any] ?? [:]
+        assert(daemon["maxFailedPinAttempts"] != nil, "Diagnostics daemon contains maxFailedPinAttempts")
+        assert(daemon["pinLockoutSeconds"] != nil, "Diagnostics daemon contains pinLockoutSeconds")
+
+        let storage = diag["storage"] as? [String: Any] ?? [:]
+        assert(storage["auditStats"] != nil, "Diagnostics storage contains auditStats")
+        assert(storage["incidentStats"] != nil, "Diagnostics storage contains incidentStats")
+
+        // 5. CLI Argument Normalization for PIN and PIN Lockout
+        assertEqual(AppDelegate.normalizeArguments(["--pin-attempts-json"]), ["--set-pin-attempts", "--json"], "Normalizes --pin-attempts-json")
+        assertEqual(AppDelegate.normalizeArguments(["--pin-lockout-json"]), ["--set-pin-lockout", "--json"], "Normalizes --pin-lockout-json")
+        assertEqual(AppDelegate.normalizeArguments(["--set-pin-json"]), ["--set-pin", "--json"], "Normalizes --set-pin-json")
+        assertEqual(AppDelegate.normalizeArguments(["--pin-attempts"]), ["--set-pin-attempts"], "Normalizes --pin-attempts alias")
+        assertEqual(AppDelegate.normalizeArguments(["--pin-lockout"]), ["--set-pin-lockout"], "Normalizes --pin-lockout alias")
     }
 
     // MARK: - 10. Performance Benchmark

@@ -38,6 +38,53 @@ public struct AuditEvent: Codable {
     }
 }
 
+public struct AuditStats {
+    public let totalEvents: Int
+    public let fileSizeBytes: UInt64
+    public let lastEventTime: String?
+    public let successCount: Int
+    public let failureCount: Int
+    public let todayCount: Int
+    public let past24HoursCount: Int
+    public let typeBreakdown: [String: Int]
+
+    public init(
+        totalEvents: Int,
+        fileSizeBytes: UInt64,
+        lastEventTime: String?,
+        successCount: Int,
+        failureCount: Int,
+        todayCount: Int,
+        past24HoursCount: Int,
+        typeBreakdown: [String: Int]
+    ) {
+        self.totalEvents = totalEvents
+        self.fileSizeBytes = fileSizeBytes
+        self.lastEventTime = lastEventTime
+        self.successCount = successCount
+        self.failureCount = failureCount
+        self.todayCount = todayCount
+        self.past24HoursCount = past24HoursCount
+        self.typeBreakdown = typeBreakdown
+    }
+
+    public func toDictionary() -> [String: Any] {
+        var dict: [String: Any] = [
+            "totalEvents": totalEvents,
+            "fileSizeBytes": fileSizeBytes,
+            "successCount": successCount,
+            "failureCount": failureCount,
+            "todayCount": todayCount,
+            "past24HoursCount": past24HoursCount,
+            "typeBreakdown": typeBreakdown
+        ]
+        if let last = lastEventTime {
+            dict["lastEventTime"] = last
+        }
+        return dict
+    }
+}
+
 public final class SecurityAuditLogger {
     public static let shared = SecurityAuditLogger()
 
@@ -592,18 +639,20 @@ public final class SecurityAuditLogger {
         return (deleted, freed)
     }
 
-    public func getLogStats() -> (totalCount: Int, fileSizeBytes: UInt64, lastEventTime: String?) {
-        let detailed = getDetailedLogStats()
-        return (detailed.totalCount, detailed.fileSizeBytes, detailed.lastEventTime)
-    }
-
-    public func getDetailedLogStats() -> (totalCount: Int, fileSizeBytes: UInt64, lastEventTime: String?, successCount: Int, failureCount: Int, typeBreakdown: [String: Int]) {
+    public func getAuditStats() -> AuditStats {
         var count = 0
         var size: UInt64 = 0
         var lastTime: String? = nil
         var successCount = 0
         var failureCount = 0
+        var todayCount = 0
+        var past24HoursCount = 0
         var typeBreakdown: [String: Int] = [:]
+
+        let now = Date()
+        let oneDayAgo = now.addingTimeInterval(-86400)
+        let todayPrefix = ISO8601DateFormatter().string(from: now).prefix(10)
+        let isoFormatter = ISO8601DateFormatter()
 
         logQueue.sync {
             if let attrs = try? FileManager.default.attributesOfItem(atPath: self.logFileURL.path),
@@ -623,12 +672,37 @@ public final class SecurityAuditLogger {
                         } else {
                             failureCount += 1
                         }
+                        if event.timestamp.hasPrefix(todayPrefix) {
+                            todayCount += 1
+                        }
+                        if let date = isoFormatter.date(from: event.timestamp), date >= oneDayAgo {
+                            past24HoursCount += 1
+                        }
                         typeBreakdown[event.eventType, default: 0] += 1
                     }
                 }
             }
         }
-        return (count, size, lastTime, successCount, failureCount, typeBreakdown)
+        return AuditStats(
+            totalEvents: count,
+            fileSizeBytes: size,
+            lastEventTime: lastTime,
+            successCount: successCount,
+            failureCount: failureCount,
+            todayCount: todayCount,
+            past24HoursCount: past24HoursCount,
+            typeBreakdown: typeBreakdown
+        )
+    }
+
+    public func getLogStats() -> (totalCount: Int, fileSizeBytes: UInt64, lastEventTime: String?) {
+        let detailed = getDetailedLogStats()
+        return (detailed.totalCount, detailed.fileSizeBytes, detailed.lastEventTime)
+    }
+
+    public func getDetailedLogStats() -> (totalCount: Int, fileSizeBytes: UInt64, lastEventTime: String?, successCount: Int, failureCount: Int, typeBreakdown: [String: Int]) {
+        let stats = getAuditStats()
+        return (stats.totalEvents, stats.fileSizeBytes, stats.lastEventTime, stats.successCount, stats.failureCount, stats.typeBreakdown)
     }
 
     public func exportAudit(

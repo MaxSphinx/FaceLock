@@ -586,9 +586,11 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
     }
 
     public func getIncidentDetails(filename: String) -> IncidentRecord? {
+        let cleanName = URL(fileURLWithPath: filename).lastPathComponent.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanName.isEmpty && cleanName != "." && cleanName != ".." else { return nil }
         let home = FileManager.default.homeDirectoryForCurrentUser
         let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
-        let fileURL = dir.appendingPathComponent(filename)
+        let fileURL = dir.appendingPathComponent(cleanName)
         guard FileManager.default.fileExists(atPath: fileURL.path) else { return nil }
 
         var sz: UInt64 = 0
@@ -599,14 +601,72 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
                 modDateStr = ISO8601DateFormatter().string(from: modDate)
             }
         }
-        let incType = CameraScanner.incidentType(for: filename)
+        let incType = CameraScanner.incidentType(for: cleanName)
         return IncidentRecord(
-            filename: filename,
+            filename: cleanName,
             path: fileURL.path,
             sizeBytes: sz,
             type: incType,
             timestamp: modDateStr
         )
+    }
+
+    public func deleteIncident(filename: String) -> (success: Bool, freedBytes: UInt64, error: String?) {
+        let cleanName = URL(fileURLWithPath: filename).lastPathComponent.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanName.isEmpty && cleanName != "." && cleanName != ".." else {
+            return (false, 0, "Invalid incident filename.")
+        }
+        guard cleanName.hasSuffix(".jpg") || cleanName.hasSuffix(".jpeg") || cleanName.hasSuffix(".png") else {
+            return (false, 0, "Incident capture must be an image file (.jpg, .jpeg, .png).")
+        }
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
+        let fileURL = dir.appendingPathComponent(cleanName)
+        guard FileManager.default.fileExists(atPath: fileURL.path) else {
+            return (false, 0, "Incident capture '\(cleanName)' not found.")
+        }
+        var sz: UInt64 = 0
+        if let attrs = try? FileManager.default.attributesOfItem(atPath: fileURL.path) {
+            sz = (attrs[.size] as? UInt64) ?? 0
+        }
+        do {
+            try FileManager.default.removeItem(at: fileURL)
+            return (true, sz, nil)
+        } catch {
+            return (false, 0, error.localizedDescription)
+        }
+    }
+
+    public func exportIncident(filename: String, to destinationPath: String) throws -> (source: String, destination: String, sizeBytes: UInt64) {
+        let cleanName = URL(fileURLWithPath: filename).lastPathComponent.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanName.isEmpty && cleanName != "." && cleanName != ".." else {
+            throw NSError(domain: "io.github.facelock", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid incident filename."])
+        }
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let sourceURL = home.appendingPathComponent(".facelock/intruders", isDirectory: true).appendingPathComponent(cleanName)
+        guard FileManager.default.fileExists(atPath: sourceURL.path) else {
+            throw NSError(domain: "io.github.facelock", code: 404, userInfo: [NSLocalizedDescriptionKey: "Incident capture '\(cleanName)' not found."])
+        }
+
+        let expandedDest = (destinationPath as NSString).expandingTildeInPath
+        let destURL: URL
+        var isDir: ObjCBool = false
+        if FileManager.default.fileExists(atPath: expandedDest, isDirectory: &isDir), isDir.boolValue {
+            destURL = URL(fileURLWithPath: expandedDest).appendingPathComponent(cleanName)
+        } else {
+            destURL = URL(fileURLWithPath: expandedDest)
+        }
+
+        if FileManager.default.fileExists(atPath: destURL.path) {
+            try FileManager.default.removeItem(at: destURL)
+        }
+        try FileManager.default.copyItem(at: sourceURL, to: destURL)
+
+        var sz: UInt64 = 0
+        if let attrs = try? FileManager.default.attributesOfItem(atPath: destURL.path) {
+            sz = (attrs[.size] as? UInt64) ?? 0
+        }
+        return (source: cleanName, destination: destURL.path, sizeBytes: sz)
     }
 
     public func searchIncidents(query: String? = nil, filterType: String? = nil, limit: Int? = nil) -> [IncidentRecord] {

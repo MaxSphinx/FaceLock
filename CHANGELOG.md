@@ -4,6 +4,32 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.8] - 2026-11-05
+
+### Added
+- **Hardened PIN Validation Suite & Structured CLI Setters (`Config.swift`, `AppDelegate.swift`)**:
+  - Wired `--set-pin <pin>` to strict validation using `Config.isValidPin(pin)` ensuring 4-8 numeric digits, returning structured JSON responses (`{"success":true,"message":"Lock screen PIN updated","pinLength":N}` and `{"success":false,"error":...}`).
+  - Wired `--set-pin-attempts <count>` to `Config.isValidPinAttempts(count)` with structured error reporting in JSON mode.
+  - Wired `--set-pin-lockout <sec>` to `Config.isValidPinLockout(sec)` with structured error reporting in JSON mode.
+  - Handled missing argument scenarios cleanly with JSON errors across `--set-pin`, `--set-pin-attempts`, `--set-pin-lockout`, and `--verify-pin`.
+  - Added CLI flag normalizations: `--pin-attempts` -> `--set-pin-attempts`, `--pin-attempts-json` -> `["--set-pin-attempts", "--json"]`, `--pin-lockout` -> `--set-pin-lockout`, `--pin-lockout-json` -> `["--set-pin-lockout", "--json"]`, `--set-pin-json` -> `["--set-pin", "--json"]`.
+- **Safe Incident Deletion & Single Incident Export (`CameraScanner.swift`, `AppDelegate.swift`)**:
+  - Implemented `CameraScanner.deleteIncident(filename:) -> (success: Bool, freedBytes: UInt64, error: String?)` with strict basename sanitization and extension checks (.jpg, .jpeg, .png) preventing path traversal.
+  - Implemented `CameraScanner.exportIncident(filename:to:) throws -> (source: String, destination: String, sizeBytes: UInt64)` with basename sanitization and directory resolution.
+  - Hardened `CameraScanner.getIncidentDetails(filename:)` with basename sanitization.
+  - Replaced raw filesystem calls in `--delete-incident`, `--export-incident`, and `--incident` in `AppDelegate.swift` with the unified, safe `CameraScanner` methods.
+- **Structured Security Audit Telemetry (`SecurityAuditLogger.swift`, `AppDelegate.swift`, `Diagnostics.swift`)**:
+  - Implemented `SecurityAuditLogger.AuditStats` struct with `todayCount`, `past24HoursCount`, and `toDictionary()` representation.
+  - Implemented `SecurityAuditLogger.getAuditStats() -> AuditStats` calculating live date-based frequency metrics.
+  - Enhanced `--audit-stats` output (both JSON and human-readable) with `todayCount` and `past24HoursCount`.
+  - Enriched `Diagnostics.collectReport()` storage dictionary with full `incidentStats` dictionary and `daemon` dictionary with `maxFailedPinAttempts` and `pinLockoutSeconds`.
+- **Makefile & CLI Workflow Automation (`Makefile`)**:
+  - Added Makefile targets `pin-attempts-json ATTEMPTS=`, `pin-lockout-json SECONDS=`, `set-pin PIN=`, `set-pin-json PIN=`.
+  - Documented new targets in `make help`.
+  - Added CLI verification checks for the new targets in `make test`.
+- **Automated Test Suite Expansion (`Tests/FaceLockTests.swift`)**:
+  - Scaled automated test suite to 585 unit tests across 32 specialized test suites with 100% pass rate, covering incident deletion, incident export, audit statistics telemetry, diagnostics report enrichment, and CLI normalizations.
+
 ## [1.1.7] - 2026-11-05
 
 ### Added

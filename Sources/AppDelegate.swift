@@ -149,10 +149,16 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append("--prune-audit-days")
             case "--verify-pin-json":
                 args.append(contentsOf: ["--verify-pin", "--json"])
-            case "--set-pin-attempts-json":
+            case "--set-pin-attempts-json", "--pin-attempts-json":
                 args.append(contentsOf: ["--set-pin-attempts", "--json"])
-            case "--set-pin-lockout-json":
+            case "--set-pin-lockout-json", "--pin-lockout-json":
                 args.append(contentsOf: ["--set-pin-lockout", "--json"])
+            case "--set-pin-json":
+                args.append(contentsOf: ["--set-pin", "--json"])
+            case "--pin-attempts":
+                args.append("--set-pin-attempts")
+            case "--pin-lockout":
+                args.append("--set-pin-lockout")
             case "--export-latest-incident-json":
                 args.append(contentsOf: ["--export-latest-incident", "--json"])
             case "--export-incident-json":
@@ -194,6 +200,17 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         return args
+    }
+
+    public static func valueForOption(_ option: String, in args: [String]) -> String? {
+        guard let idx = args.firstIndex(of: option) else { return nil }
+        var targetIdx = idx + 1
+        while targetIdx < args.count && args[targetIdx].hasPrefix("--") {
+            targetIdx += 1
+        }
+        guard targetIdx < args.count else { return nil }
+        let val = args[targetIdx].trimmingCharacters(in: .whitespacesAndNewlines)
+        return val.isEmpty ? nil : val
     }
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
@@ -305,9 +322,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if args.contains("--version") || args.contains("-v") {
             if args.contains("--json") {
-                print("{\"name\":\"FaceLock\",\"version\":\"1.1.7\",\"platform\":\"darwin-arm64\"}")
+                print("{\"name\":\"FaceLock\",\"version\":\"1.1.8\",\"platform\":\"darwin-arm64\"}")
             } else {
-                print("FaceLock v1.1.7 (darwin-arm64)")
+                print("FaceLock v1.1.8 (darwin-arm64)")
             }
             exit(0)
         }
@@ -485,7 +502,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
             if args.contains("--json") {
                 let statusDict: [String: Any] = [
-                    "version": "1.1.7",
+                    "version": "1.1.8",
                     "daemon": isAlreadyRunning ? "running" : "stopped",
                     "shieldState": Config.shared.isEnabled ? "active" : "paused",
                     "protectionMode": Config.shared.protectionMode,
@@ -517,7 +534,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             let recent24hStr = recent24hCount > 0 ? " (\(recent24hCount) in past 24h)" : ""
             print("""
             FaceLock Status:
-              Version: 1.1.7 (darwin-arm64)
+              Version: 1.1.8 (darwin-arm64)
               Daemon: \(isAlreadyRunning ? "RUNNING" : "STOPPED")
               Shield: \(Config.shared.isEnabled ? "ACTIVE" : "PAUSED")
               Mode: \(Config.shared.protectionMode)
@@ -555,7 +572,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             if args.contains("--json") {
                 let out: [String: Any] = [
                     "healthy": isHealthy,
-                    "version": "1.1.7",
+                    "version": "1.1.8",
                     "daemonRunning": isAlreadyRunning,
                     "shieldActive": Config.shared.isEnabled,
                     "activeProfile": Config.shared.activeProfile,
@@ -1150,72 +1167,121 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        if let idx = args.firstIndex(of: "--set-pin"), idx + 1 < args.count {
-            let newPin = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !newPin.isEmpty else {
-                print("Error: Missing PIN value. Usage: facelock --set-pin <pin>")
-                exit(1)
-            }
-            Config.shared.pin = newPin
-            Config.shared.save()
-            SecurityAuditLogger.shared.logConfigChanged(setting: "pin", value: "****", details: "Lock screen unlock PIN updated")
-            notifyDaemonIfRunning()
-            if args.contains("--json") {
-                print("{\"success\":true,\"message\":\"Lock screen PIN updated\"}")
-            } else {
-                print("✓ Lock screen PIN successfully updated.")
-            }
-            exit(0)
-        }
-
-        if let idx = args.firstIndex(of: "--set-pin-attempts"), idx + 1 < args.count {
-            guard let count = Int(args[idx + 1]), count >= 1 && count <= 10 else {
-                print("Error: Failed attempts threshold must be between 1 and 10.")
-                exit(1)
-            }
-            Config.shared.maxFailedPinAttempts = count
-            Config.shared.save()
-            SecurityAuditLogger.shared.logConfigChanged(setting: "maxFailedPinAttempts", value: "\(count)")
-            notifyDaemonIfRunning()
-            if args.contains("--json") {
-                print("{\"success\":true,\"maxFailedPinAttempts\":\(count)}")
-            } else {
-                print("✓ Max failed PIN attempts updated to \(count).")
-            }
-            exit(0)
-        }
-
-        if let idx = args.firstIndex(of: "--set-pin-lockout"), idx + 1 < args.count {
-            guard let secs = Double(args[idx + 1]), secs >= 1.0 && secs <= 60.0 else {
-                print("Error: PIN lockout delay must be between 1.0 and 60.0 seconds.")
-                exit(1)
-            }
-            Config.shared.pinLockoutSeconds = secs
-            Config.shared.save()
-            SecurityAuditLogger.shared.logConfigChanged(setting: "pinLockoutSeconds", value: "\(Int(secs))s")
-            notifyDaemonIfRunning()
-            if args.contains("--json") {
-                print("{\"success\":true,\"pinLockoutSeconds\":\(secs)}")
-            } else {
-                print("✓ PIN lockout delay updated to \(Int(secs))s.")
-            }
-            exit(0)
-        }
-
-        if let idx = args.firstIndex(of: "--verify-pin"), idx + 1 < args.count {
-            let candidatePin = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
-            let isValid = (candidatePin == Config.shared.pin)
-            SecurityAuditLogger.shared.logVerificationCheck(type: "pin_verification", success: isValid, details: "CLI PIN verification test: \(isValid ? "Match" : "Mismatch")")
-            if args.contains("--json") {
-                print("{\"valid\":\(isValid),\"length\":\(candidatePin.count)}")
-            } else {
-                if isValid {
-                    print("✓ PIN matches configured lock screen PIN.")
+        if args.contains("--set-pin") {
+            if let newPin = AppDelegate.valueForOption("--set-pin", in: args) {
+                if Config.isValidPin(newPin) {
+                    Config.shared.pin = newPin
+                    Config.shared.save()
+                    SecurityAuditLogger.shared.logConfigChanged(setting: "pin", value: "****", details: "Lock screen unlock PIN updated")
+                    notifyDaemonIfRunning()
+                    if args.contains("--json") {
+                        print("{\"success\":true,\"message\":\"Lock screen PIN updated\",\"pinLength\":\(newPin.count)}")
+                    } else {
+                        print("✓ Lock screen PIN successfully updated.")
+                    }
+                    exit(0)
                 } else {
-                    print("❌ PIN does not match.")
+                    if args.contains("--json") {
+                        print("{\"success\":false,\"error\":\"PIN must be between 4 and 8 digits (numeric only).\"}")
+                    } else {
+                        print("Error: PIN must be between 4 and 8 digits (numeric only).")
+                    }
+                    exit(1)
                 }
+            } else {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"Missing PIN value. Usage: facelock --set-pin <pin>\"}")
+                } else {
+                    print("Error: Missing PIN value. Usage: facelock --set-pin <pin>")
+                }
+                exit(1)
             }
-            exit(isValid ? 0 : 1)
+        }
+
+        if args.contains("--set-pin-attempts") {
+            if let str = AppDelegate.valueForOption("--set-pin-attempts", in: args) {
+                if let count = Int(str), Config.isValidPinAttempts(count) {
+                    Config.shared.maxFailedPinAttempts = count
+                    Config.shared.save()
+                    SecurityAuditLogger.shared.logConfigChanged(setting: "maxFailedPinAttempts", value: "\(count)")
+                    notifyDaemonIfRunning()
+                    if args.contains("--json") {
+                        print("{\"success\":true,\"maxFailedPinAttempts\":\(count)}")
+                    } else {
+                        print("✓ Max failed PIN attempts updated to \(count).")
+                    }
+                    exit(0)
+                } else {
+                    if args.contains("--json") {
+                        print("{\"success\":false,\"error\":\"Failed attempts threshold must be between 1 and 10.\"}")
+                    } else {
+                        print("Error: Failed attempts threshold must be between 1 and 10.")
+                    }
+                    exit(1)
+                }
+            } else {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"Missing count value. Usage: facelock --set-pin-attempts <count>\"}")
+                } else {
+                    print("Error: Missing count value. Usage: facelock --set-pin-attempts <count>")
+                }
+                exit(1)
+            }
+        }
+
+        if args.contains("--set-pin-lockout") {
+            if let str = AppDelegate.valueForOption("--set-pin-lockout", in: args) {
+                if let secs = Double(str), Config.isValidPinLockout(secs) {
+                    Config.shared.pinLockoutSeconds = secs
+                    Config.shared.save()
+                    SecurityAuditLogger.shared.logConfigChanged(setting: "pinLockoutSeconds", value: "\(Int(secs))s")
+                    notifyDaemonIfRunning()
+                    if args.contains("--json") {
+                        print("{\"success\":true,\"pinLockoutSeconds\":\(secs)}")
+                    } else {
+                        print("✓ PIN lockout delay updated to \(Int(secs))s.")
+                    }
+                    exit(0)
+                } else {
+                    if args.contains("--json") {
+                        print("{\"success\":false,\"error\":\"PIN lockout delay must be between 1.0 and 60.0 seconds.\"}")
+                    } else {
+                        print("Error: PIN lockout delay must be between 1.0 and 60.0 seconds.")
+                    }
+                    exit(1)
+                }
+            } else {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"Missing seconds value. Usage: facelock --set-pin-lockout <seconds>\"}")
+                } else {
+                    print("Error: Missing seconds value. Usage: facelock --set-pin-lockout <seconds>")
+                }
+                exit(1)
+            }
+        }
+
+        if args.contains("--verify-pin") {
+            if let candidatePin = AppDelegate.valueForOption("--verify-pin", in: args) {
+                let isValid = (candidatePin == Config.shared.pin)
+                SecurityAuditLogger.shared.logVerificationCheck(type: "pin_verification", success: isValid, details: "CLI PIN verification test: \(isValid ? "Match" : "Mismatch")")
+                if args.contains("--json") {
+                    print("{\"valid\":\(isValid),\"length\":\(candidatePin.count)}")
+                } else {
+                    if isValid {
+                        print("✓ PIN matches configured lock screen PIN.")
+                    } else {
+                        print("❌ PIN does not match.")
+                    }
+                }
+                exit(isValid ? 0 : 1)
+            } else {
+                if args.contains("--json") {
+                    print("{\"valid\":false,\"error\":\"Missing PIN argument. Usage: facelock --verify-pin <pin>\"}")
+                } else {
+                    print("Error: Missing PIN argument. Usage: facelock --verify-pin <pin>")
+                }
+                exit(1)
+            }
         }
 
         if let idx = args.firstIndex(of: "--set-telegram"), idx + 2 < args.count {
@@ -2030,41 +2096,13 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             let filename = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
             let destPath = args[idx + 2].trimmingCharacters(in: .whitespacesAndNewlines)
 
-            guard !filename.isEmpty, !destPath.isEmpty else {
-                print("Error: Usage: facelock --export-incident <filename> <destinationPath>")
-                exit(1)
-            }
-
-            let home = FileManager.default.homeDirectoryForCurrentUser
-            let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
-            let srcURL = dir.appendingPathComponent(filename)
-
-            guard FileManager.default.fileExists(atPath: srcURL.path) else {
-                if args.contains("--json") {
-                    print("{\"success\":false,\"error\":\"Incident '\(filename)' not found\"}")
-                } else {
-                    print("Error: Incident capture '\(filename)' not found in \(dir.path).")
-                }
-                exit(1)
-            }
-
-            let expandedDest = NSString(string: destPath).expandingTildeInPath
-            let destURL = URL(fileURLWithPath: expandedDest)
-
             do {
-                let parentDir = destURL.deletingLastPathComponent()
-                if !FileManager.default.fileExists(atPath: parentDir.path) {
-                    try FileManager.default.createDirectory(at: parentDir, withIntermediateDirectories: true)
-                }
-                if FileManager.default.fileExists(atPath: destURL.path) {
-                    try FileManager.default.removeItem(at: destURL)
-                }
-                try FileManager.default.copyItem(at: srcURL, to: destURL)
-                SecurityAuditLogger.shared.logIncidentsAction(action: "Exported intruder incident capture via CLI", count: 1, details: "\(filename) exported to \(destURL.path)")
+                let res = try CameraScanner.shared.exportIncident(filename: filename, to: destPath)
+                SecurityAuditLogger.shared.logIncidentsAction(action: "Exported intruder incident capture via CLI", count: 1, details: "\(res.source) exported to \(res.destination)")
                 if args.contains("--json") {
-                    print("{\"success\":true,\"source\":\"\(filename)\",\"destination\":\"\(destURL.path)\"}")
+                    print("{\"success\":true,\"source\":\"\(res.source)\",\"destination\":\"\(res.destination)\",\"sizeBytes\":\(res.sizeBytes)}")
                 } else {
-                    print("✓ Exported incident (\(filename)) to '\(destURL.path)'.")
+                    print("✓ Exported incident (\(res.source)) to '\(res.destination)'.")
                 }
                 exit(0)
             } catch {
@@ -2076,7 +2114,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 exit(1)
             }
         } else if args.contains("--export-incident") {
-            print("Error: Missing parameters. Usage: facelock --export-incident <filename> <destinationPath>")
+            if args.contains("--json") {
+                print("{\"success\":false,\"error\":\"Missing parameters. Usage: facelock --export-incident <filename> <destinationPath>\"}")
+            } else {
+                print("Error: Missing parameters. Usage: facelock --export-incident <filename> <destinationPath>")
+            }
             exit(1)
         }
 
@@ -2118,93 +2160,81 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 exit(1)
             }
         } else if args.contains("--export-incidents") {
-            print("Error: Usage: facelock --export-incidents <destinationDirectory> [--type <type>]")
+            if args.contains("--json") {
+                print("{\"success\":false,\"error\":\"Usage: facelock --export-incidents <destinationDirectory> [--type <type>]\"}")
+            } else {
+                print("Error: Usage: facelock --export-incidents <destinationDirectory> [--type <type>]")
+            }
             exit(1)
         }
 
         if let idx = args.firstIndex(of: "--incident"), idx + 1 < args.count {
             let filename = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
-            let home = FileManager.default.homeDirectoryForCurrentUser
-            let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
-            let path = dir.appendingPathComponent(filename).path
-
-            guard FileManager.default.fileExists(atPath: path) else {
+            if let rec = CameraScanner.shared.getIncidentDetails(filename: filename) {
+                if args.contains("--json") {
+                    var out = rec.toDictionary()
+                    out["found"] = true
+                    if let d = try? JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys]),
+                       let s = String(data: d, encoding: .utf8) {
+                        print(s)
+                    }
+                } else {
+                    let sizeKB = Double(rec.sizeBytes) / 1024.0
+                    print("""
+                    FaceLock Intruder Incident:
+                      Filename: \(rec.filename)
+                      Type: \(rec.type)
+                      Timestamp: \(rec.timestamp.isEmpty ? "Unknown" : rec.timestamp)
+                      Size: \(String(format: "%.1f", sizeKB)) KB
+                      Path: \(rec.path)
+                    """)
+                }
+                exit(0)
+            } else {
                 if args.contains("--json") {
                     print("{\"found\":false,\"error\":\"Incident '\(filename)' not found\"}")
-                } else {
-                    print("Error: Incident capture '\(filename)' not found in \(dir.path).")
-                }
-                exit(1)
-            }
-
-            var sz: UInt64 = 0
-            var modDate: Date? = nil
-            if let attrs = try? FileManager.default.attributesOfItem(atPath: path) {
-                sz = (attrs[.size] as? UInt64) ?? 0
-                modDate = attrs[.modificationDate] as? Date
-            }
-            let dateStr = modDate != nil ? ISO8601DateFormatter().string(from: modDate!) : ""
-
-            let incType = CameraScanner.incidentType(for: filename)
-            if args.contains("--json") {
-                let out: [String: Any] = [
-                    "found": true,
-                    "filename": filename,
-                    "path": path,
-                    "type": incType,
-                    "sizeBytes": sz,
-                    "timestamp": dateStr
-                ]
-                if let d = try? JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys]),
-                   let s = String(data: d, encoding: .utf8) {
-                    print(s)
-                }
-            } else {
-                let sizeKB = Double(sz) / 1024.0
-                print("""
-                FaceLock Intruder Incident:
-                  Filename: \(filename)
-                  Type: \(incType)
-                  Timestamp: \(dateStr.isEmpty ? "Unknown" : dateStr)
-                  Size: \(String(format: "%.1f", sizeKB)) KB
-                  Path: \(path)
-                """)
-            }
-            exit(0)
-        }
-
-        if let idx = args.firstIndex(of: "--delete-incident"), idx + 1 < args.count {
-            let filename = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
-            let home = FileManager.default.homeDirectoryForCurrentUser
-            let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
-            let path = dir.appendingPathComponent(filename).path
-
-            guard FileManager.default.fileExists(atPath: path) else {
-                if args.contains("--json") {
-                    print("{\"success\":false,\"error\":\"Incident '\(filename)' not found\"}")
                 } else {
                     print("Error: Incident capture '\(filename)' not found.")
                 }
                 exit(1)
             }
+        } else if args.contains("--incident") {
+            if args.contains("--json") {
+                print("{\"found\":false,\"error\":\"Missing incident filename. Usage: facelock --incident <filename>\"}")
+            } else {
+                print("Error: Missing incident filename. Usage: facelock --incident <filename>")
+            }
+            exit(1)
+        }
 
-            do {
-                try FileManager.default.removeItem(atPath: path)
-                SecurityAuditLogger.shared.logIncidentsAction(action: "Deleted intruder capture via CLI", count: 1, details: "Deleted \(filename)")
+        if let idx = args.firstIndex(of: "--delete-incident"), idx + 1 < args.count {
+            let filename = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+            let res = CameraScanner.shared.deleteIncident(filename: filename)
+            if res.success {
+                SecurityAuditLogger.shared.logIncidentsAction(action: "Deleted intruder capture via CLI", count: 1, details: "Deleted \(filename) (freed \(res.freedBytes) bytes)")
                 if args.contains("--json") {
-                    print("{\"success\":true,\"deleted\":\"\(filename)\"}")
+                    print("{\"success\":true,\"deleted\":\"\(filename)\",\"freedBytes\":\(res.freedBytes)}")
                 } else {
-                    print("✓ Deleted intruder incident capture '\(filename)'.")
+                    let sizeKB = Double(res.freedBytes) / 1024.0
+                    print("✓ Deleted intruder incident capture: \(filename) (freed \(String(format: "%.1f", sizeKB)) KB)")
                 }
                 exit(0)
-            } catch {
+            } else {
+                let errMsg = res.error ?? "Failed to delete incident capture."
                 if args.contains("--json") {
-                    print("{\"success\":false,\"error\":\"\(error.localizedDescription)\"}")
+                    print("{\"success\":false,\"error\":\"\(errMsg)\"}")
                 } else {
-                    print("Error deleting incident: \(error.localizedDescription)")
+                    print("Error: \(errMsg)")
                 }
                 exit(1)
             }
+        } else if args.contains("--delete-incident") {
+            if args.contains("--json") {
+                print("{\"success\":false,\"error\":\"Missing incident filename. Usage: facelock --delete-incident <filename>\"}")
+            } else {
+                print("Error: Missing incident filename. Usage: facelock --delete-incident <filename>")
+            }
+            exit(1)
         }
 
         if args.contains("--logs") || args.contains("--audit") || args.contains("--audit-logs") || args.contains("--audit-search") {
@@ -2329,16 +2359,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if args.contains("--audit-stats") || args.contains("--log-stats") {
-            let stats = SecurityAuditLogger.shared.getDetailedLogStats()
+            let stats = SecurityAuditLogger.shared.getAuditStats()
             if args.contains("--json") {
-                let dict: [String: Any] = [
-                    "totalEvents": stats.totalCount,
-                    "fileSizeBytes": stats.fileSizeBytes,
-                    "lastEventTime": stats.lastEventTime ?? "",
-                    "successCount": stats.successCount,
-                    "failureCount": stats.failureCount,
-                    "typeBreakdown": stats.typeBreakdown
-                ]
+                let dict = stats.toDictionary()
                 if let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
                    let str = String(data: data, encoding: .utf8) {
                     print(str)
@@ -2348,7 +2371,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             let sizeKB = Double(stats.fileSizeBytes) / 1024.0
             print("""
             FaceLock Security Audit Log Statistics:
-              Total Logged Events: \(stats.totalCount) (\(stats.successCount) success, \(stats.failureCount) failure/alert)
+              Total Logged Events: \(stats.totalEvents) (\(stats.successCount) success, \(stats.failureCount) failure/alert)
+              Events Today: \(stats.todayCount) | Past 24h: \(stats.past24HoursCount)
               Log File Size: \(String(format: "%.2f", sizeKB)) KB (~/.facelock/audit_log.jsonl)
               Last Event Timestamp: \(stats.lastEventTime ?? "None")
             """)

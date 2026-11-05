@@ -117,7 +117,8 @@ public struct Diagnostics {
 
         let launchAgentPath = home.appendingPathComponent("Library/LaunchAgents/io.github.facelock.maintainer.plist").path
         let agentInstalled = FileManager.default.fileExists(atPath: launchAgentPath)
-        let logStats = SecurityAuditLogger.shared.getLogStats()
+        let auditStats = SecurityAuditLogger.shared.getAuditStats()
+        let incidentStats = CameraScanner.shared.getDetailedIncidentStats()
 
         return [
             "timestamp": ISO8601DateFormatter().string(from: Date()),
@@ -142,7 +143,9 @@ public struct Diagnostics {
                 "presentationModeSuppression": config.presentationModeSuppression,
                 "walkAwayLockEnabled": config.walkAwayLockEnabled,
                 "walkAwayIdleSeconds": config.walkAwayIdleSeconds,
-                "lockOnWake": config.lockOnWake
+                "lockOnWake": config.lockOnWake,
+                "maxFailedPinAttempts": config.maxFailedPinAttempts,
+                "pinLockoutSeconds": config.pinLockoutSeconds
             ],
             "camera": [
                 "authorization": camAuthStr,
@@ -174,9 +177,11 @@ public struct Diagnostics {
                 "intruderCaptures": intruderCount,
                 "recent24hCaptures": recent24hCount,
                 "intruderSizeBytes": totalBytes,
-                "auditLogEvents": logStats.totalCount,
-                "auditLogSizeBytes": logStats.fileSizeBytes,
-                "auditLogLastEvent": logStats.lastEventTime ?? ""
+                "auditLogEvents": auditStats.totalEvents,
+                "auditLogSizeBytes": auditStats.fileSizeBytes,
+                "auditLogLastEvent": auditStats.lastEventTime ?? "",
+                "auditStats": auditStats.toDictionary(),
+                "incidentStats": incidentStats.toDictionary()
             ],
             "integrations": [
                 "telegramConfigured": tgConfigured,
@@ -285,6 +290,7 @@ public struct Diagnostics {
         print("  • Meeting Auto-Suppression: \(presentation ? "Enabled 🎯" : "Disabled")")
         print("  • Walk-Away Detection: \(walkAway ? "Enabled (\(Int(walkAwaySec))s idle)" : "Disabled")")
         print("  • Screen Wake Verification: \(lockOnWake ? "Enabled" : "Disabled")")
+        print("  • Max Failed PIN Attempts: \(Config.shared.maxFailedPinAttempts) (Lockout: \(Int(Config.shared.pinLockoutSeconds))s)")
 
         print("\n[3] Camera Hardware & Permissions:")
         switch camAuthStr {
@@ -353,7 +359,9 @@ public struct Diagnostics {
         let recentStr = recent24hCount > 0 ? " (\(recent24hCount) in past 24h)" : ""
         print("  • Intruder Incident Log: \(intruderCount) captures\(recentStr) (\(String(format: "%.2f", sizeMB)) MB) in \(intrudersDir)")
         let auditMB = Double(auditBytes) / (1024.0 * 1024.0)
-        print("  • Security Audit Log: \(auditEvents) events (\(String(format: "%.2f", auditMB)) MB), last: \(auditLast)")
+        let auditToday = (storage["auditStats"] as? [String: Any])?["todayCount"] as? Int ?? 0
+        let todayText = auditToday > 0 ? " (\(auditToday) today)" : ""
+        print("  • Security Audit Log: \(auditEvents) events\(todayText) (\(String(format: "%.2f", auditMB)) MB), last: \(auditLast)")
 
         print("\n[7] Integrations & Cloud Connectivity:")
         if tgConfigured {
