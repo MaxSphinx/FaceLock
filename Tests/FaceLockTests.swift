@@ -74,6 +74,7 @@ public final class FaceLockTestSuite {
         testSecurityAuditTelemetryAndFilterValidation()
         testIncidentTelemetryAndAuditSearch()
         testIncidentAndAuditAgePruning()
+        testConfigValidationSuiteAndIncidentSearch()
         testVectorMatchingBenchmark()
 
         let elapsed = Date().timeIntervalSince(startTime)
@@ -1283,6 +1284,111 @@ public final class FaceLockTestSuite {
         assertEqual(AppDelegate.normalizeArguments(["--prune-audit-days-json"]), ["--prune-audit-days", "--json"], "Normalizes --prune-audit-days-json")
         assertEqual(AppDelegate.normalizeArguments(["--prune-logs-days-json"]), ["--prune-audit-days", "--json"], "Normalizes --prune-logs-days-json")
         assertEqual(AppDelegate.normalizeArguments(["--prune-logs-days"]), ["--prune-audit-days"], "Normalizes --prune-logs-days alias")
+    }
+
+    // MARK: - 9c. Configuration Validation Suite & Incident Search
+    private func testConfigValidationSuiteAndIncidentSearch() {
+        print("\n▶ Test Suite: Configuration Validation Suite & Incident Search")
+
+        // 1. Config Threshold Validation
+        assert(Config.isValidThreshold(0.05), "Threshold 0.05 is valid")
+        assert(Config.isValidThreshold(0.22), "Threshold 0.22 is valid")
+        assert(Config.isValidThreshold(0.60), "Threshold 0.60 is valid")
+        assert(!Config.isValidThreshold(0.04), "Threshold 0.04 is invalid (below minimum)")
+        assert(!Config.isValidThreshold(0.61), "Threshold 0.61 is invalid (above maximum)")
+        assert(!Config.isValidThreshold(-0.1), "Negative threshold is invalid")
+
+        // 2. Config Timeout Validation
+        assert(Config.isValidTimeout(0.5), "Timeout 0.5s is valid")
+        assert(Config.isValidTimeout(2.0), "Timeout 2.0s is valid")
+        assert(Config.isValidTimeout(10.0), "Timeout 10.0s is valid")
+        assert(!Config.isValidTimeout(0.4), "Timeout 0.4s is invalid")
+        assert(!Config.isValidTimeout(10.1), "Timeout 10.1s is invalid")
+
+        // 3. Config Debounce Validation
+        assert(Config.isValidDebounce(0.5), "Debounce 0.5s is valid")
+        assert(Config.isValidDebounce(2.0), "Debounce 2.0s is valid")
+        assert(Config.isValidDebounce(30.0), "Debounce 30.0s is valid")
+        assert(!Config.isValidDebounce(0.4), "Debounce 0.4s is invalid")
+        assert(!Config.isValidDebounce(30.1), "Debounce 30.1s is invalid")
+
+        // 4. Config PIN Validation
+        assert(Config.isValidPin("1234"), "4-digit numeric PIN is valid")
+        assert(Config.isValidPin("0000"), "0000 PIN is valid")
+        assert(Config.isValidPin("123456"), "6-digit PIN is valid")
+        assert(!Config.isValidPin("123"), "3-digit PIN is invalid (too short)")
+        assert(!Config.isValidPin(""), "Empty PIN is invalid")
+        assert(!Config.isValidPin("abcd"), "Alpha PIN is invalid")
+        assert(!Config.isValidPin("12a4"), "Alphanumeric PIN is invalid")
+
+        // 5. Config Walk-Away Timeout Validation
+        assert(Config.isValidWalkAwayTimeout(10.0), "Walk-away timeout 10s is valid")
+        assert(Config.isValidWalkAwayTimeout(45.0), "Walk-away timeout 45s is valid")
+        assert(Config.isValidWalkAwayTimeout(600.0), "Walk-away timeout 600s is valid")
+        assert(!Config.isValidWalkAwayTimeout(9.9), "Walk-away timeout 9.9s is invalid")
+        assert(!Config.isValidWalkAwayTimeout(600.1), "Walk-away timeout 600.1s is invalid")
+
+        // 6. Config Protection Mode Validation
+        assert(Config.isValidProtectionMode("all"), "Mode 'all' is valid")
+        assert(Config.isValidProtectionMode("selective"), "Mode 'selective' is valid")
+        assert(Config.isValidProtectionMode("  ALL  "), "Mode '  ALL  ' is valid with whitespace trimming")
+        assert(Config.isValidProtectionMode("Selective"), "Mode 'Selective' is valid case-insensitively")
+        assert(!Config.isValidProtectionMode("none"), "Mode 'none' is invalid")
+        assert(!Config.isValidProtectionMode(""), "Empty mode is invalid")
+
+        // 7. Config PIN Lockout & Attempts Validation
+        assert(Config.isValidPinAttempts(1), "1 attempt is valid")
+        assert(Config.isValidPinAttempts(3), "3 attempts is valid")
+        assert(Config.isValidPinAttempts(10), "10 attempts is valid")
+        assert(!Config.isValidPinAttempts(0), "0 attempts is invalid")
+        assert(!Config.isValidPinAttempts(11), "11 attempts is invalid")
+
+        assert(Config.isValidPinLockout(1.0), "1.0s lockout is valid")
+        assert(Config.isValidPinLockout(5.0), "5.0s lockout is valid")
+        assert(Config.isValidPinLockout(60.0), "60.0s lockout is valid")
+        assert(!Config.isValidPinLockout(0.9), "0.9s lockout is invalid")
+        assert(!Config.isValidPinLockout(60.1), "60.1s lockout is invalid")
+
+        // 8. Incident Query Matching
+        assert(CameraScanner.matchesIncidentQuery(filename: "intruder_20261105_120000.jpg", query: "intruder"), "matchesIncidentQuery matches filename prefix")
+        assert(CameraScanner.matchesIncidentQuery(filename: "bystander_20261105_120000.jpg", query: "bystander"), "matchesIncidentQuery matches bystander type")
+        assert(CameraScanner.matchesIncidentQuery(filename: "bystander_20261105_120000.jpg", query: "shoulder"), "matchesIncidentQuery matches shoulder alias")
+        assert(CameraScanner.matchesIncidentQuery(filename: "bystander_20261105_120000.jpg", query: "shoulder_surfing"), "matchesIncidentQuery matches shoulder_surfing alias")
+        assert(CameraScanner.matchesIncidentQuery(filename: "walkaway_20261105_120000.jpg", query: "WALKAWAY"), "matchesIncidentQuery is case-insensitive")
+        assert(CameraScanner.matchesIncidentQuery(filename: "intruder_20261105_120000.jpg", query: "20261105"), "matchesIncidentQuery matches date substring")
+        assert(CameraScanner.matchesIncidentQuery(filename: "intruder_20261105_120000.jpg", query: ""), "matchesIncidentQuery with empty query returns true")
+        assert(!CameraScanner.matchesIncidentQuery(filename: "intruder_20261105_120000.jpg", query: "nonexistent_term"), "matchesIncidentQuery returns false for non-matching query")
+
+        // 9. IncidentRecord & IncidentStats dictionary representation
+        let testRecord = CameraScanner.IncidentRecord(
+            filename: "intruder_sample.jpg",
+            path: "/tmp/intruder_sample.jpg",
+            sizeBytes: 10240,
+            type: "intruder",
+            timestamp: "2026-11-05T12:00:00Z"
+        )
+        let recordDict = testRecord.toDictionary()
+        assertEqual(recordDict["filename"] as? String, "intruder_sample.jpg", "IncidentRecord dictionary reflects filename")
+        assertEqual(recordDict["type"] as? String, "intruder", "IncidentRecord dictionary reflects type")
+        assertEqual(recordDict["sizeBytes"] as? UInt64, UInt64(10240), "IncidentRecord dictionary reflects sizeBytes")
+
+        let stats = CameraScanner.shared.getDetailedIncidentStats()
+        let statsDict = stats.toDictionary()
+        assert(statsDict["totalCaptures"] != nil, "IncidentStats dictionary contains totalCaptures")
+        assert(statsDict["directory"] != nil, "IncidentStats dictionary contains directory")
+        assert(statsDict["typeBreakdown"] != nil, "IncidentStats dictionary contains typeBreakdown")
+
+        // 10. CLI Argument Normalization for Incident Search & Config Setters
+        assertEqual(AppDelegate.normalizeArguments(["--incidents-search-json"]), ["--incidents-search", "--json"], "Normalizes --incidents-search-json")
+        assertEqual(AppDelegate.normalizeArguments(["--search-incidents-json"]), ["--incidents-search", "--json"], "Normalizes --search-incidents-json")
+        assertEqual(AppDelegate.normalizeArguments(["--incident-search-json"]), ["--incidents-search", "--json"], "Normalizes --incident-search-json")
+        assertEqual(AppDelegate.normalizeArguments(["--search-incidents"]), ["--incidents-search"], "Normalizes --search-incidents alias")
+        assertEqual(AppDelegate.normalizeArguments(["--incident-search"]), ["--incidents-search"], "Normalizes --incident-search alias")
+        assertEqual(AppDelegate.normalizeArguments(["--set-threshold-json"]), ["--set-threshold", "--json"], "Normalizes --set-threshold-json")
+        assertEqual(AppDelegate.normalizeArguments(["--set-timeout-json"]), ["--set-timeout", "--json"], "Normalizes --set-timeout-json")
+        assertEqual(AppDelegate.normalizeArguments(["--set-debounce-json"]), ["--set-debounce", "--json"], "Normalizes --set-debounce-json")
+        assertEqual(AppDelegate.normalizeArguments(["--set-mode-json"]), ["--set-mode", "--json"], "Normalizes --set-mode-json")
+        assertEqual(AppDelegate.normalizeArguments(["--set-walkaway-json"]), ["--set-walkaway", "--json"], "Normalizes --set-walkaway-json")
     }
 
     // MARK: - 10. Performance Benchmark

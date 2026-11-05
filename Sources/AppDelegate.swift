@@ -1062,21 +1062,29 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if let idx = args.firstIndex(of: "--set-threshold"), idx + 1 < args.count {
-            if let val = Float(args[idx + 1]), val >= 0.05 && val <= 0.60 {
+            if let val = Float(args[idx + 1]), Config.isValidThreshold(val) {
                 Config.shared.similarityThreshold = val
                 Config.shared.save()
                 SecurityAuditLogger.shared.logConfigChanged(setting: "similarityThreshold", value: "\(val)")
                 notifyDaemonIfRunning()
-                print("✓ Similarity decision threshold updated to \(val).")
+                if args.contains("--json") {
+                    print("{\"success\":true,\"similarityThreshold\":\(val)}")
+                } else {
+                    print("✓ Similarity decision threshold updated to \(val).")
+                }
                 exit(0)
             } else {
-                print("Error: Threshold must be a floating point value between 0.05 and 0.60.")
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"Threshold must be a floating point value between 0.05 and 0.60.\"}")
+                } else {
+                    print("Error: Threshold must be a floating point value between 0.05 and 0.60.")
+                }
                 exit(1)
             }
         }
 
         if let idx = args.firstIndex(of: "--set-timeout"), idx + 1 < args.count {
-            if let val = Double(args[idx + 1]), val >= 0.5 && val <= 10.0 {
+            if let val = Double(args[idx + 1]), Config.isValidTimeout(val) {
                 Config.shared.verificationTimeout = val
                 Config.shared.save()
                 SecurityAuditLogger.shared.logConfigChanged(setting: "verificationTimeout", value: "\(val)s")
@@ -1088,13 +1096,17 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 exit(0)
             } else {
-                print("Error: Timeout must be between 0.5 and 10.0 seconds. Usage: facelock --set-timeout <seconds>")
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"Timeout must be between 0.5 and 10.0 seconds.\"}")
+                } else {
+                    print("Error: Timeout must be between 0.5 and 10.0 seconds. Usage: facelock --set-timeout <seconds>")
+                }
                 exit(1)
             }
         }
 
         if let idx = args.firstIndex(of: "--set-debounce"), idx + 1 < args.count {
-            if let val = Double(args[idx + 1]), val >= 0.5 && val <= 30.0 {
+            if let val = Double(args[idx + 1]), Config.isValidDebounce(val) {
                 Config.shared.debounceSeconds = val
                 Config.shared.save()
                 SecurityAuditLogger.shared.logConfigChanged(setting: "debounceSeconds", value: "\(val)s")
@@ -1106,22 +1118,34 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 exit(0)
             } else {
-                print("Error: Debounce must be between 0.5 and 30.0 seconds. Usage: facelock --set-debounce <seconds>")
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"Debounce must be between 0.5 and 30.0 seconds.\"}")
+                } else {
+                    print("Error: Debounce must be between 0.5 and 30.0 seconds. Usage: facelock --set-debounce <seconds>")
+                }
                 exit(1)
             }
         }
 
         if let idx = args.firstIndex(of: "--set-mode"), idx + 1 < args.count {
             let mode = args[idx + 1].lowercased()
-            if mode == "all" || mode == "selective" {
+            if Config.isValidProtectionMode(mode) {
                 Config.shared.protectionMode = mode
                 Config.shared.save()
                 SecurityAuditLogger.shared.logConfigChanged(setting: "protectionMode", value: mode)
                 notifyDaemonIfRunning()
-                print("✓ Protection mode updated to '\(mode)'.")
+                if args.contains("--json") {
+                    print("{\"success\":true,\"protectionMode\":\"\(mode)\"}")
+                } else {
+                    print("✓ Protection mode updated to '\(mode)'.")
+                }
                 exit(0)
             } else {
-                print("Error: Mode must be either 'all' or 'selective'.")
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"Mode must be either 'all' or 'selective'.\"}")
+                } else {
+                    print("Error: Mode must be either 'all' or 'selective'.")
+                }
                 exit(1)
             }
         }
@@ -1263,7 +1287,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 } else {
                     print("✓ Walk-away auto-lock disabled.")
                 }
-            } else if let secs = Double(val), secs >= 10.0 && secs <= 600.0 {
+            } else if let secs = Double(val), Config.isValidWalkAwayTimeout(secs) {
                 Config.shared.walkAwayLockEnabled = true
                 Config.shared.walkAwayIdleSeconds = secs
                 Config.shared.save()
@@ -1274,7 +1298,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     print("✓ Walk-away auto-lock enabled with \(Int(secs))s idle timeout.")
                 }
             } else {
-                print("Error: Invalid timeout. Provide seconds (10 - 600) or 'off'.")
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"Walk-away timeout must be between 10 and 600 seconds, or 'off'.\"}")
+                } else {
+                    print("Error: Invalid timeout. Provide seconds (10 - 600) or 'off'.")
+                }
                 exit(1)
             }
             exit(0)
@@ -1637,7 +1665,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(0)
         }
 
-        if args.contains("--incidents") {
+        if args.contains("--incidents") || args.contains("--incidents-search") {
             let home = FileManager.default.homeDirectoryForCurrentUser
             let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
             var files = ((try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? [])
@@ -1648,6 +1676,23 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             var filterType: String? = nil
             if let idx = (args.firstIndex(of: "--filter") ?? args.firstIndex(of: "--type")), idx + 1 < args.count {
                 filterType = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            }
+
+            var searchQuery: String? = nil
+            if let idx = (args.firstIndex(of: "--query") ?? args.firstIndex(of: "--search")) {
+                for i in (idx + 1)..<args.count {
+                    if !args[i].hasPrefix("-") {
+                        searchQuery = args[i].trimmingCharacters(in: .whitespacesAndNewlines)
+                        break
+                    }
+                }
+            } else if let idx = args.firstIndex(of: "--incidents-search") {
+                for i in (idx + 1)..<args.count {
+                    if !args[i].hasPrefix("-") {
+                        searchQuery = args[i].trimmingCharacters(in: .whitespacesAndNewlines)
+                        break
+                    }
+                }
             }
 
             if let filter = filterType, !filter.isEmpty && filter != "all" {
@@ -1675,6 +1720,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                         return f.lowercased().contains(filter)
                     }
                 }
+            }
+
+            if let q = searchQuery, !q.isEmpty {
+                files = files.filter { CameraScanner.matchesIncidentQuery(filename: $0, query: q) }
             }
 
             if let idx = (args.firstIndex(of: "--tail") ?? args.firstIndex(of: "--limit")), idx + 1 < args.count, let val = Int(args[idx + 1]), val > 0 {
@@ -1708,7 +1757,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
 
             if args.contains("--json") {
-                let outputDict: [String: Any] = [
+                var outputDict: [String: Any] = [
                     "totalCaptures": totalCount,
                     "retrievedCount": files.count,
                     "filter": filterType ?? "all",
@@ -1716,6 +1765,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     "directory": dir.path,
                     "incidents": incidentsData
                 ]
+                if let q = searchQuery { outputDict["query"] = q }
                 if let d = try? JSONSerialization.data(withJSONObject: outputDict, options: [.prettyPrinted, .sortedKeys]),
                    let s = String(data: d, encoding: .utf8) {
                     print(s)
@@ -1724,14 +1774,20 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
 
             let sizeMB = Double(totalBytes) / (1024.0 * 1024.0)
-            let filterDesc = filterType != nil ? " [Filter: \(filterType!)]" : ""
+            var filterDesc = ""
+            if let q = searchQuery { filterDesc += " [Query: '\(q)']" }
+            if let f = filterType { filterDesc += " [Filter: \(f)]" }
             print("""
             FaceLock Intruder Incident Log\(filterDesc):
               Retrieved Captures: \(files.count) of \(totalCount) (\(String(format: "%.2f", sizeMB)) MB)
               Storage Directory: \(dir.path)
             """)
             if files.isEmpty {
-                if let f = filterType {
+                if let q = searchQuery, let f = filterType {
+                    print("  ✓ No intruder events found matching query '\(q)' and filter '\(f)'.")
+                } else if let q = searchQuery {
+                    print("  ✓ No intruder events found matching query '\(q)'.")
+                } else if let f = filterType {
                     print("  ✓ No intruder events found matching filter '\(f)'.")
                 } else {
                     print("  ✓ No intruder events logged.")
@@ -1762,6 +1818,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
             let sizeMB = Double(stats.totalSizeBytes) / (1024.0 * 1024.0)
             let avgKB = stats.averageSizeBytes / 1024.0
+            let largestStr = stats.largestIncidentFilename != nil
+                ? "  Largest Incident: \(stats.largestIncidentFilename!) (\(String(format: "%.1f", Double(stats.largestIncidentSizeBytes) / 1024.0)) KB)\n"
+                : ""
             print("""
             FaceLock Intruder Incident Telemetry:
               Total Captures: \(stats.totalCaptures) (\(String(format: "%.2f", sizeMB)) MB, avg: \(String(format: "%.1f", avgKB)) KB/capture)
@@ -1775,7 +1834,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 • Walk-Away Locks: \(stats.typeBreakdown["walkaway", default: 0])
                 • Wake Locks: \(stats.typeBreakdown["wake", default: 0])
                 • Brute-Force PIN: \(stats.typeBreakdown["bruteforce", default: 0])
-              Newest Incident: \(stats.newestIncidentTimestamp ?? "None")
+            \(largestStr)  Newest Incident: \(stats.newestIncidentTimestamp ?? "None")
               Oldest Incident: \(stats.oldestIncidentTimestamp ?? "None")
             """)
             exit(0)
@@ -1880,11 +1939,13 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 let dateStr = modDate != nil ? ISO8601DateFormatter().string(from: modDate!) : ""
 
+                let incType = CameraScanner.incidentType(for: latest)
                 if args.contains("--json") {
                     let out: [String: Any] = [
                         "hasIncident": true,
                         "filename": latest,
                         "path": path,
+                        "type": incType,
                         "sizeBytes": sz,
                         "timestamp": dateStr
                     ]
@@ -1897,6 +1958,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     print("""
                     Latest FaceLock Intruder Incident:
                       Filename: \(latest)
+                      Type: \(incType)
                       Timestamp: \(dateStr.isEmpty ? "Unknown" : dateStr)
                       Size: \(String(format: "%.1f", sizeKB)) KB
                       File Path: \(path)
@@ -2083,11 +2145,13 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             let dateStr = modDate != nil ? ISO8601DateFormatter().string(from: modDate!) : ""
 
+            let incType = CameraScanner.incidentType(for: filename)
             if args.contains("--json") {
                 let out: [String: Any] = [
                     "found": true,
                     "filename": filename,
                     "path": path,
+                    "type": incType,
                     "sizeBytes": sz,
                     "timestamp": dateStr
                 ]
@@ -2100,6 +2164,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 print("""
                 FaceLock Intruder Incident:
                   Filename: \(filename)
+                  Type: \(incType)
                   Timestamp: \(dateStr.isEmpty ? "Unknown" : dateStr)
                   Size: \(String(format: "%.1f", sizeKB)) KB
                   Path: \(path)

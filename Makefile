@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health health-json toggle toggle-json pause pause-json resume resume-json toggle-wake toggle-wake-json wake reload reload-json reset-session reset-session-json check-app vectors vectors-json optimize-vectors optimize-vectors-json clear-vectors clear-vectors-json reset-vectors reset-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents clear-incidents-json clear-incidents-type clear-incidents-type-json prune-incidents prune-incidents-days prune-incidents-days-json export-incidents export-incidents-json test-telegram test-telegram-json incidents incidents-summary incidents-summary-json latest-incident latest-incident-json export-latest-incident export-latest-incident-json incident incident-json delete-incident delete-incident-json verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-stats-json log-stats log-stats-json audit-gui audit-search audit-search-json prune-audit prune-audit-days prune-audit-days-json prune-logs-days prune-logs-days-json clear-audit clear-audit-json export-audit export-audit-json export-audit-csv export-audit-csv-json export-logs export-logs-json pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config backup-config-json export-config export-config-json restore-config restore-config-json import-config import-config-json export-vectors export-vectors-json backup-vectors backup-vectors-json import-vectors import-vectors-json restore-vectors restore-vectors-json test profiles profiles-json profile profile-json toggle-shoulder toggle-shoulder-json toggle-audible toggle-audible-json toggle-battery toggle-battery-json toggle-presentation toggle-presentation-json toggle-liveness toggle-liveness-json toggle-touchid toggle-touchid-json toggle-walkaway toggle-walkaway-json battery-status battery-status-json
+.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health health-json toggle toggle-json pause pause-json resume resume-json toggle-wake toggle-wake-json wake reload reload-json reset-session reset-session-json check-app vectors vectors-json optimize-vectors optimize-vectors-json clear-vectors clear-vectors-json reset-vectors reset-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents clear-incidents-json clear-incidents-type clear-incidents-type-json prune-incidents prune-incidents-days prune-incidents-days-json export-incidents export-incidents-json test-telegram test-telegram-json incidents incidents-summary incidents-summary-json incidents-search incidents-search-json latest-incident latest-incident-json export-latest-incident export-latest-incident-json incident incident-json delete-incident delete-incident-json verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-stats-json log-stats log-stats-json audit-gui audit-search audit-search-json prune-audit prune-audit-days prune-audit-days-json prune-logs-days prune-logs-days-json clear-audit clear-audit-json export-audit export-audit-json export-audit-csv export-audit-csv-json export-logs export-logs-json set-threshold set-threshold-json set-timeout set-timeout-json set-debounce set-debounce-json set-mode set-mode-json set-walkaway set-walkaway-json pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config backup-config-json export-config export-config-json restore-config restore-config-json import-config import-config-json export-vectors export-vectors-json backup-vectors backup-vectors-json import-vectors import-vectors-json restore-vectors restore-vectors-json test profiles profiles-json profile profile-json toggle-shoulder toggle-shoulder-json toggle-audible toggle-audible-json toggle-battery toggle-battery-json toggle-presentation toggle-presentation-json toggle-liveness toggle-liveness-json toggle-touchid toggle-touchid-json toggle-walkaway toggle-walkaway-json battery-status battery-status-json
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -395,6 +395,20 @@ incidents-summary: build
 incidents-summary-json: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents-summary --json
 
+incidents-search: build
+	@if [ -z "$(QUERY)" ]; then \
+		echo "Usage: make incidents-search QUERY=keyword"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents-search "$(QUERY)"
+
+incidents-search-json: build
+	@if [ -z "$(QUERY)" ]; then \
+		echo "Usage: make incidents-search-json QUERY=keyword"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents-search "$(QUERY)" --json
+
 export-incidents: build
 	@if [ -z "$(DIR)" ]; then \
 		echo "Usage: make export-incidents DIR=/path/to/destination"; \
@@ -590,6 +604,76 @@ export-audit-csv-json: build
 export-logs: export-audit
 export-logs-json: export-audit-json
 
+set-threshold: build
+	@if [ -z "$(THRESHOLD)" ]; then \
+		echo "Usage: make set-threshold THRESHOLD=0.22"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-threshold "$(THRESHOLD)"
+
+set-threshold-json: build
+	@if [ -z "$(THRESHOLD)" ]; then \
+		echo "Usage: make set-threshold-json THRESHOLD=0.22"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-threshold "$(THRESHOLD)" --json
+
+set-timeout: build
+	@if [ -z "$(TIMEOUT)" ]; then \
+		echo "Usage: make set-timeout TIMEOUT=2.0"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-timeout "$(TIMEOUT)"
+
+set-timeout-json: build
+	@if [ -z "$(TIMEOUT)" ]; then \
+		echo "Usage: make set-timeout-json TIMEOUT=2.0"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-timeout "$(TIMEOUT)" --json
+
+set-debounce: build
+	@if [ -z "$(DEBOUNCE)" ]; then \
+		echo "Usage: make set-debounce DEBOUNCE=2.0"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-debounce "$(DEBOUNCE)"
+
+set-debounce-json: build
+	@if [ -z "$(DEBOUNCE)" ]; then \
+		echo "Usage: make set-debounce-json DEBOUNCE=2.0"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-debounce "$(DEBOUNCE)" --json
+
+set-mode: build
+	@if [ -z "$(MODE)" ]; then \
+		echo "Usage: make set-mode MODE=all"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-mode "$(MODE)"
+
+set-mode-json: build
+	@if [ -z "$(MODE)" ]; then \
+		echo "Usage: make set-mode-json MODE=all"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-mode "$(MODE)" --json
+
+set-walkaway: build
+	@if [ -z "$(SECONDS)" ]; then \
+		echo "Usage: make set-walkaway SECONDS=45"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-walkaway "$(SECONDS)"
+
+set-walkaway-json: build
+	@if [ -z "$(SECONDS)" ]; then \
+		echo "Usage: make set-walkaway-json SECONDS=45"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-walkaway "$(SECONDS)" --json
+
 test: build
 	@echo "==> Running FaceLock Automated Unit Tests & Benchmarks..."
 	@build/FaceLock.app/Contents/MacOS/FaceLock --test
@@ -608,6 +692,7 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents-summary > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents-summary --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents-search test --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --latest-incident > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --latest-incident --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --audit > /dev/null
