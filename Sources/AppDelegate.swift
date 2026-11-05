@@ -119,6 +119,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--export-incidents", "--json"])
             case "--export-audit-json", "--export-logs-json":
                 args.append(contentsOf: ["--export-audit", "--json"])
+            case "--export-audit-csv", "--export-logs-csv":
+                args.append(contentsOf: ["--export-audit", "--format", "csv"])
+            case "--export-audit-array", "--export-logs-array":
+                args.append(contentsOf: ["--export-audit", "--format", "json"])
             case "--prune-incidents-json":
                 args.append(contentsOf: ["--prune-incidents", "--json"])
             case "--prune-audit-json", "--prune-logs-json":
@@ -198,13 +202,13 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --audit-ui, --audit-window Open security audit log viewer window
               --clear-logs, --clear-audit Purge all recorded security audit log events
               --prune-logs, --prune-audit <count> Prune older audit events keeping latest N
-              --export-logs, --export-audit <path> Export security audit log to file
+              --export-logs, --export-audit <path> [--type T] [--format <jsonl|json|csv>] Export security audit log
               --verify-face [--timeout]  One-shot face biometric check without locking
               --verify-pin <pin>         Verify whether given PIN matches lock screen PIN
               --lock, --test-lock        Trigger immediate fullscreen lock screen
               --lockdown, --emergency-lockdown [--json] Engage emergency lockdown (lockdown profile & lock screen)
               --is-locked [--json]       Check whether lock screen is currently engaged
-              --export-incidents <dir>   Export all captured intruder incident photos and manifest to directory
+              --export-incidents <dir> [--type T] Export captured intruder incident photos and manifest to directory
               --toggle                   Toggle protection between ACTIVE and PAUSED
               --pause [mins]             Pause protection for N minutes (default: 15)
               --resume                   Resume protection immediately
@@ -273,9 +277,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if args.contains("--version") || args.contains("-v") {
             if args.contains("--json") {
-                print("{\"name\":\"FaceLock\",\"version\":\"1.1.4\",\"platform\":\"darwin-arm64\"}")
+                print("{\"name\":\"FaceLock\",\"version\":\"1.1.5\",\"platform\":\"darwin-arm64\"}")
             } else {
-                print("FaceLock v1.1.4 (darwin-arm64)")
+                print("FaceLock v1.1.5 (darwin-arm64)")
             }
             exit(0)
         }
@@ -453,7 +457,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
             if args.contains("--json") {
                 let statusDict: [String: Any] = [
-                    "version": "1.1.4",
+                    "version": "1.1.5",
                     "daemon": isAlreadyRunning ? "running" : "stopped",
                     "shieldState": Config.shared.isEnabled ? "active" : "paused",
                     "protectionMode": Config.shared.protectionMode,
@@ -2003,23 +2007,29 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         if let idx = args.firstIndex(of: "--export-incidents"), idx + 1 < args.count {
             let dest = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
             guard !dest.isEmpty else {
-                print("Error: Usage: facelock --export-incidents <destinationDirectory>")
+                print("Error: Usage: facelock --export-incidents <destinationDirectory> [--type <type>]")
                 exit(1)
             }
+            var filterType: String? = nil
+            if let fIdx = (args.firstIndex(of: "--filter") ?? args.firstIndex(of: "--type")), fIdx + 1 < args.count {
+                filterType = args[fIdx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+            }
             do {
-                let res = try CameraScanner.shared.exportIncidents(to: dest)
+                let res = try CameraScanner.shared.exportIncidents(to: dest, filterType: filterType)
                 let count = res["count"] as? Int ?? 0
-                SecurityAuditLogger.shared.logIncidentsAction(action: "Exported intruder incident archive via CLI", count: count, details: "Exported to \(dest)")
+                let appliedFilter = res["filter"] as? String ?? "all"
+                let filterDetail = appliedFilter != "all" ? " (type: \(appliedFilter))" : ""
+                SecurityAuditLogger.shared.logIncidentsAction(action: "Exported intruder incident archive via CLI", count: count, details: "Exported to \(dest)\(filterDetail)")
                 if args.contains("--json") {
                     if let d = try? JSONSerialization.data(withJSONObject: res, options: [.prettyPrinted, .sortedKeys]),
                        let s = String(data: d, encoding: .utf8) {
                         print(s)
                     }
                 } else {
-                    let count = res["count"] as? Int ?? 0
                     let totalBytes = res["totalBytes"] as? UInt64 ?? 0
                     let sizeMB = Double(totalBytes) / (1024.0 * 1024.0)
-                    print("✓ Exported \(count) intruder captures (\(String(format: "%.2f", sizeMB)) MB) to: \(dest)")
+                    let filterMsg = appliedFilter != "all" ? " [Type: \(appliedFilter)]" : ""
+                    print("✓ Exported \(count) intruder captures (\(String(format: "%.2f", sizeMB)) MB)\(filterMsg) to: \(dest)")
                     print("  Manifest generated at: \(res["manifestPath"] ?? "")")
                 }
                 exit(0)
@@ -2032,7 +2042,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 exit(1)
             }
         } else if args.contains("--export-incidents") {
-            print("Error: Usage: facelock --export-incidents <destinationDirectory>")
+            print("Error: Usage: facelock --export-incidents <destinationDirectory> [--type <type>]")
             exit(1)
         }
 
@@ -2302,21 +2312,45 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         if let idx = (args.firstIndex(of: "--export-logs") ?? args.firstIndex(of: "--export-audit")), idx + 1 < args.count {
             let destPath = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
             guard !destPath.isEmpty else {
-                print("Error: Usage: facelock --export-logs <path>")
+                print("Error: Usage: facelock --export-logs <path> [--type <type>] [--format <jsonl|json|csv>]")
                 exit(1)
             }
+            var filterType: String? = nil
+            if let fIdx = (args.firstIndex(of: "--filter") ?? args.firstIndex(of: "--type")), fIdx + 1 < args.count {
+                filterType = args[fIdx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            var format: String? = nil
+            if let fmtIdx = args.firstIndex(of: "--format"), fmtIdx + 1 < args.count {
+                format = args[fmtIdx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+            } else if args.contains("--csv") {
+                format = "csv"
+            }
+
             do {
-                let count = try SecurityAuditLogger.shared.exportLogs(to: destPath)
+                let res = try SecurityAuditLogger.shared.exportAudit(to: destPath, filterType: filterType, format: format)
                 SecurityAuditLogger.shared.log(
                     eventType: "audit_exported",
                     appName: "FaceLock CLI",
-                    details: "Exported \(count) security audit log events to \(destPath)",
+                    details: "Exported \(res.exportedCount) security audit log events (\(res.format.uppercased())) to \(res.path)",
                     isSuccess: true
                 )
                 if args.contains("--json") {
-                    print("{\"success\":true,\"exportedCount\":\(count),\"path\":\"\(destPath)\"}")
+                    let dict: [String: Any] = [
+                        "success": true,
+                        "exportedCount": res.exportedCount,
+                        "path": res.path,
+                        "format": res.format,
+                        "fileSizeBytes": res.fileSizeBytes,
+                        "filter": filterType ?? "all"
+                    ]
+                    if let d = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
+                       let s = String(data: d, encoding: .utf8) {
+                        print(s)
+                    }
                 } else {
-                    print("✓ Exported \(count) security audit log events to '\(destPath)'.")
+                    let sizeKB = Double(res.fileSizeBytes) / 1024.0
+                    let filterMsg = filterType != nil ? " [Filter: \(filterType!)]" : ""
+                    print("✓ Exported \(res.exportedCount) security audit log events (\(res.format.uppercased())\(filterMsg), \(String(format: "%.2f", sizeKB)) KB) to '\(res.path)'.")
                 }
                 exit(0)
             } catch {

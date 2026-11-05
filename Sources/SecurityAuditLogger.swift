@@ -353,6 +353,63 @@ public final class SecurityAuditLogger {
         "shoulder", "profile", "emergency", "success", "failure"
     ]
 
+    public static let supportedExportFormats: [String] = ["jsonl", "json", "csv"]
+
+    public static func isValidExportFormat(_ format: String) -> Bool {
+        let normalized = format.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return supportedExportFormats.contains(normalized)
+    }
+
+    public static func escapeCSVField(_ value: String) -> String {
+        if value.contains(",") || value.contains("\"") || value.contains("\n") || value.contains("\r") {
+            let escaped = value.replacingOccurrences(of: "\"", with: "\"\"")
+            return "\"\(escaped)\""
+        }
+        return value
+    }
+
+    public static func matchesEventFilter(event: AuditEvent, filter: String) -> Bool {
+        let f = filter.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !f.isEmpty && f != "all" else { return true }
+        let evType = event.eventType.lowercased()
+        switch f {
+        case "face", "biometric", "biometrics":
+            return evType.contains("face") || evType.contains("wake_verified")
+        case "intruder", "intruders", "alert", "alerts":
+            return evType.contains("intruder") || evType.contains("wake_locked") || evType.contains("incidents")
+        case "lock", "locks", "lockout", "lockouts", "bruteforce":
+            return evType.contains("lock") || evType.contains("intruder") || evType.contains("bruteforce")
+        case "pin":
+            return evType.contains("pin")
+        case "touchid", "touch_id":
+            return evType.contains("touchid")
+        case "shield":
+            return evType.contains("shield")
+        case "policy":
+            return evType.contains("policy")
+        case "config", "settings":
+            return evType.contains("config") || evType.contains("settings")
+        case "vectors", "vector", "enroll", "enrollment":
+            return evType.contains("vector") || evType.contains("enroll")
+        case "incidents", "incident":
+            return evType.contains("incident") || evType.contains("intruder")
+        case "telegram", "tg":
+            return evType.contains("telegram")
+        case "shoulder", "shoulder_surfing", "bystander":
+            return evType.contains("shoulder") || evType.contains("bystander")
+        case "profile", "profiles":
+            return evType.contains("profile")
+        case "emergency", "lockdown":
+            return evType.contains("lockdown") || evType.contains("emergency")
+        case "success":
+            return event.isSuccess
+        case "failure", "failed":
+            return !event.isSuccess
+        default:
+            return evType == f || evType.contains(f)
+        }
+    }
+
     public static func isValidEventFilter(_ filter: String) -> Bool {
         let normalized = filter.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !normalized.isEmpty else { return false }
@@ -388,46 +445,8 @@ public final class SecurityAuditLogger {
             for line in lines.reversed() {
                 if let data = line.data(using: .utf8),
                    let event = try? decoder.decode(AuditEvent.self, from: data) {
-                    if let filter = filterType?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), !filter.isEmpty && filter != "all" {
-                        let evType = event.eventType.lowercased()
-                        let match: Bool
-                        switch filter {
-                        case "face", "biometric", "biometrics":
-                            match = evType.contains("face") || evType.contains("wake_verified")
-                        case "intruder", "intruders", "alert", "alerts":
-                            match = evType.contains("intruder") || evType.contains("wake_locked") || evType.contains("incidents")
-                        case "lock", "locks", "lockout", "lockouts", "bruteforce":
-                            match = evType.contains("lock") || evType.contains("intruder") || evType.contains("bruteforce")
-                        case "pin":
-                            match = evType.contains("pin")
-                        case "touchid", "touch_id":
-                            match = evType.contains("touchid")
-                        case "shield":
-                            match = evType.contains("shield")
-                        case "policy":
-                            match = evType.contains("policy")
-                        case "config", "settings":
-                            match = evType.contains("config") || evType.contains("settings")
-                        case "vectors", "vector", "enroll", "enrollment":
-                            match = evType.contains("vector") || evType.contains("enroll")
-                        case "incidents", "incident":
-                            match = evType.contains("incident") || evType.contains("intruder")
-                        case "telegram", "tg":
-                            match = evType.contains("telegram")
-                        case "shoulder", "shoulder_surfing", "bystander":
-                            match = evType.contains("shoulder") || evType.contains("bystander")
-                        case "profile", "profiles":
-                            match = evType.contains("profile")
-                        case "emergency", "lockdown":
-                            match = evType.contains("lockdown") || evType.contains("emergency")
-                        case "success":
-                            match = event.isSuccess
-                        case "failure", "failed":
-                            match = !event.isSuccess
-                        default:
-                            match = evType == filter || evType.contains(filter)
-                        }
-                        if !match {
+                    if let filter = filterType, !filter.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        if !SecurityAuditLogger.matchesEventFilter(event: event, filter: filter) {
                             continue
                         }
                     }
@@ -542,31 +561,126 @@ public final class SecurityAuditLogger {
         return (count, size, lastTime, successCount, failureCount, typeBreakdown)
     }
 
-    public func exportLogs(to destinationPath: String) throws -> Int {
+    public func exportAudit(
+        to destinationPath: String,
+        filterType: String? = nil,
+        format: String? = nil
+    ) throws -> (exportedCount: Int, path: String, format: String, fileSizeBytes: UInt64) {
         let expanded = NSString(string: destinationPath).expandingTildeInPath
         let destURL = URL(fileURLWithPath: expanded)
         let parentDir = destURL.deletingLastPathComponent()
         if !FileManager.default.fileExists(atPath: parentDir.path) {
             try FileManager.default.createDirectory(at: parentDir, withIntermediateDirectories: true)
         }
-        var count = 0
 
-        try logQueue.sync {
-            guard FileManager.default.fileExists(atPath: self.logFileURL.path) else {
-                try Data().write(to: destURL, options: .atomic)
-                count = 0
-                return
+        // Determine effective export format
+        let effectiveFormat: String
+        if let explicitFormat = format?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), !explicitFormat.isEmpty {
+            guard SecurityAuditLogger.isValidExportFormat(explicitFormat) else {
+                throw NSError(
+                    domain: "io.github.facelock",
+                    code: 400,
+                    userInfo: [NSLocalizedDescriptionKey: "Unsupported export format '\(explicitFormat)'. Supported formats: \(SecurityAuditLogger.supportedExportFormats.joined(separator: ", "))"]
+                )
             }
-            let data = try Data(contentsOf: self.logFileURL)
-            try data.write(to: destURL, options: .atomic)
-            if let content = String(data: data, encoding: .utf8) {
-                count = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count
+            effectiveFormat = explicitFormat
+        } else {
+            let lowerPath = destinationPath.lowercased()
+            if lowerPath.hasSuffix(".csv") {
+                effectiveFormat = "csv"
+            } else if lowerPath.hasSuffix(".json") && !lowerPath.hasSuffix(".jsonl") {
+                effectiveFormat = "json"
+            } else {
+                effectiveFormat = "jsonl"
             }
         }
-        return count
+
+        var exportedCount = 0
+        var fileSizeBytes: UInt64 = 0
+
+        try logQueue.sync {
+            guard FileManager.default.fileExists(atPath: self.logFileURL.path),
+                  let content = try? String(contentsOf: self.logFileURL, encoding: .utf8) else {
+                let emptyData: Data
+                switch effectiveFormat {
+                case "json":
+                    emptyData = "[]\n".data(using: .utf8) ?? Data()
+                case "csv":
+                    emptyData = "id,timestamp,eventType,appName,bundleId,distance,threshold,intruderPhoto,details,isSuccess\n".data(using: .utf8) ?? Data()
+                default:
+                    emptyData = Data()
+                }
+                try emptyData.write(to: destURL, options: .atomic)
+                fileSizeBytes = UInt64(emptyData.count)
+                return
+            }
+
+            let lines = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            let decoder = JSONDecoder()
+            var matchedEvents: [AuditEvent] = []
+            matchedEvents.reserveCapacity(lines.count)
+
+            for line in lines {
+                if let data = line.data(using: .utf8),
+                   let event = try? decoder.decode(AuditEvent.self, from: data) {
+                    if let f = filterType, !f.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        if !SecurityAuditLogger.matchesEventFilter(event: event, filter: f) {
+                            continue
+                        }
+                    }
+                    matchedEvents.append(event)
+                }
+            }
+
+            exportedCount = matchedEvents.count
+
+            let outputData: Data
+            switch effectiveFormat {
+            case "json":
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted]
+                outputData = (try? encoder.encode(matchedEvents)) ?? "[]\n".data(using: .utf8)!
+            case "csv":
+                var csv = "id,timestamp,eventType,appName,bundleId,distance,threshold,intruderPhoto,details,isSuccess\n"
+                for ev in matchedEvents {
+                    let id = SecurityAuditLogger.escapeCSVField(ev.id)
+                    let ts = SecurityAuditLogger.escapeCSVField(ev.timestamp)
+                    let type = SecurityAuditLogger.escapeCSVField(ev.eventType)
+                    let app = SecurityAuditLogger.escapeCSVField(ev.appName ?? "")
+                    let bundle = SecurityAuditLogger.escapeCSVField(ev.bundleId ?? "")
+                    let dist = ev.distance.map { String(format: "%.4f", $0) } ?? ""
+                    let th = ev.threshold.map { String(format: "%.2f", $0) } ?? ""
+                    let photo = SecurityAuditLogger.escapeCSVField(ev.intruderPhoto ?? "")
+                    let det = SecurityAuditLogger.escapeCSVField(ev.details ?? "")
+                    let succ = ev.isSuccess ? "true" : "false"
+                    csv += "\(id),\(ts),\(type),\(app),\(bundle),\(dist),\(th),\(photo),\(det),\(succ)\n"
+                }
+                outputData = csv.data(using: .utf8) ?? Data()
+            default: // "jsonl"
+                let encoder = JSONEncoder()
+                var rawLines: [String] = []
+                for ev in matchedEvents {
+                    if let d = try? encoder.encode(ev), let s = String(data: d, encoding: .utf8) {
+                        rawLines.append(s)
+                    }
+                }
+                let body = rawLines.joined(separator: "\n") + (rawLines.isEmpty ? "" : "\n")
+                outputData = body.data(using: .utf8) ?? Data()
+            }
+
+            try outputData.write(to: destURL, options: .atomic)
+            fileSizeBytes = UInt64(outputData.count)
+        }
+
+        return (exportedCount, destURL.path, effectiveFormat, fileSizeBytes)
     }
 
-    public func exportAudit(to destinationPath: String) throws -> Int {
-        return try exportLogs(to: destinationPath)
+    public func exportLogs(
+        to destinationPath: String,
+        filterType: String? = nil,
+        format: String? = nil
+    ) throws -> Int {
+        let res = try exportAudit(to: destinationPath, filterType: filterType, format: format)
+        return res.exportedCount
     }
 }

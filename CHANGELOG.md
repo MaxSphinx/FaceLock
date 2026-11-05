@@ -4,6 +4,23 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.5] - 2026-11-05
+
+### Added
+- **Multi-Format Security Audit Log Export (`SecurityAuditLogger.swift`, `AppDelegate.swift`)**:
+  - Implemented multi-format audit log export supporting standard JSONL (`jsonl`), formatted JSON array (`json`), and RFC-4180 compliant CSV (`csv`) with automatic field escaping (`SecurityAuditLogger.escapeCSVField`).
+  - Added format verification via `SecurityAuditLogger.supportedExportFormats` and `SecurityAuditLogger.isValidExportFormat(_:)`.
+  - Added audit log category filtering during export via `--filter` / `--type` parameter mapped through `SecurityAuditLogger.matchesEventFilter(event:filter:)`.
+  - Extended CLI `--export-audit` and `--export-logs` with `--format <jsonl|json|csv>`, `--csv`, and `--type <category>`.
+- **Intruder Incident Archive Filtering (`CameraScanner.swift`, `AppDelegate.swift`)**:
+  - Enhanced `CameraScanner.exportIncidents(to:filterType:)` to filter incident exports by classification type (`intruder`, `walkaway`, `wake`, `bystander`, `bruteforce`).
+  - Updated CLI `--export-incidents <dir> [--type <type>]` with structured telemetry reporting and audit trail logging.
+- **CLI Flag Normalization & Makefile Targets (`AppDelegate.swift`, `Makefile`)**:
+  - Added CLI flag normalization for `--export-audit-csv`, `--export-logs-csv`, `--export-audit-array`, and `--export-logs-array`.
+  - Added dedicated Makefile targets `make export-audit-csv FILE=` and `make export-audit-csv-json FILE=` with `.PHONY` declarations.
+- **Automated Test Suite Expansion (`Tests/FaceLockTests.swift`)**:
+  - Scaled automated test suite to 417 unit tests (up from 395) across 28 specialized test suites with 100% pass rate, covering CSV/JSON export formats, RFC-4180 escaping, format validation, incident type filtering during export, and CLI normalization.
+
 ## [1.1.4] - 2026-11-04
 
 ### Added

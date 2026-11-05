@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health health-json toggle toggle-json pause pause-json resume resume-json toggle-wake toggle-wake-json wake reload reload-json reset-session reset-session-json check-app vectors vectors-json optimize-vectors optimize-vectors-json clear-vectors clear-vectors-json reset-vectors reset-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents clear-incidents-json prune-incidents export-incidents export-incidents-json test-telegram test-telegram-json incidents incidents-summary incidents-summary-json latest-incident latest-incident-json export-latest-incident export-latest-incident-json incident incident-json delete-incident delete-incident-json verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-stats-json log-stats log-stats-json audit-gui prune-audit clear-audit clear-audit-json export-audit export-audit-json export-logs export-logs-json pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config backup-config-json export-config export-config-json restore-config restore-config-json import-config import-config-json export-vectors export-vectors-json backup-vectors backup-vectors-json import-vectors import-vectors-json restore-vectors restore-vectors-json test profiles profiles-json profile profile-json toggle-shoulder toggle-shoulder-json toggle-audible toggle-audible-json toggle-battery toggle-battery-json toggle-presentation toggle-presentation-json toggle-liveness toggle-liveness-json toggle-touchid toggle-touchid-json toggle-walkaway toggle-walkaway-json battery-status battery-status-json
+.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health health-json toggle toggle-json pause pause-json resume resume-json toggle-wake toggle-wake-json wake reload reload-json reset-session reset-session-json check-app vectors vectors-json optimize-vectors optimize-vectors-json clear-vectors clear-vectors-json reset-vectors reset-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents clear-incidents-json prune-incidents export-incidents export-incidents-json test-telegram test-telegram-json incidents incidents-summary incidents-summary-json latest-incident latest-incident-json export-latest-incident export-latest-incident-json incident incident-json delete-incident delete-incident-json verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-stats-json log-stats log-stats-json audit-gui prune-audit clear-audit clear-audit-json export-audit export-audit-json export-audit-csv export-audit-csv-json export-logs export-logs-json pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config backup-config-json export-config export-config-json restore-config restore-config-json import-config import-config-json export-vectors export-vectors-json backup-vectors backup-vectors-json import-vectors import-vectors-json restore-vectors restore-vectors-json test profiles profiles-json profile profile-json toggle-shoulder toggle-shoulder-json toggle-audible toggle-audible-json toggle-battery toggle-battery-json toggle-presentation toggle-presentation-json toggle-liveness toggle-liveness-json toggle-touchid toggle-touchid-json toggle-walkaway toggle-walkaway-json battery-status battery-status-json
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -66,6 +66,7 @@ help:
 	@echo "  make prune-audit KEEP= - Prune older audit events keeping latest N (default: 100)"
 	@echo "  make clear-audit    - Purge security audit event log"
 	@echo "  make export-audit FILE= - Export security audit log events to JSONL file"
+	@echo "  make export-audit-csv FILE= - Export security audit log events to RFC-4180 CSV file"
 	@echo "  make incidents      - List logged intruder incident captures"
 	@echo "  make incidents-summary - Intruder telemetry (total, 24h, 7d, timestamps)"
 	@echo "  make export-incidents DIR= - Export all intruder incident photos & manifest"
@@ -526,6 +527,20 @@ export-audit-json: build
 	fi
 	@build/FaceLock.app/Contents/MacOS/FaceLock --export-audit "$(FILE)" --json
 
+export-audit-csv: build
+	@if [ -z "$(FILE)" ]; then \
+		echo "Usage: make export-audit-csv FILE=/path/to/destination.csv"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --export-audit "$(FILE)" --format csv
+
+export-audit-csv-json: build
+	@if [ -z "$(FILE)" ]; then \
+		echo "Usage: make export-audit-csv-json FILE=/path/to/destination.csv"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --export-audit "$(FILE)" --format csv --json
+
 export-logs: export-audit
 export-logs-json: export-audit-json
 
@@ -596,9 +611,11 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-pin-lockout 5 --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --prune-audit 1000 --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --export-audit /tmp/facelock_audit_test.jsonl --json > /dev/null && rm -f /tmp/facelock_audit_test.jsonl
+	@build/FaceLock.app/Contents/MacOS/FaceLock --export-audit /tmp/facelock_audit_test.csv --format csv --json > /dev/null && rm -f /tmp/facelock_audit_test.csv
+	@build/FaceLock.app/Contents/MacOS/FaceLock --export-audit /tmp/facelock_audit_test.json --format json --json > /dev/null && rm -f /tmp/facelock_audit_test.json
 	@build/FaceLock.app/Contents/MacOS/FaceLock --export-logs /tmp/facelock_audit_test.jsonl --json > /dev/null && rm -f /tmp/facelock_audit_test.jsonl
 	@build/FaceLock.app/Contents/MacOS/FaceLock --backup-vectors /tmp/facelock_vec_test.json > /dev/null 2>&1 || true; rm -f /tmp/facelock_vec_test.json
-	@mkdir -p /tmp/facelock_test_export && build/FaceLock.app/Contents/MacOS/FaceLock --export-incidents /tmp/facelock_test_export --json > /dev/null && rm -rf /tmp/facelock_test_export
+	@mkdir -p /tmp/facelock_test_export && build/FaceLock.app/Contents/MacOS/FaceLock --export-incidents /tmp/facelock_test_export --type intruder --json > /dev/null && rm -rf /tmp/facelock_test_export
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-shoulder --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-shoulder-defense --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-audible --json > /dev/null

@@ -794,6 +794,12 @@ public final class FaceLockTestSuite {
         let normalizedExportAuditJson = AppDelegate.normalizeArguments(["--export-audit-json", "/tmp/audit.jsonl"])
         assertEqual(normalizedExportAuditJson, ["--export-audit", "--json", "/tmp/audit.jsonl"], "--export-audit-json normalizes to --export-audit --json")
 
+        let normalizedExportAuditCsv = AppDelegate.normalizeArguments(["--export-audit-csv", "/tmp/audit.csv"])
+        assertEqual(normalizedExportAuditCsv, ["--export-audit", "--format", "csv", "/tmp/audit.csv"], "--export-audit-csv normalizes to --export-audit --format csv")
+
+        let normalizedExportAuditArray = AppDelegate.normalizeArguments(["--export-audit-array", "/tmp/audit.json"])
+        assertEqual(normalizedExportAuditArray, ["--export-audit", "--format", "json", "/tmp/audit.json"], "--export-audit-array normalizes to --export-audit --format json")
+
         let normalizedPruneIncidentsJson = AppDelegate.normalizeArguments(["--prune-incidents-json", "10"])
         assertEqual(normalizedPruneIncidentsJson, ["--prune-incidents", "--json", "10"], "--prune-incidents-json normalizes to --prune-incidents --json")
 
@@ -911,8 +917,18 @@ public final class FaceLockTestSuite {
             assert(exportedAuditCount >= 0, "exportLogs runs successfully")
             assert(FileManager.default.fileExists(atPath: nestedAuditPath), "exportLogs automatically creates missing parent directories")
 
-            let aliasAuditCount = try SecurityAuditLogger.shared.exportAudit(to: "\(testSubdir)/backup/audit_backup.jsonl")
-            assertEqual(aliasAuditCount, exportedAuditCount, "exportAudit alias successfully forwards to exportLogs")
+            let aliasAuditRes = try SecurityAuditLogger.shared.exportAudit(to: "\(testSubdir)/backup/audit_backup.jsonl")
+            assertEqual(aliasAuditRes.exportedCount, exportedAuditCount, "exportAudit alias successfully forwards to exportLogs")
+
+            let csvExportRes = try SecurityAuditLogger.shared.exportAudit(to: "\(testSubdir)/backup/audit_backup.csv", format: "csv")
+            assertEqual(csvExportRes.format, "csv", "exportAudit respects csv format")
+            assertEqual(csvExportRes.exportedCount, exportedAuditCount, "CSV export matches event count")
+            assert(FileManager.default.fileExists(atPath: "\(testSubdir)/backup/audit_backup.csv"), "CSV export writes destination file")
+
+            let jsonExportRes = try SecurityAuditLogger.shared.exportAudit(to: "\(testSubdir)/backup/audit_backup.json", format: "json")
+            assertEqual(jsonExportRes.format, "json", "exportAudit respects json array format")
+            assertEqual(jsonExportRes.exportedCount, exportedAuditCount, "JSON array export matches event count")
+            assert(FileManager.default.fileExists(atPath: "\(testSubdir)/backup/audit_backup.json"), "JSON export writes destination file")
         } catch {
             assert(false, "Audit export resilience failed: \(error.localizedDescription)")
         }
@@ -1059,6 +1075,18 @@ public final class FaceLockTestSuite {
             let dummyData = "test_image_data".data(using: .utf8)!
             try dummyData.write(to: destURL)
             assert(FileManager.default.fileExists(atPath: destURL.path), "Incident destination file written successfully in created directory")
+
+            // Test exportIncidents with filterType and manifest generation
+            let incidentsExportDir = "\(testDir)/export_incidents"
+            let resAll = try CameraScanner.shared.exportIncidents(to: incidentsExportDir, filterType: "all")
+            assertEqual(resAll["filter"] as? String, "all", "exportIncidents manifest sets filter to 'all'")
+            assert(FileManager.default.fileExists(atPath: incidentsExportDir), "exportIncidents creates destination directory")
+
+            let resShoulder = try CameraScanner.shared.exportIncidents(to: incidentsExportDir, filterType: "shoulder")
+            assertEqual(resShoulder["filter"] as? String, "bystander", "exportIncidents normalizes 'shoulder' filter to 'bystander'")
+
+            let resCustom = try CameraScanner.shared.exportIncidents(to: incidentsExportDir, filterType: "intruder")
+            assertEqual(resCustom["filter"] as? String, "intruder", "exportIncidents preserves 'intruder' filter")
         } catch {
             assert(false, "Incident export directory resilience failed: \(error.localizedDescription)")
         }
@@ -1095,6 +1123,20 @@ public final class FaceLockTestSuite {
         assert(SecurityAuditLogger.isValidEventFilter("all"), "Filter 'all' is valid")
         assert(!SecurityAuditLogger.isValidEventFilter("invalid_random_filter"), "Invalid filter returns false")
         assert(!SecurityAuditLogger.isValidEventFilter(""), "Empty filter string returns false")
+
+        // Supported export formats validation
+        assertEqual(SecurityAuditLogger.supportedExportFormats, ["jsonl", "json", "csv"], "Supported export formats match specification")
+        assert(SecurityAuditLogger.isValidExportFormat("jsonl"), "Export format jsonl is valid")
+        assert(SecurityAuditLogger.isValidExportFormat("JSON"), "Export format JSON is valid case-insensitively")
+        assert(SecurityAuditLogger.isValidExportFormat("csv"), "Export format csv is valid")
+        assert(!SecurityAuditLogger.isValidExportFormat("xml"), "Unsupported format xml is invalid")
+
+        // CSV escaping logic
+        assertEqual(SecurityAuditLogger.escapeCSVField("simple"), "simple", "Plain string is not escaped in CSV")
+        assertEqual(SecurityAuditLogger.escapeCSVField("hello,world"), "\"hello,world\"", "Commas are escaped with double quotes in CSV")
+        assertEqual(SecurityAuditLogger.escapeCSVField("say \"hi\""), "\"say \"\"hi\"\"\"", "Quotes are doubled and wrapped in CSV")
+        assertEqual(SecurityAuditLogger.escapeCSVField("line1\nline2"), "\"line1\nline2\"", "Multiline string is quoted in CSV")
+        assertEqual(SecurityAuditLogger.escapeCSVField("tab\tseparated"), "tab\tseparated", "Tab without comma/quote/newline is not quoted")
 
         let detailed = SecurityAuditLogger.shared.getDetailedLogStats()
         assert(detailed.totalCount >= 0, "Detailed total events count is non-negative")

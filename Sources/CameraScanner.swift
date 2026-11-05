@@ -528,7 +528,7 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         return pruneOldIntruderPhotos(in: dir, maxRetained: maxRetained)
     }
 
-    public func exportIncidents(to destinationPath: String) throws -> [String: Any] {
+    public func exportIncidents(to destinationPath: String, filterType: String? = nil) throws -> [String: Any] {
         let expanded = NSString(string: destinationPath).expandingTildeInPath
         let destURL = URL(fileURLWithPath: expanded)
 
@@ -540,17 +540,33 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         let home = fileManager.homeDirectoryForCurrentUser
         let sourceDir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
 
+        let normalizedFilter: String?
+        if let f = filterType?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), !f.isEmpty && f != "all" {
+            if f == "shoulder" || f == "shoulder_surfing" {
+                normalizedFilter = "bystander"
+            } else {
+                normalizedFilter = f
+            }
+        } else {
+            normalizedFilter = nil
+        }
+
         guard let files = try? fileManager.contentsOfDirectory(atPath: sourceDir.path) else {
             return [
                 "count": 0,
                 "totalBytes": UInt64(0),
+                "filter": normalizedFilter ?? "all",
                 "typeBreakdown": [String: Int](),
                 "destination": destURL.path,
                 "manifestPath": ""
             ]
         }
 
-        let jpegFiles = files.filter { $0.hasSuffix(".jpg") || $0.hasSuffix(".jpeg") }.sorted()
+        var jpegFiles = files.filter { $0.hasSuffix(".jpg") || $0.hasSuffix(".jpeg") }.sorted()
+        if let filter = normalizedFilter {
+            jpegFiles = jpegFiles.filter { CameraScanner.incidentType(for: $0) == filter }
+        }
+
         var manifestEntries: [[String: Any]] = []
         var totalBytes: UInt64 = 0
         var exportedCount = 0
@@ -592,15 +608,17 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
             "exportDate": ISO8601DateFormatter().string(from: Date()),
             "totalCount": exportedCount,
             "totalBytes": totalBytes,
+            "filter": normalizedFilter ?? "all",
             "typeBreakdown": typeBreakdown,
             "incidents": manifestEntries
         ]
-        let jsonData = try JSONSerialization.data(withJSONObject: manifestData, options: [.prettyPrinted])
+        let jsonData = try JSONSerialization.data(withJSONObject: manifestData, options: [.prettyPrinted, .sortedKeys])
         try jsonData.write(to: manifestURL, options: .atomic)
 
         return [
             "count": exportedCount,
             "totalBytes": totalBytes,
+            "filter": normalizedFilter ?? "all",
             "typeBreakdown": typeBreakdown,
             "destination": destURL.path,
             "manifestPath": manifestURL.path

@@ -86,8 +86,8 @@ Built strictly in modern **Swift & native AppKit**, with **zero external package
 - **🎛️ Native Menu Bar, UI Gallery & Audit Log**:
   - Profile switcher, 3D face calibration wizard, dynamic camera switcher.
   - Interactive Incident Gallery with 24h / 7d period filtering and one-click pruning.
-  - Security Audit Log viewer with category filtering, pruning, and JSONL export.
-- **🧪 100% Automated Test Suite**: 287 unit tests and microsecond Apple Silicon vector benchmarks built directly into the binary (`make test`).
+  - Security Audit Log viewer with category filtering, pruning, and JSONL/CSV/JSON export.
+- **🧪 100% Automated Test Suite**: 417 unit tests and microsecond Apple Silicon vector benchmarks built directly into the binary (`make test`).
 
 ---
 
@@ -237,13 +237,14 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --latest-incident [--json]` | Inspect details of the most recent intruder capture |
 | `facelock --export-latest-incident <p>` | Copy latest intruder photo capture to destination path |
 | `facelock --export-incident <f> <p>` | Copy specific intruder photo capture to destination path |
-| `facelock --export-incidents <dir>` | Export all captured intruder photos and JSON manifest to directory |
+| `facelock --export-incidents <dir> [--type T]` | Export captured intruder photos and JSON manifest to directory (optional type filter) |
 | `facelock --clear-incidents` | Purge all saved intruder photo captures from disk |
 | `facelock --prune-incidents <n>` | Prune intruder captures keeping latest N photos |
 | `facelock --audit [--tail N] [--type T]` | View security audit log trail of biometrics, unlocks & alarms |
 | `facelock --audit-stats [--json]` | Show security audit statistics and total events count |
 | `facelock --clear-audit` | Purge all security audit log events from disk |
-| `facelock --export-audit <path>` | Export security audit log events to destination JSONL file |
+| `facelock --export-audit <path> [--type T] [--format F]` | Export audit log events to file (JSONL, JSON array, or RFC-4180 CSV) |
+| `facelock --export-audit-csv <path>` | Export security audit log events directly to RFC-4180 CSV file |
 | `facelock --verify-face [--timeout]` | Instant one-shot facial biometric check without locking |
 | `facelock --verify-pin <pin>` | Verify candidate PIN against active lock screen PIN |
 | `facelock --test-telegram` | Dispatch verification alert to configured Telegram chat |
