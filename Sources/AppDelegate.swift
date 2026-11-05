@@ -101,6 +101,18 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--clear-incidents", "--json"])
             case "--audit-search-json", "--search-audit-json":
                 args.append(contentsOf: ["--audit-search", "--json"])
+            case "--incidents-search-json", "--search-incidents-json", "--incident-search-json":
+                args.append(contentsOf: ["--incidents-search", "--json"])
+            case "--set-threshold-json":
+                args.append(contentsOf: ["--set-threshold", "--json"])
+            case "--set-timeout-json":
+                args.append(contentsOf: ["--set-timeout", "--json"])
+            case "--set-debounce-json":
+                args.append(contentsOf: ["--set-debounce", "--json"])
+            case "--set-mode-json":
+                args.append(contentsOf: ["--set-mode", "--json"])
+            case "--set-walkaway-json":
+                args.append(contentsOf: ["--set-walkaway", "--json"])
             case "--test-telegram-json":
                 args.append(contentsOf: ["--test-telegram", "--json"])
             case "--settings-json":
@@ -127,8 +139,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--export-audit", "--format", "json"])
             case "--prune-incidents-json":
                 args.append(contentsOf: ["--prune-incidents", "--json"])
+            case "--prune-incidents-days-json":
+                args.append(contentsOf: ["--prune-incidents-days", "--json"])
             case "--prune-audit-json", "--prune-logs-json":
                 args.append(contentsOf: ["--prune-audit", "--json"])
+            case "--prune-audit-days-json", "--prune-logs-days-json":
+                args.append(contentsOf: ["--prune-audit-days", "--json"])
+            case "--prune-logs-days":
+                args.append("--prune-audit-days")
             case "--verify-pin-json":
                 args.append(contentsOf: ["--verify-pin", "--json"])
             case "--set-pin-attempts-json":
@@ -159,6 +177,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append("--export-audit")
             case "--search-audit":
                 args.append("--audit-search")
+            case "--search-incidents", "--incident-search":
+                args.append("--incidents-search")
             case "--prune-logs":
                 args.append("--prune-audit")
             case "--log-stats":
@@ -192,6 +212,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --settings                 Open configuration and alert settings
               --gallery                  Open intruder incident log gallery
               --incidents [--json]       List logged intruder incident captures
+              --incidents-search <query> Search logged intruder captures by keyword or date
               --incidents-summary [--json] Incident telemetry, classification breakdown & 24h count
               --incident <filename>      Inspect a specific logged intruder incident
               --delete-incident <file>   Delete a specific intruder incident photo from disk
@@ -200,6 +221,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --export-incident <f> <p>  Copy specific intruder photo capture to destination path
               --clear-incidents [--type T] Purge saved intruder incident captures (optionally by type)
               --prune-incidents <count>  Prune intruder captures keeping latest N photos
+              --prune-incidents-days <d> Prune intruder captures older than N days
               --diagnostics [--json]     Run full biometric, hardware & storage diagnostics
               --diagnostics-gui, --diagnostics-ui Open system hardware and biometrics diagnostics window
               --logs, --audit [--tail N] [--type T] [--query Q] [--json] View security audit event log
@@ -207,6 +229,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --audit-ui, --audit-window Open security audit log viewer window
               --clear-logs, --clear-audit Purge all recorded security audit log events
               --prune-logs, --prune-audit <count> Prune older audit events keeping latest N
+              --prune-audit-days, --prune-logs-days <d> Prune audit log events older than N days
               --export-logs, --export-audit <path> [--type T] [--format <jsonl|json|csv>] Export security audit log
               --verify-face [--timeout]  One-shot face biometric check without locking
               --verify-pin <pin>         Verify whether given PIN matches lock screen PIN
@@ -282,9 +305,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if args.contains("--version") || args.contains("-v") {
             if args.contains("--json") {
-                print("{\"name\":\"FaceLock\",\"version\":\"1.1.6\",\"platform\":\"darwin-arm64\"}")
+                print("{\"name\":\"FaceLock\",\"version\":\"1.1.7\",\"platform\":\"darwin-arm64\"}")
             } else {
-                print("FaceLock v1.1.6 (darwin-arm64)")
+                print("FaceLock v1.1.7 (darwin-arm64)")
             }
             exit(0)
         }
@@ -462,7 +485,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
             if args.contains("--json") {
                 let statusDict: [String: Any] = [
-                    "version": "1.1.6",
+                    "version": "1.1.7",
                     "daemon": isAlreadyRunning ? "running" : "stopped",
                     "shieldState": Config.shared.isEnabled ? "active" : "paused",
                     "protectionMode": Config.shared.protectionMode,
@@ -494,7 +517,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             let recent24hStr = recent24hCount > 0 ? " (\(recent24hCount) in past 24h)" : ""
             print("""
             FaceLock Status:
-              Version: 1.1.6 (darwin-arm64)
+              Version: 1.1.7 (darwin-arm64)
               Daemon: \(isAlreadyRunning ? "RUNNING" : "STOPPED")
               Shield: \(Config.shared.isEnabled ? "ACTIVE" : "PAUSED")
               Mode: \(Config.shared.protectionMode)
@@ -526,13 +549,21 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             if enrolledCount == 0 { issues.append("No face templates enrolled") }
             if !camOk { issues.append("Camera access is restricted or denied") }
 
+            let incStats = CameraScanner.shared.getDetailedIncidentStats()
+            let logStats = SecurityAuditLogger.shared.getLogStats()
+
             if args.contains("--json") {
                 let out: [String: Any] = [
                     "healthy": isHealthy,
+                    "version": "1.1.7",
                     "daemonRunning": isAlreadyRunning,
                     "shieldActive": Config.shared.isEnabled,
+                    "activeProfile": Config.shared.activeProfile,
                     "enrolledTemplates": enrolledCount,
                     "cameraAuthorized": camAuth == .authorized,
+                    "totalIncidents": incStats.totalCaptures,
+                    "recentIncidents24h": incStats.past24HoursCount,
+                    "totalAuditEvents": logStats.totalCount,
                     "issues": issues
                 ]
                 if let d = try? JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys]),
@@ -541,7 +572,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             } else {
                 if isHealthy {
-                    print("✓ FaceLock is HEALTHY (Daemon running, shield active, \(enrolledCount) templates calibrated).")
+                    print("✓ FaceLock is HEALTHY (Daemon running, shield active, \(enrolledCount) templates calibrated, \(incStats.totalCaptures) incidents, \(logStats.totalCount) audit events).")
                 } else {
                     print("⚠️ FaceLock HEALTH WARNING:")
                     for issue in issues {
@@ -1806,6 +1837,32 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        if let idx = args.firstIndex(of: "--prune-incidents-days"), idx + 1 < args.count {
+            if let days = Int(args[idx + 1]), days >= 0 {
+                let res = CameraScanner.shared.pruneIncidentsOlderThan(days: days)
+                if args.contains("--json") {
+                    let dict: [String: Any] = [
+                        "success": true,
+                        "prunedCount": res.removedCount,
+                        "remainingCount": res.remainingCount,
+                        "freedSizeBytes": res.freedBytes,
+                        "days": days
+                    ]
+                    if let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
+                       let str = String(data: data, encoding: .utf8) {
+                        print(str)
+                    }
+                } else {
+                    let freedMB = Double(res.freedBytes) / (1024.0 * 1024.0)
+                    print("✓ Pruned \(res.removedCount) incident photos older than \(days) day(s) (\(res.remainingCount) retained, \(String(format: "%.2f", freedMB)) MB freed).")
+                }
+                exit(0)
+            } else {
+                print("Error: Days must be a non-negative integer. Usage: facelock --prune-incidents-days <days>")
+                exit(1)
+            }
+        }
+
         if args.contains("--latest-incident") {
             let home = FileManager.default.homeDirectoryForCurrentUser
             let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
@@ -2291,6 +2348,37 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 let freedKB = Double(res.freedBytes) / 1024.0
                 print("✓ Pruned \(res.prunedCount) older audit log events (kept latest \(res.remainingCount), \(String(format: "%.2f", freedKB)) KB freed).")
+            }
+            exit(0)
+        }
+
+        if let idx = (args.firstIndex(of: "--prune-audit-days") ?? args.firstIndex(of: "--prune-logs-days")), idx + 1 < args.count {
+            guard let days = Int(args[idx + 1]), days >= 0 else {
+                print("Error: Days must be a non-negative integer. Usage: facelock --prune-audit-days <days>")
+                exit(1)
+            }
+            let res = SecurityAuditLogger.shared.pruneLogs(olderThanDays: days)
+            SecurityAuditLogger.shared.log(
+                eventType: "audit_pruned",
+                appName: "FaceLock CLI",
+                details: "Pruned \(res.prunedCount) audit events older than \(days) day(s) (kept \(res.remainingCount))",
+                isSuccess: true
+            )
+            if args.contains("--json") {
+                let dict: [String: Any] = [
+                    "success": true,
+                    "prunedCount": res.prunedCount,
+                    "remainingCount": res.remainingCount,
+                    "freedSizeBytes": res.freedBytes,
+                    "days": days
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                let freedKB = Double(res.freedBytes) / 1024.0
+                print("✓ Pruned \(res.prunedCount) audit log events older than \(days) day(s) (kept \(res.remainingCount), \(String(format: "%.2f", freedKB)) KB freed).")
             }
             exit(0)
         }

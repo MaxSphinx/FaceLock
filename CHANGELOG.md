@@ -4,6 +4,21 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.7] - 2026-11-05
+
+### Added
+- **Age-Based Incident & Audit Retention (`CameraScanner.swift`, `SecurityAuditLogger.swift`, `AppDelegate.swift`)**:
+  - Implemented `CameraScanner.pruneIncidentsOlderThan(days:)` enabling automated purging of intruder photos older than specified retention windows with freed byte calculation.
+  - Implemented `SecurityAuditLogger.pruneLogs(olderThanDays:)` enabling atomic pruning of audit log events by age while preserving newer security audit entries.
+  - Added CLI options `--prune-incidents-days <days>` and `--prune-audit-days <days>` (with `--prune-logs-days` alias and `--json` support).
+- **Operational Healthcheck Telemetry Enrichment (`AppDelegate.swift`)**:
+  - Enriched `--health` and `--health --json` reporting with engine version (`1.1.7`), active profile identifier, total incidents count, 24-hour incidents count, and total security audit events count.
+- **CLI Normalization & Makefile Automation (`Makefile`, `AppDelegate.swift`)**:
+  - Added argument normalizations for `--prune-incidents-days-json`, `--prune-audit-days-json`, `--prune-logs-days-json`, and `--prune-logs-days`.
+  - Added Makefile targets `make prune-incidents-days DAYS=`, `make prune-incidents-days-json DAYS=`, `make prune-audit-days DAYS=`, `make prune-audit-days-json DAYS=`, `make prune-logs-days DAYS=`, and `make prune-logs-days-json DAYS=`.
+- **Automated Test Suite Expansion (`Tests/FaceLockTests.swift`)**:
+  - Scaled automated test suite to 465 unit tests (up from 451) across 30 specialized test suites with 100% pass rate, covering negative day bounds, age retention calculations, high retention stability, and CLI normalization.
+
 ## [1.1.6] - 2026-11-05
 
 ### Added

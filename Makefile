@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health health-json toggle toggle-json pause pause-json resume resume-json toggle-wake toggle-wake-json wake reload reload-json reset-session reset-session-json check-app vectors vectors-json optimize-vectors optimize-vectors-json clear-vectors clear-vectors-json reset-vectors reset-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents clear-incidents-json clear-incidents-type clear-incidents-type-json prune-incidents export-incidents export-incidents-json test-telegram test-telegram-json incidents incidents-summary incidents-summary-json latest-incident latest-incident-json export-latest-incident export-latest-incident-json incident incident-json delete-incident delete-incident-json verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-stats-json log-stats log-stats-json audit-gui audit-search audit-search-json prune-audit clear-audit clear-audit-json export-audit export-audit-json export-audit-csv export-audit-csv-json export-logs export-logs-json pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config backup-config-json export-config export-config-json restore-config restore-config-json import-config import-config-json export-vectors export-vectors-json backup-vectors backup-vectors-json import-vectors import-vectors-json restore-vectors restore-vectors-json test profiles profiles-json profile profile-json toggle-shoulder toggle-shoulder-json toggle-audible toggle-audible-json toggle-battery toggle-battery-json toggle-presentation toggle-presentation-json toggle-liveness toggle-liveness-json toggle-touchid toggle-touchid-json toggle-walkaway toggle-walkaway-json battery-status battery-status-json
+.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health health-json toggle toggle-json pause pause-json resume resume-json toggle-wake toggle-wake-json wake reload reload-json reset-session reset-session-json check-app vectors vectors-json optimize-vectors optimize-vectors-json clear-vectors clear-vectors-json reset-vectors reset-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents clear-incidents-json clear-incidents-type clear-incidents-type-json prune-incidents prune-incidents-days prune-incidents-days-json export-incidents export-incidents-json test-telegram test-telegram-json incidents incidents-summary incidents-summary-json latest-incident latest-incident-json export-latest-incident export-latest-incident-json incident incident-json delete-incident delete-incident-json verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-stats-json log-stats log-stats-json audit-gui audit-search audit-search-json prune-audit prune-audit-days prune-audit-days-json prune-logs-days prune-logs-days-json clear-audit clear-audit-json export-audit export-audit-json export-audit-csv export-audit-csv-json export-logs export-logs-json pin-attempts pin-lockout cameras cameras-json set-camera reset-camera backup-config backup-config-json export-config export-config-json restore-config restore-config-json import-config import-config-json export-vectors export-vectors-json backup-vectors backup-vectors-json import-vectors import-vectors-json restore-vectors restore-vectors-json test profiles profiles-json profile profile-json toggle-shoulder toggle-shoulder-json toggle-audible toggle-audible-json toggle-battery toggle-battery-json toggle-presentation toggle-presentation-json toggle-liveness toggle-liveness-json toggle-touchid toggle-touchid-json toggle-walkaway toggle-walkaway-json battery-status battery-status-json
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -64,6 +64,7 @@ help:
 	@echo "  make audit-gui      - Open security audit log GUI window"
 	@echo "  make audit-stats    - View security audit statistics"
 	@echo "  make prune-audit KEEP= - Prune older audit events keeping latest N (default: 100)"
+	@echo "  make prune-audit-days DAYS= - Prune security audit events older than N days (default: 30)"
 	@echo "  make clear-audit    - Purge security audit event log"
 	@echo "  make export-audit FILE= - Export security audit log events to JSONL file"
 	@echo "  make export-audit-csv FILE= - Export security audit log events to RFC-4180 CSV file"
@@ -73,6 +74,7 @@ help:
 	@echo "  make latest-incident- Display most recent intruder incident capture"
 	@echo "  make clear-incidents- Purge all saved intruder captures from disk"
 	@echo "  make prune-incidents- Prune older intruder captures (keep latest 30)"
+	@echo "  make prune-incidents-days DAYS= - Prune intruder incident captures older than N days (default: 30)"
 	@echo "  make verify-face    - One-shot biometric face verification via camera"
 	@echo "  make pin-attempts ATTEMPTS= - Set max failed PIN attempts before lockout"
 	@echo "  make pin-lockout SECONDS= - Set cooling lockout delay after failed PINs"
@@ -490,6 +492,12 @@ clear-incidents-type-json: build
 prune-incidents: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --prune-incidents $(or $(KEEP),30)
 
+prune-incidents-days: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --prune-incidents-days $(or $(DAYS),30)
+
+prune-incidents-days-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --prune-incidents-days $(or $(DAYS),30) --json
+
 test-telegram: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --test-telegram
 
@@ -534,6 +542,16 @@ audit-gui: build
 
 prune-audit: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --prune-audit $(or $(KEEP),100)
+
+prune-audit-days: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --prune-audit-days $(or $(DAYS),30)
+
+prune-audit-days-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --prune-audit-days $(or $(DAYS),30) --json
+
+prune-logs-days: prune-audit-days
+
+prune-logs-days-json: prune-audit-days-json
 
 clear-audit: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --clear-audit

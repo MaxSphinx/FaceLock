@@ -524,6 +524,34 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         }
     }
 
+    public struct IncidentRecord {
+        public let filename: String
+        public let path: String
+        public let sizeBytes: UInt64
+        public let type: String
+        public let timestamp: String
+
+        public func toDictionary() -> [String: Any] {
+            return [
+                "filename": filename,
+                "path": path,
+                "sizeBytes": sizeBytes,
+                "type": type,
+                "timestamp": timestamp
+            ]
+        }
+    }
+
+    public static func matchesIncidentQuery(filename: String, query: String) -> Bool {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !q.isEmpty else { return true }
+        if filename.lowercased().contains(q) { return true }
+        let incType = incidentType(for: filename).lowercased()
+        if incType.contains(q) { return true }
+        if (q == "shoulder" || q == "shoulder_surfing") && incType == "bystander" { return true }
+        return false
+    }
+
     public struct IncidentStats {
         public let totalCaptures: Int
         public let totalSizeBytes: UInt64
@@ -535,6 +563,8 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         public let typeBreakdown: [String: Int]
         public let averageSizeBytes: Double
         public let directory: String
+        public let largestIncidentFilename: String?
+        public let largestIncidentSizeBytes: UInt64
 
         public func toDictionary() -> [String: Any] {
             var dict: [String: Any] = [
@@ -545,12 +575,90 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
                 "past7DaysCount": past7DaysCount,
                 "typeBreakdown": typeBreakdown,
                 "averageSizeBytes": averageSizeBytes,
-                "directory": directory
+                "directory": directory,
+                "largestIncidentSizeBytes": largestIncidentSizeBytes
             ]
             if let newest = newestIncidentTimestamp { dict["newestIncidentTimestamp"] = newest }
             if let oldest = oldestIncidentTimestamp { dict["oldestIncidentTimestamp"] = oldest }
+            if let largest = largestIncidentFilename { dict["largestIncidentFilename"] = largest }
             return dict
         }
+    }
+
+    public func getIncidentDetails(filename: String) -> IncidentRecord? {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
+        let fileURL = dir.appendingPathComponent(filename)
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return nil }
+
+        var sz: UInt64 = 0
+        var modDateStr = ""
+        if let attrs = try? FileManager.default.attributesOfItem(atPath: fileURL.path) {
+            sz = (attrs[.size] as? UInt64) ?? 0
+            if let modDate = attrs[.modificationDate] as? Date {
+                modDateStr = ISO8601DateFormatter().string(from: modDate)
+            }
+        }
+        let incType = CameraScanner.incidentType(for: filename)
+        return IncidentRecord(
+            filename: filename,
+            path: fileURL.path,
+            sizeBytes: sz,
+            type: incType,
+            timestamp: modDateStr
+        )
+    }
+
+    public func searchIncidents(query: String? = nil, filterType: String? = nil, limit: Int? = nil) -> [IncidentRecord] {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
+        var files = ((try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? [])
+            .filter { $0.hasSuffix(".jpg") || $0.hasSuffix(".jpeg") }
+            .sorted(by: >)
+
+        if let filter = filterType?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), !filter.isEmpty && filter != "all" {
+            let now = Date()
+            files = files.filter { f in
+                let p = dir.appendingPathComponent(f).path
+                let modDate = (try? FileManager.default.attributesOfItem(atPath: p)[.modificationDate] as? Date) ?? .distantPast
+                let ageSeconds = now.timeIntervalSince(modDate)
+                switch filter {
+                case "shoulder", "shoulder_surfing", "bystander", "bystanders":
+                    return f.hasPrefix("bystander_")
+                case "intruder", "intruders":
+                    return f.hasPrefix("intruder_")
+                case "walkaway", "walk_away":
+                    return f.hasPrefix("walkaway_")
+                case "wake":
+                    return f.hasPrefix("wake_")
+                case "bruteforce", "pin":
+                    return f.hasPrefix("bruteforce_")
+                case "24h", "today":
+                    return ageSeconds <= 86400
+                case "7d", "week":
+                    return ageSeconds <= 7 * 86400
+                default:
+                    return f.lowercased().contains(filter)
+                }
+            }
+        }
+
+        if let q = query?.trimmingCharacters(in: .whitespacesAndNewlines), !q.isEmpty {
+            files = files.filter { CameraScanner.matchesIncidentQuery(filename: $0, query: q) }
+        }
+
+        if let lim = limit, lim > 0 {
+            files = Array(files.prefix(lim))
+        }
+
+        var results: [IncidentRecord] = []
+        results.reserveCapacity(files.count)
+        for f in files {
+            if let details = getIncidentDetails(filename: f) {
+                results.append(details)
+            }
+        }
+        return results
     }
 
     public func getDetailedIncidentStats() -> IncidentStats {
@@ -567,6 +675,8 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         var newestTimestamp: String? = nil
         var oldestTimestamp: String? = nil
         var typeBreakdown: [String: Int] = [:]
+        var maxCaptureSize: UInt64 = 0
+        var largestFilename: String? = nil
 
         let now = Date()
         let calendar = Calendar.current
@@ -582,6 +692,10 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
             if let attrs = try? FileManager.default.attributesOfItem(atPath: p) {
                 if let sz = attrs[.size] as? UInt64 {
                     totalBytes += sz
+                    if sz > maxCaptureSize {
+                        maxCaptureSize = sz
+                        largestFilename = f
+                    }
                 }
                 if let modDate = attrs[.modificationDate] as? Date {
                     let iso = ISO8601DateFormatter().string(from: modDate)
@@ -615,7 +729,9 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
             oldestIncidentTimestamp: oldestTimestamp,
             typeBreakdown: typeBreakdown,
             averageSizeBytes: avgBytes,
-            directory: dir.path
+            directory: dir.path,
+            largestIncidentFilename: largestFilename,
+            largestIncidentSizeBytes: maxCaptureSize
         )
     }
 
@@ -670,6 +786,43 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         let home = FileManager.default.homeDirectoryForCurrentUser
         let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
         return pruneOldIntruderPhotos(in: dir, maxRetained: maxRetained)
+    }
+
+    @discardableResult
+    public func pruneIncidentsOlderThan(days: Int) -> (removedCount: Int, remainingCount: Int, freedBytes: UInt64) {
+        guard days >= 0 else { return (0, 0, 0) }
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
+        guard let files = try? FileManager.default.contentsOfDirectory(atPath: dir.path) else { return (0, 0, 0) }
+        let jpegs = files.filter { $0.hasSuffix(".jpg") || $0.hasSuffix(".jpeg") }
+        let cutoff = Date().addingTimeInterval(-Double(days) * 86400.0)
+        var removedCount = 0
+        var remainingCount = 0
+        var freedBytes: UInt64 = 0
+
+        for file in jpegs {
+            let fileURL = dir.appendingPathComponent(file)
+            if let attrs = try? FileManager.default.attributesOfItem(atPath: fileURL.path) {
+                let modDate = (attrs[.modificationDate] as? Date) ?? Date()
+                let size = (attrs[.size] as? UInt64) ?? 0
+                if modDate < cutoff {
+                    if (try? FileManager.default.removeItem(at: fileURL)) != nil {
+                        removedCount += 1
+                        freedBytes += size
+                    } else {
+                        remainingCount += 1
+                    }
+                } else {
+                    remainingCount += 1
+                }
+            } else {
+                remainingCount += 1
+            }
+        }
+        if removedCount > 0 {
+            SecurityAuditLogger.shared.logIncidentsAction(action: "Pruned incidents older than \(days) day(s)", count: removedCount)
+        }
+        return (removedCount, remainingCount, freedBytes)
     }
 
     public func exportIncidents(to destinationPath: String, filterType: String? = nil) throws -> [String: Any] {

@@ -73,6 +73,7 @@ public final class FaceLockTestSuite {
         testIncidentManagementAndFilteringResilience()
         testSecurityAuditTelemetryAndFilterValidation()
         testIncidentTelemetryAndAuditSearch()
+        testIncidentAndAuditAgePruning()
         testVectorMatchingBenchmark()
 
         let elapsed = Date().timeIntervalSince(startTime)
@@ -751,6 +752,36 @@ public final class FaceLockTestSuite {
         assertEqual(allProfiles.count, 6, "Total 6 profiles enumerated")
         assert(allProfiles.contains("normal"), "Enumerated profiles contain 'normal'")
         assert(allProfiles.contains("lockdown"), "Enumerated profiles contain 'lockdown'")
+
+        // Config parameter validation helpers
+        assert(Config.isValidThreshold(0.22), "0.22 is a valid similarity threshold")
+        assert(!Config.isValidThreshold(0.01), "0.01 is too low for similarity threshold")
+        assert(!Config.isValidThreshold(0.99), "0.99 is too high for similarity threshold")
+
+        assert(Config.isValidTimeout(2.0), "2.0s is a valid camera verification timeout")
+        assert(!Config.isValidTimeout(0.1), "0.1s is too low for camera timeout")
+        assert(!Config.isValidTimeout(15.0), "15.0s is too high for camera timeout")
+
+        assert(Config.isValidDebounce(2.0), "2.0s is a valid debounce interval")
+        assert(!Config.isValidDebounce(0.1), "0.1s is too low for debounce interval")
+
+        assert(Config.isValidPin("1234"), "'1234' is a valid 4-digit PIN")
+        assert(Config.isValidPin(" 987654 "), "PIN with surrounding whitespace is valid")
+        assert(!Config.isValidPin("12"), "'12' is too short for PIN")
+        assert(!Config.isValidPin("12a4"), "'12a4' contains non-digits and is invalid")
+
+        assert(Config.isValidWalkAwayTimeout(45.0), "45s is a valid walk-away timeout")
+        assert(!Config.isValidWalkAwayTimeout(5.0), "5s is below minimum walk-away timeout (10s)")
+
+        assert(Config.isValidProtectionMode("all"), "Mode 'all' is valid protection mode")
+        assert(Config.isValidProtectionMode("SELECTIVE"), "Mode 'SELECTIVE' is valid case-insensitively")
+        assert(!Config.isValidProtectionMode("unknown"), "Mode 'unknown' is invalid protection mode")
+
+        assert(Config.isValidPinAttempts(3), "3 failed PIN attempts is valid")
+        assert(!Config.isValidPinAttempts(0), "0 failed PIN attempts is invalid")
+
+        assert(Config.isValidPinLockout(5.0), "5s is a valid PIN lockout delay")
+        assert(!Config.isValidPinLockout(0.5), "0.5s is too low for PIN lockout delay")
     }
 
     private func testExportImportCliAliases() {
@@ -1221,6 +1252,37 @@ public final class FaceLockTestSuite {
         assertEqual(AppDelegate.normalizeArguments(["--search-audit-json"]), ["--audit-search", "--json"], "Normalizes --search-audit-json")
         assertEqual(AppDelegate.normalizeArguments(["--search-audit"]), ["--audit-search"], "Normalizes --search-audit alias")
         assertEqual(AppDelegate.normalizeArguments(["--clear-incidents-type-json"]), ["--clear-incidents", "--json"], "Normalizes --clear-incidents-type-json")
+    }
+
+    // MARK: - 9b. Incident & Security Audit Age-Based Pruning
+    private func testIncidentAndAuditAgePruning() {
+        print("\n▶ Test Suite: Incident & Security Audit Age Retention & Pruning")
+
+        // 1. Guard against negative days
+        let negativeIncidents = CameraScanner.shared.pruneIncidentsOlderThan(days: -5)
+        assertEqual(negativeIncidents.removedCount, 0, "pruneIncidentsOlderThan with negative days removes 0 files")
+        assertEqual(negativeIncidents.freedBytes, UInt64(0), "pruneIncidentsOlderThan with negative days frees 0 bytes")
+
+        let negativeAudit = SecurityAuditLogger.shared.pruneLogs(olderThanDays: -10)
+        assertEqual(negativeAudit.prunedCount, 0, "pruneLogs with negative days prunes 0 events")
+        assertEqual(negativeAudit.freedBytes, UInt64(0), "pruneLogs with negative days frees 0 bytes")
+
+        // 2. Safe execution with high retention window (e.g. 10 years / 3650 days)
+        let highRetIncidents = CameraScanner.shared.pruneIncidentsOlderThan(days: 3650)
+        assert(highRetIncidents.removedCount >= 0, "High retention incident pruning removedCount is non-negative")
+        assert(highRetIncidents.remainingCount >= 0, "High retention incident pruning remainingCount is non-negative")
+        assert(highRetIncidents.freedBytes >= 0, "High retention incident pruning freedBytes is non-negative")
+
+        let highRetAudit = SecurityAuditLogger.shared.pruneLogs(olderThanDays: 3650)
+        assert(highRetAudit.prunedCount >= 0, "High retention audit pruning prunedCount is non-negative")
+        assert(highRetAudit.remainingCount >= 0, "High retention audit pruning remainingCount is non-negative")
+        assert(highRetAudit.freedBytes >= 0, "High retention audit pruning freedBytes is non-negative")
+
+        // 3. CLI Argument Normalization for Age-Based Pruning Flags
+        assertEqual(AppDelegate.normalizeArguments(["--prune-incidents-days-json"]), ["--prune-incidents-days", "--json"], "Normalizes --prune-incidents-days-json")
+        assertEqual(AppDelegate.normalizeArguments(["--prune-audit-days-json"]), ["--prune-audit-days", "--json"], "Normalizes --prune-audit-days-json")
+        assertEqual(AppDelegate.normalizeArguments(["--prune-logs-days-json"]), ["--prune-audit-days", "--json"], "Normalizes --prune-logs-days-json")
+        assertEqual(AppDelegate.normalizeArguments(["--prune-logs-days"]), ["--prune-audit-days"], "Normalizes --prune-logs-days alias")
     }
 
     // MARK: - 10. Performance Benchmark

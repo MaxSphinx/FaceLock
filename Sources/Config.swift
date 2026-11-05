@@ -4,7 +4,7 @@ import AppKit
 import UniformTypeIdentifiers
 
 public final class Config: Codable {
-    // Last maintenance check: 2026-11-02
+    // Last maintenance check: 2026-11-05
     public static let shared = Config.load()
 
     public static let defaultProtectedBundleIdentifiers: [String] = [
@@ -219,6 +219,40 @@ public final class Config: Codable {
 
     public static func isValidProfile(_ profileName: String) -> Bool {
         return profile(named: profileName) != nil
+    }
+
+    public static func isValidThreshold(_ threshold: Float) -> Bool {
+        return threshold >= 0.05 && threshold <= 0.60
+    }
+
+    public static func isValidTimeout(_ timeout: Double) -> Bool {
+        return timeout >= 0.5 && timeout <= 10.0
+    }
+
+    public static func isValidDebounce(_ debounce: Double) -> Bool {
+        return debounce >= 0.5 && debounce <= 30.0
+    }
+
+    public static func isValidPin(_ pin: String) -> Bool {
+        let trimmed = pin.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.count >= 4 && trimmed.allSatisfy { $0.isNumber }
+    }
+
+    public static func isValidWalkAwayTimeout(_ timeout: Double) -> Bool {
+        return timeout >= 10.0 && timeout <= 600.0
+    }
+
+    public static func isValidProtectionMode(_ mode: String) -> Bool {
+        let normalized = mode.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return normalized == "all" || normalized == "selective"
+    }
+
+    public static func isValidPinAttempts(_ attempts: Int) -> Bool {
+        return attempts >= 1 && attempts <= 10
+    }
+
+    public static func isValidPinLockout(_ seconds: Double) -> Bool {
+        return seconds >= 1.0 && seconds <= 60.0
     }
 
     public static var allProfileNames: [String] {

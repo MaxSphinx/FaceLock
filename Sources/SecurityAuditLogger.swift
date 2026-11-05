@@ -513,6 +513,56 @@ public final class SecurityAuditLogger {
         return result
     }
 
+    public func pruneLogs(olderThanDays days: Int) -> (prunedCount: Int, remainingCount: Int, freedBytes: UInt64) {
+        guard days >= 0 else { return (0, 0, 0) }
+        var result: (prunedCount: Int, remainingCount: Int, freedBytes: UInt64) = (0, 0, 0)
+        logQueue.sync {
+            guard let content = try? String(contentsOf: self.logFileURL, encoding: .utf8) else {
+                return
+            }
+            let lines = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            let initialCount = lines.count
+            let initialSize = (try? FileManager.default.attributesOfItem(atPath: self.logFileURL.path)[.size] as? UInt64) ?? 0
+            guard initialCount > 0 else { return }
+
+            let cutoff = Date().addingTimeInterval(-Double(days) * 86400.0)
+            let isoFormatter = ISO8601DateFormatter()
+            let decoder = JSONDecoder()
+
+            var keptLines: [String] = []
+            keptLines.reserveCapacity(initialCount)
+
+            for line in lines {
+                if let data = line.data(using: .utf8),
+                   let event = try? decoder.decode(AuditEvent.self, from: data) {
+                    if let eventDate = isoFormatter.date(from: event.timestamp) {
+                        if eventDate >= cutoff {
+                            keptLines.append(line)
+                        }
+                    } else {
+                        keptLines.append(line)
+                    }
+                } else {
+                    keptLines.append(line)
+                }
+            }
+
+            let pruned = initialCount - keptLines.count
+            if pruned > 0 {
+                let newContent = keptLines.isEmpty ? "" : (keptLines.joined(separator: "\n") + "\n")
+                if let data = newContent.data(using: .utf8) {
+                    try? data.write(to: self.logFileURL, options: .atomic)
+                    let newSize = (try? FileManager.default.attributesOfItem(atPath: self.logFileURL.path)[.size] as? UInt64) ?? 0
+                    let freed = (initialSize > newSize) ? (initialSize - newSize) : 0
+                    result = (pruned, keptLines.count, freed)
+                    return
+                }
+            }
+            result = (0, initialCount, 0)
+        }
+        return result
+    }
+
     @discardableResult
     public func autoPruneLogs(maxBytes: UInt64 = 5 * 1024 * 1024, keeping: Int = 5000) -> Bool {
         var didPrune = false
