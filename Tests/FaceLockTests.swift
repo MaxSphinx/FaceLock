@@ -72,6 +72,7 @@ public final class FaceLockTestSuite {
         testVectorValidationAndClearing()
         testIncidentManagementAndFilteringResilience()
         testSecurityAuditTelemetryAndFilterValidation()
+        testIncidentTelemetryAndAuditSearch()
         testVectorMatchingBenchmark()
 
         let elapsed = Date().timeIntervalSince(startTime)
@@ -1144,6 +1145,82 @@ public final class FaceLockTestSuite {
         assertEqual(detailed.successCount + detailed.failureCount, detailed.totalCount, "Success and failure counts sum to total events count")
         let breakdownSum = detailed.typeBreakdown.values.reduce(0, +)
         assertEqual(breakdownSum, detailed.totalCount, "Type breakdown counts sum to total events count")
+    }
+
+    // MARK: - 9e. Incident Telemetry & Audit Search
+    private func testIncidentTelemetryAndAuditSearch() {
+        print("\n▶ Test Suite: Incident Telemetry & Audit Search")
+
+        // 1. Incident Type Validation & Aliases
+        assert(CameraScanner.isValidIncidentType("intruder"), "Incident type intruder is valid")
+        assert(CameraScanner.isValidIncidentType("walkaway"), "Incident type walkaway is valid")
+        assert(CameraScanner.isValidIncidentType("wake"), "Incident type wake is valid")
+        assert(CameraScanner.isValidIncidentType("bystander"), "Incident type bystander is valid")
+        assert(CameraScanner.isValidIncidentType("bruteforce"), "Incident type bruteforce is valid")
+        assert(CameraScanner.isValidIncidentType("shoulder"), "Alias shoulder is valid incident type")
+        assert(CameraScanner.isValidIncidentType("  SHOULDER_SURFING  "), "Alias shoulder_surfing is valid with trimming")
+        assert(CameraScanner.isValidIncidentType("all"), "Filter all is valid incident type")
+        assert(!CameraScanner.isValidIncidentType("unknown_random_type"), "Invalid incident type returns false")
+        assert(!CameraScanner.isValidIncidentType(""), "Empty incident type returns false")
+
+        // 2. Incident Stats Collection & Dictionary Serialization
+        let incidentStats = CameraScanner.shared.getDetailedIncidentStats()
+        assert(incidentStats.totalCaptures >= 0, "Incident stats totalCaptures is non-negative")
+        assert(incidentStats.totalSizeBytes >= 0, "Incident stats totalSizeBytes is non-negative")
+        assert(incidentStats.todayCount >= 0, "Incident stats todayCount is non-negative")
+        assert(incidentStats.past24HoursCount >= 0, "Incident stats past24HoursCount is non-negative")
+        assert(incidentStats.past7DaysCount >= 0, "Incident stats past7DaysCount is non-negative")
+        assert(incidentStats.averageSizeBytes >= 0.0, "Incident stats averageSizeBytes is non-negative")
+        assert(incidentStats.todayCount <= incidentStats.totalCaptures, "todayCount is bounded by totalCaptures")
+        assert(incidentStats.past24HoursCount <= incidentStats.totalCaptures, "past24HoursCount is bounded by totalCaptures")
+
+        let statsDict = incidentStats.toDictionary()
+        assertEqual(statsDict["totalCaptures"] as? Int, incidentStats.totalCaptures, "Incident stats dictionary reflects totalCaptures")
+        assertEqual(statsDict["directory"] as? String, incidentStats.directory, "Incident stats dictionary reflects directory")
+        assert(statsDict["typeBreakdown"] is [String: Int], "Incident stats dictionary includes typeBreakdown map")
+
+        // 3. Security Audit Event Query Matching
+        let testEvent1 = AuditEvent(
+            id: "test-event-001",
+            timestamp: "2026-11-05T12:00:00Z",
+            eventType: "config_changed",
+            appName: "FaceLock",
+            bundleId: "io.github.facelock",
+            distance: nil,
+            threshold: nil,
+            intruderPhoto: nil,
+            details: "similarityThreshold updated to 0.22",
+            isSuccess: true
+        )
+
+        assert(SecurityAuditLogger.matchesQuery(event: testEvent1, query: "config"), "matchesQuery matches eventType")
+        assert(SecurityAuditLogger.matchesQuery(event: testEvent1, query: "CONFIG"), "matchesQuery is case-insensitive")
+        assert(SecurityAuditLogger.matchesQuery(event: testEvent1, query: "facelock"), "matchesQuery matches appName and bundleId")
+        assert(SecurityAuditLogger.matchesQuery(event: testEvent1, query: "0.22"), "matchesQuery matches numerical details")
+        assert(SecurityAuditLogger.matchesQuery(event: testEvent1, query: "similaritythreshold"), "matchesQuery matches key in details")
+        assert(SecurityAuditLogger.matchesQuery(event: testEvent1, query: ""), "matchesQuery with empty query returns true")
+        assert(!SecurityAuditLogger.matchesQuery(event: testEvent1, query: "nonexistent_term_xyz"), "matchesQuery returns false for unmatched term")
+
+        let testEvent2 = AuditEvent(
+            id: "test-event-002",
+            timestamp: "2026-11-05T12:01:00Z",
+            eventType: "intruder_detected",
+            appName: "Telegram",
+            bundleId: "ru.keepcoder.Telegram",
+            distance: 0.45,
+            threshold: 0.22,
+            intruderPhoto: "intruder_20261105_120100.jpg",
+            details: "Unrecognized face candidate",
+            isSuccess: false
+        )
+        assert(SecurityAuditLogger.matchesQuery(event: testEvent2, query: "intruder_20261105"), "matchesQuery matches intruder photo name")
+        assert(SecurityAuditLogger.matchesQuery(event: testEvent2, query: "telegram"), "matchesQuery matches target app Telegram")
+
+        // 4. CLI Argument Normalization for Search & Incident Types
+        assertEqual(AppDelegate.normalizeArguments(["--audit-search-json"]), ["--audit-search", "--json"], "Normalizes --audit-search-json")
+        assertEqual(AppDelegate.normalizeArguments(["--search-audit-json"]), ["--audit-search", "--json"], "Normalizes --search-audit-json")
+        assertEqual(AppDelegate.normalizeArguments(["--search-audit"]), ["--audit-search"], "Normalizes --search-audit alias")
+        assertEqual(AppDelegate.normalizeArguments(["--clear-incidents-type-json"]), ["--clear-incidents", "--json"], "Normalizes --clear-incidents-type-json")
     }
 
     // MARK: - 10. Performance Benchmark

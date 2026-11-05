@@ -4,6 +4,23 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.6] - 2026-11-05
+
+### Added
+- **Centralized Incident Telemetry & Selective Purging (`CameraScanner.swift`, `AppDelegate.swift`)**:
+  - Implemented `CameraScanner.IncidentStats` structure and `CameraScanner.getDetailedIncidentStats()` reporting comprehensive telemetry (`totalCaptures`, `totalSizeBytes`, `averageSizeBytes`, storage directory, `todayCount`, `past24HoursCount`, `past7DaysCount`, timestamps, and classification `typeBreakdown`).
+  - Added selective incident purging via `CameraScanner.clearIncidents(filterType:)` with case-insensitive validation and alias support (`shoulder`, `shoulder_surfing`, `all`).
+  - Extended CLI `--incidents-summary` (and `--incidents-summary --json`) with typed classification telemetry and average capture size metrics.
+  - Enhanced CLI `--clear-incidents` with `--type <category>` (and `--clear-incidents-type-json`).
+- **Security Audit Log Search & Multi-Field Querying (`SecurityAuditLogger.swift`, `AppDelegate.swift`)**:
+  - Implemented `SecurityAuditLogger.matchesQuery(event:query:)` and `SecurityAuditLogger.searchEvents(query:filterType:tail:)` enabling case-insensitive keyword searches across `eventType`, `appName`, `bundleId`, `details`, and `intruderPhoto`.
+  - Added CLI `--audit-search <query>`, `--search-audit`, `--audit --query <text>`, and normalized `--audit-search-json`.
+- **CLI Normalization & Makefile Automation (`Makefile`, `AppDelegate.swift`)**:
+  - Added CLI flag normalization for `--audit-search-json`, `--search-audit-json`, `--search-audit`, and `--clear-incidents-type-json`.
+  - Added Makefile targets `make clear-incidents-type TYPE=`, `make clear-incidents-type-json TYPE=`, `make audit-search QUERY=`, and `make audit-search-json QUERY=`.
+- **Automated Test Suite Expansion (`Tests/FaceLockTests.swift`)**:
+  - Scaled automated test suite to 451 unit tests (up from 417) across 29 specialized test suites with 100% pass rate, covering incident telemetry calculations, selective typed clearing, multi-field audit event search matching, and CLI normalizations.
+
 ## [1.1.5] - 2026-11-05
 
 ### Added

@@ -434,7 +434,18 @@ public final class SecurityAuditLogger {
         }
     }
 
-    public func fetchRecentEvents(tail: Int = 20, filterType: String? = nil) -> [AuditEvent] {
+    public static func matchesQuery(event: AuditEvent, query: String) -> Bool {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !q.isEmpty else { return true }
+        if event.eventType.lowercased().contains(q) { return true }
+        if let app = event.appName, app.lowercased().contains(q) { return true }
+        if let bundle = event.bundleId, bundle.lowercased().contains(q) { return true }
+        if let details = event.details, details.lowercased().contains(q) { return true }
+        if let photo = event.intruderPhoto, photo.lowercased().contains(q) { return true }
+        return false
+    }
+
+    public func searchEvents(query: String? = nil, filterType: String? = nil, tail: Int = 20) -> [AuditEvent] {
         var results: [AuditEvent] = []
         logQueue.sync {
             guard let content = try? String(contentsOf: self.logFileURL, encoding: .utf8) else {
@@ -450,6 +461,11 @@ public final class SecurityAuditLogger {
                             continue
                         }
                     }
+                    if let q = query, !q.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        if !SecurityAuditLogger.matchesQuery(event: event, query: q) {
+                            continue
+                        }
+                    }
                     results.append(event)
                     if results.count >= tail {
                         break
@@ -458,6 +474,10 @@ public final class SecurityAuditLogger {
             }
         }
         return results
+    }
+
+    public func fetchRecentEvents(tail: Int = 20, filterType: String? = nil) -> [AuditEvent] {
+        return searchEvents(query: nil, filterType: filterType, tail: tail)
     }
 
     @discardableResult

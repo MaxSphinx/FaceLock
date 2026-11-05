@@ -504,6 +504,9 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
 
     public static func isValidIncidentType(_ type: String) -> Bool {
         let normalized = type.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if normalized == "all" || normalized == "shoulder" || normalized == "shoulder_surfing" {
+            return true
+        }
         return supportedIncidentTypes.contains(normalized)
     }
 
@@ -519,6 +522,147 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         } else {
             return "intruder"
         }
+    }
+
+    public struct IncidentStats {
+        public let totalCaptures: Int
+        public let totalSizeBytes: UInt64
+        public let todayCount: Int
+        public let past24HoursCount: Int
+        public let past7DaysCount: Int
+        public let newestIncidentTimestamp: String?
+        public let oldestIncidentTimestamp: String?
+        public let typeBreakdown: [String: Int]
+        public let averageSizeBytes: Double
+        public let directory: String
+
+        public func toDictionary() -> [String: Any] {
+            var dict: [String: Any] = [
+                "totalCaptures": totalCaptures,
+                "totalSizeBytes": totalSizeBytes,
+                "todayCount": todayCount,
+                "past24HoursCount": past24HoursCount,
+                "past7DaysCount": past7DaysCount,
+                "typeBreakdown": typeBreakdown,
+                "averageSizeBytes": averageSizeBytes,
+                "directory": directory
+            ]
+            if let newest = newestIncidentTimestamp { dict["newestIncidentTimestamp"] = newest }
+            if let oldest = oldestIncidentTimestamp { dict["oldestIncidentTimestamp"] = oldest }
+            return dict
+        }
+    }
+
+    public func getDetailedIncidentStats() -> IncidentStats {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
+        let files = ((try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? [])
+            .filter { $0.hasSuffix(".jpg") || $0.hasSuffix(".jpeg") }
+            .sorted(by: >)
+
+        var totalBytes: UInt64 = 0
+        var past24HoursCount = 0
+        var past7DaysCount = 0
+        var todayCount = 0
+        var newestTimestamp: String? = nil
+        var oldestTimestamp: String? = nil
+        var typeBreakdown: [String: Int] = [:]
+
+        let now = Date()
+        let calendar = Calendar.current
+        let oneDayAgo = now.addingTimeInterval(-86400)
+        let sevenDaysAgo = now.addingTimeInterval(-7 * 86400)
+        let startOfToday = calendar.startOfDay(for: now)
+
+        for (index, f) in files.enumerated() {
+            let p = dir.appendingPathComponent(f).path
+            let incType = CameraScanner.incidentType(for: f)
+            typeBreakdown[incType, default: 0] += 1
+
+            if let attrs = try? FileManager.default.attributesOfItem(atPath: p) {
+                if let sz = attrs[.size] as? UInt64 {
+                    totalBytes += sz
+                }
+                if let modDate = attrs[.modificationDate] as? Date {
+                    let iso = ISO8601DateFormatter().string(from: modDate)
+                    if index == 0 {
+                        newestTimestamp = iso
+                    }
+                    if index == files.count - 1 {
+                        oldestTimestamp = iso
+                    }
+                    if modDate >= oneDayAgo {
+                        past24HoursCount += 1
+                    }
+                    if modDate >= startOfToday {
+                        todayCount += 1
+                    }
+                    if modDate >= sevenDaysAgo {
+                        past7DaysCount += 1
+                    }
+                }
+            }
+        }
+
+        let avgBytes = files.isEmpty ? 0.0 : Double(totalBytes) / Double(files.count)
+        return IncidentStats(
+            totalCaptures: files.count,
+            totalSizeBytes: totalBytes,
+            todayCount: todayCount,
+            past24HoursCount: past24HoursCount,
+            past7DaysCount: past7DaysCount,
+            newestIncidentTimestamp: newestTimestamp,
+            oldestIncidentTimestamp: oldestTimestamp,
+            typeBreakdown: typeBreakdown,
+            averageSizeBytes: avgBytes,
+            directory: dir.path
+        )
+    }
+
+    @discardableResult
+    public func clearIncidents(filterType: String? = nil) -> (deletedCount: Int, freedBytes: UInt64) {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
+
+        let normalizedFilter: String?
+        if let f = filterType?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), !f.isEmpty && f != "all" {
+            if f == "shoulder" || f == "shoulder_surfing" {
+                normalizedFilter = "bystander"
+            } else {
+                normalizedFilter = f
+            }
+        } else {
+            normalizedFilter = nil
+        }
+
+        var deletedCount = 0
+        var freedBytes: UInt64 = 0
+
+        guard let files = try? FileManager.default.contentsOfDirectory(atPath: dir.path) else {
+            return (0, 0)
+        }
+
+        var jpegs = files.filter { $0.hasSuffix(".jpg") || $0.hasSuffix(".jpeg") }
+        if let filter = normalizedFilter {
+            jpegs = jpegs.filter { CameraScanner.incidentType(for: $0) == filter }
+        }
+
+        for f in jpegs {
+            let p = dir.appendingPathComponent(f).path
+            if let attrs = try? FileManager.default.attributesOfItem(atPath: p),
+               let sz = attrs[.size] as? UInt64 {
+                freedBytes += sz
+            }
+            if (try? FileManager.default.removeItem(atPath: p)) != nil {
+                deletedCount += 1
+            }
+        }
+
+        let actionDesc = normalizedFilter != nil
+            ? "Purged \(normalizedFilter!) intruder incident captures via CLI"
+            : "Purged all intruder incident captures via CLI"
+        SecurityAuditLogger.shared.logIncidentsAction(action: actionDesc, count: deletedCount)
+        return (deletedCount, freedBytes)
     }
 
     @discardableResult

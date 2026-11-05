@@ -97,8 +97,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--apps-gui", "--json"])
             case "--clear-audit-json", "--clear-logs-json":
                 args.append(contentsOf: ["--clear-audit", "--json"])
-            case "--clear-incidents-json":
+            case "--clear-incidents-json", "--clear-incidents-type-json":
                 args.append(contentsOf: ["--clear-incidents", "--json"])
+            case "--audit-search-json", "--search-audit-json":
+                args.append(contentsOf: ["--audit-search", "--json"])
             case "--test-telegram-json":
                 args.append(contentsOf: ["--test-telegram", "--json"])
             case "--settings-json":
@@ -155,6 +157,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append("--clear-vectors")
             case "--export-logs":
                 args.append("--export-audit")
+            case "--search-audit":
+                args.append("--audit-search")
             case "--prune-logs":
                 args.append("--prune-audit")
             case "--log-stats":
@@ -188,17 +192,18 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --settings                 Open configuration and alert settings
               --gallery                  Open intruder incident log gallery
               --incidents [--json]       List logged intruder incident captures
-              --incidents-summary [--json] Incident telemetry, time range & 24h count
+              --incidents-summary [--json] Incident telemetry, classification breakdown & 24h count
               --incident <filename>      Inspect a specific logged intruder incident
               --delete-incident <file>   Delete a specific intruder incident photo from disk
               --latest-incident [--json] Inspect the most recent intruder photo capture
               --export-latest-incident <p> Copy latest intruder photo capture to destination path
               --export-incident <f> <p>  Copy specific intruder photo capture to destination path
-              --clear-incidents          Purge all saved intruder photo captures from disk
+              --clear-incidents [--type T] Purge saved intruder incident captures (optionally by type)
               --prune-incidents <count>  Prune intruder captures keeping latest N photos
               --diagnostics [--json]     Run full biometric, hardware & storage diagnostics
               --diagnostics-gui, --diagnostics-ui Open system hardware and biometrics diagnostics window
-              --logs, --audit [--tail N] [--type T] [--json] View security audit event log
+              --logs, --audit [--tail N] [--type T] [--query Q] [--json] View security audit event log
+              --audit-search <query> [--tail N] [--type T] [--json] Search audit events by keyword or bundle
               --audit-ui, --audit-window Open security audit log viewer window
               --clear-logs, --clear-audit Purge all recorded security audit log events
               --prune-logs, --prune-audit <count> Prune older audit events keeping latest N
@@ -277,9 +282,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if args.contains("--version") || args.contains("-v") {
             if args.contains("--json") {
-                print("{\"name\":\"FaceLock\",\"version\":\"1.1.5\",\"platform\":\"darwin-arm64\"}")
+                print("{\"name\":\"FaceLock\",\"version\":\"1.1.6\",\"platform\":\"darwin-arm64\"}")
             } else {
-                print("FaceLock v1.1.5 (darwin-arm64)")
+                print("FaceLock v1.1.6 (darwin-arm64)")
             }
             exit(0)
         }
@@ -457,7 +462,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
             if args.contains("--json") {
                 let statusDict: [String: Any] = [
-                    "version": "1.1.5",
+                    "version": "1.1.6",
                     "daemon": isAlreadyRunning ? "running" : "stopped",
                     "shieldState": Config.shared.isEnabled ? "active" : "paused",
                     "protectionMode": Config.shared.protectionMode,
@@ -489,7 +494,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             let recent24hStr = recent24hCount > 0 ? " (\(recent24hCount) in past 24h)" : ""
             print("""
             FaceLock Status:
-              Version: 1.1.4 (darwin-arm64)
+              Version: 1.1.6 (darwin-arm64)
               Daemon: \(isAlreadyRunning ? "RUNNING" : "STOPPED")
               Shield: \(Config.shared.isEnabled ? "ACTIVE" : "PAUSED")
               Mode: \(Config.shared.protectionMode)
@@ -1714,111 +1719,62 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if args.contains("--incidents-summary") || args.contains("--incident-summary") {
-            let home = FileManager.default.homeDirectoryForCurrentUser
-            let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
-            let files = ((try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? [])
-                .filter { $0.hasSuffix(".jpg") || $0.hasSuffix(".jpeg") }
-                .sorted(by: >)
-
-            var totalBytes: UInt64 = 0
-            var past24HoursCount = 0
-            var past7DaysCount = 0
-            var newestTimestamp: String? = nil
-            var oldestTimestamp: String? = nil
-            let now = Date()
-            let calendar = Calendar.current
-            var todayCount = 0
-
-            let oneDayAgo = now.addingTimeInterval(-86400)
-            let sevenDaysAgo = now.addingTimeInterval(-7 * 86400)
-            let startOfToday = calendar.startOfDay(for: now)
-
-            for (index, f) in files.enumerated() {
-                let p = dir.appendingPathComponent(f).path
-                if let attrs = try? FileManager.default.attributesOfItem(atPath: p) {
-                    if let sz = attrs[.size] as? UInt64 {
-                        totalBytes += sz
-                    }
-                    if let modDate = attrs[.modificationDate] as? Date {
-                        let iso = ISO8601DateFormatter().string(from: modDate)
-                        if index == 0 {
-                            newestTimestamp = iso
-                        }
-                        if index == files.count - 1 {
-                            oldestTimestamp = iso
-                        }
-                        if modDate >= oneDayAgo {
-                            past24HoursCount += 1
-                        }
-                        if modDate >= startOfToday {
-                            todayCount += 1
-                        }
-                        if modDate >= sevenDaysAgo {
-                            past7DaysCount += 1
-                        }
-                    }
-                }
-            }
+            let stats = CameraScanner.shared.getDetailedIncidentStats()
 
             if args.contains("--json") {
-                let summary: [String: Any] = [
-                    "totalCaptures": files.count,
-                    "totalSizeBytes": totalBytes,
-                    "directory": dir.path,
-                    "todayCount": todayCount,
-                    "past24HoursCount": past24HoursCount,
-                    "past7DaysCount": past7DaysCount,
-                    "newestIncidentTimestamp": newestTimestamp as Any,
-                    "oldestIncidentTimestamp": oldestTimestamp as Any
-                ]
-                if let d = try? JSONSerialization.data(withJSONObject: summary, options: [.prettyPrinted, .sortedKeys]),
+                if let d = try? JSONSerialization.data(withJSONObject: stats.toDictionary(), options: [.prettyPrinted, .sortedKeys]),
                    let s = String(data: d, encoding: .utf8) {
                     print(s)
                 }
                 exit(0)
             }
 
-            let sizeMB = Double(totalBytes) / (1024.0 * 1024.0)
+            let sizeMB = Double(stats.totalSizeBytes) / (1024.0 * 1024.0)
+            let avgKB = stats.averageSizeBytes / 1024.0
             print("""
             FaceLock Intruder Incident Telemetry:
-              Total Captures: \(files.count) (\(String(format: "%.2f", sizeMB)) MB)
-              Storage Directory: \(dir.path)
-              Today: \(todayCount) captures
-              Past 24 Hours: \(past24HoursCount) captures
-              Past 7 Days: \(past7DaysCount) captures
-              Newest Incident: \(newestTimestamp ?? "None")
-              Oldest Incident: \(oldestTimestamp ?? "None")
+              Total Captures: \(stats.totalCaptures) (\(String(format: "%.2f", sizeMB)) MB, avg: \(String(format: "%.1f", avgKB)) KB/capture)
+              Storage Directory: \(stats.directory)
+              Today: \(stats.todayCount) captures
+              Past 24 Hours: \(stats.past24HoursCount) captures
+              Past 7 Days: \(stats.past7DaysCount) captures
+              Incident Classification:
+                • Intruders: \(stats.typeBreakdown["intruder", default: 0])
+                • Bystanders (Shoulder): \(stats.typeBreakdown["bystander", default: 0])
+                • Walk-Away Locks: \(stats.typeBreakdown["walkaway", default: 0])
+                • Wake Locks: \(stats.typeBreakdown["wake", default: 0])
+                • Brute-Force PIN: \(stats.typeBreakdown["bruteforce", default: 0])
+              Newest Incident: \(stats.newestIncidentTimestamp ?? "None")
+              Oldest Incident: \(stats.oldestIncidentTimestamp ?? "None")
             """)
             exit(0)
         }
 
         if args.contains("--clear-incidents") {
-            let home = FileManager.default.homeDirectoryForCurrentUser
-            let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
-            var deletedCount = 0
-            var freedBytes: UInt64 = 0
-
-            if let files = try? FileManager.default.contentsOfDirectory(atPath: dir.path) {
-                let jpegs = files.filter { $0.hasSuffix(".jpg") || $0.hasSuffix(".jpeg") }
-                for f in jpegs {
-                    let p = dir.appendingPathComponent(f).path
-                    if let attrs = try? FileManager.default.attributesOfItem(atPath: p),
-                       let sz = attrs[.size] as? UInt64 {
-                        freedBytes += sz
+            var filterType: String? = nil
+            if let idx = (args.firstIndex(of: "--type") ?? args.firstIndex(of: "--filter")), idx + 1 < args.count {
+                filterType = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+                if !CameraScanner.isValidIncidentType(filterType!) {
+                    let validList = (CameraScanner.supportedIncidentTypes + ["shoulder", "all"]).joined(separator: ", ")
+                    if args.contains("--json") {
+                        print("{\"success\":false,\"error\":\"Invalid incident type '\(filterType!)'. Supported: \(validList)\"}")
+                    } else {
+                        print("Error: Invalid incident type '\(filterType!)'. Supported types: \(validList)")
                     }
-                    if (try? FileManager.default.removeItem(atPath: p)) != nil {
-                        deletedCount += 1
-                    }
+                    exit(1)
                 }
             }
 
-            SecurityAuditLogger.shared.logIncidentsAction(action: "Purged all intruder incident captures via CLI", count: deletedCount)
+            let result = CameraScanner.shared.clearIncidents(filterType: filterType)
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
 
             if args.contains("--json") {
                 let outDict: [String: Any] = [
                     "success": true,
-                    "deletedCount": deletedCount,
-                    "freedSizeBytes": freedBytes,
+                    "deletedCount": result.deletedCount,
+                    "freedSizeBytes": result.freedBytes,
+                    "filter": filterType ?? "all",
                     "directory": dir.path
                 ]
                 if let d = try? JSONSerialization.data(withJSONObject: outDict, options: [.prettyPrinted, .sortedKeys]),
@@ -1828,8 +1784,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 exit(0)
             }
 
-            let freedMB = Double(freedBytes) / (1024.0 * 1024.0)
-            print("[FaceLock] Cleared \(deletedCount) intruder captures (\(String(format: "%.2f", freedMB)) MB freed) from \(dir.path).")
+            let freedMB = Double(result.freedBytes) / (1024.0 * 1024.0)
+            let typeLabel = filterType != nil ? "(\(filterType!)) " : ""
+            print("[FaceLock] Cleared \(result.deletedCount) \(typeLabel)incident captures (\(String(format: "%.2f", freedMB)) MB freed) from \(dir.path).")
             exit(0)
         }
 
@@ -2128,7 +2085,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        if args.contains("--logs") || args.contains("--audit") || args.contains("--audit-logs") {
+        if args.contains("--logs") || args.contains("--audit") || args.contains("--audit-logs") || args.contains("--audit-search") {
             var tailCount = 20
             if let idx = args.firstIndex(of: "--tail"), idx + 1 < args.count, let val = Int(args[idx + 1]), val > 0 {
                 tailCount = val
@@ -2137,12 +2094,28 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             if let idx = (args.firstIndex(of: "--filter") ?? args.firstIndex(of: "--type")), idx + 1 < args.count {
                 filterType = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
             }
+            var searchQuery: String? = nil
+            if let idx = (args.firstIndex(of: "--query") ?? args.firstIndex(of: "--search")) {
+                for i in (idx + 1)..<args.count {
+                    if !args[i].hasPrefix("-") {
+                        searchQuery = args[i].trimmingCharacters(in: .whitespacesAndNewlines)
+                        break
+                    }
+                }
+            } else if let idx = args.firstIndex(of: "--audit-search") {
+                for i in (idx + 1)..<args.count {
+                    if !args[i].hasPrefix("-") {
+                        searchQuery = args[i].trimmingCharacters(in: .whitespacesAndNewlines)
+                        break
+                    }
+                }
+            }
 
-            let events = SecurityAuditLogger.shared.fetchRecentEvents(tail: tailCount, filterType: filterType)
+            let events = SecurityAuditLogger.shared.searchEvents(query: searchQuery, filterType: filterType, tail: tailCount)
             let stats = SecurityAuditLogger.shared.getLogStats()
 
             if args.contains("--json") {
-                let dict: [String: Any] = [
+                var dict: [String: Any] = [
                     "totalLoggedEvents": stats.totalCount,
                     "retrievedCount": events.count,
                     "filter": filterType ?? "all",
@@ -2162,6 +2135,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                         return d
                     }
                 ]
+                if let q = searchQuery { dict["query"] = q }
                 if let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
                    let str = String(data: data, encoding: .utf8) {
                     print(str)
@@ -2169,9 +2143,21 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 exit(0)
             }
 
-            print("FaceLock Security Audit Log (showing latest \(events.count) of \(stats.totalCount) events):")
+            var header = "FaceLock Security Audit Log"
+            if let q = searchQuery {
+                header += " (query: '\(q)')"
+            }
+            if let f = filterType {
+                header += " (filter: '\(f)')"
+            }
+            header += " (showing latest \(events.count) of \(stats.totalCount) events):"
+            print(header)
             if events.isEmpty {
-                if let f = filterType {
+                if let q = searchQuery, let f = filterType {
+                    print("  ✓ No audit events found matching query '\(q)' and filter '\(f)'.")
+                } else if let q = searchQuery {
+                    print("  ✓ No audit events found matching query '\(q)'.")
+                } else if let f = filterType {
                     print("  ✓ No audit events found matching filter '\(f)'.")
                 } else {
                     print("  ✓ No security audit events recorded.")

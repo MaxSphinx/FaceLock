@@ -238,10 +238,11 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --export-latest-incident <p>` | Copy latest intruder photo capture to destination path |
 | `facelock --export-incident <f> <p>` | Copy specific intruder photo capture to destination path |
 | `facelock --export-incidents <dir> [--type T]` | Export captured intruder photos and JSON manifest to directory (optional type filter) |
-| `facelock --clear-incidents` | Purge all saved intruder photo captures from disk |
+| `facelock --clear-incidents [--type T]` | Purge saved intruder incident captures (optionally filtered by type) |
 | `facelock --prune-incidents <n>` | Prune intruder captures keeping latest N photos |
-| `facelock --audit [--tail N] [--type T]` | View security audit log trail of biometrics, unlocks & alarms |
-| `facelock --audit-stats [--json]` | Show security audit statistics and total events count |
+| `facelock --audit [--tail N] [--type T] [--query Q]` | View security audit log trail with category and query filtering |
+| `facelock --audit-search <query> [--json]` | Search audit log events across app name, bundle ID, details and event type |
+| `facelock --audit-stats [--json]` | Show security audit statistics, success rates and event breakdown |
 | `facelock --clear-audit` | Purge all security audit log events from disk |
 | `facelock --export-audit <path> [--type T] [--format F]` | Export audit log events to file (JSONL, JSON array, or RFC-4180 CSV) |
 | `facelock --export-audit-csv <path>` | Export security audit log events directly to RFC-4180 CSV file |
