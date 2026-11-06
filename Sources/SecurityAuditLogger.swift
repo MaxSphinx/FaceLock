@@ -705,6 +705,165 @@ public final class SecurityAuditLogger {
         return (stats.totalEvents, stats.fileSizeBytes, stats.lastEventTime, stats.successCount, stats.failureCount, stats.typeBreakdown)
     }
 
+    public struct AuditSummary {
+        public let totalEvents: Int
+        public let fileSizeBytes: UInt64
+        public let firstEventTime: String?
+        public let lastEventTime: String?
+        public let timeSpanHours: Double
+        public let successfulVerifications: Int
+        public let intruderDetections: Int
+        public let pinUnlocks: Int
+        public let touchIdUnlocks: Int
+        public let shoulderSurfingIncidents: Int
+        public let emergencyLockdowns: Int
+        public let pinLockouts: Int
+        public let verificationSuccessRate: Double
+        public let topChallengedApplications: [String: Int]
+        public let averageDailyEvents: Double
+
+        public func toDictionary() -> [String: Any] {
+            return [
+                "totalEvents": totalEvents,
+                "fileSizeBytes": fileSizeBytes,
+                "firstEventTime": firstEventTime ?? "",
+                "lastEventTime": lastEventTime ?? "",
+                "timeSpanHours": Double(round(timeSpanHours * 10) / 10),
+                "successfulVerifications": successfulVerifications,
+                "intruderDetections": intruderDetections,
+                "pinUnlocks": pinUnlocks,
+                "touchIdUnlocks": touchIdUnlocks,
+                "shoulderSurfingIncidents": shoulderSurfingIncidents,
+                "emergencyLockdowns": emergencyLockdowns,
+                "pinLockouts": pinLockouts,
+                "verificationSuccessRate": Double(round(verificationSuccessRate * 1000) / 1000),
+                "topChallengedApplications": topChallengedApplications,
+                "averageDailyEvents": Double(round(averageDailyEvents * 10) / 10)
+            ]
+        }
+    }
+
+    public func getAuditSummary(events: [AuditEvent]? = nil) -> AuditSummary {
+        var parsedEvents: [AuditEvent] = []
+        var size: UInt64 = 0
+
+        if let evs = events {
+            parsedEvents = evs
+            size = UInt64(evs.count * 128)
+        } else {
+            logQueue.sync {
+                if let attrs = try? FileManager.default.attributesOfItem(atPath: self.logFileURL.path),
+                   let s = attrs[.size] as? UInt64 {
+                    size = s
+                }
+                if let content = try? String(contentsOf: self.logFileURL, encoding: .utf8) {
+                    let lines = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+                    let decoder = JSONDecoder()
+                    for line in lines {
+                        if let data = line.data(using: .utf8),
+                           let event = try? decoder.decode(AuditEvent.self, from: data) {
+                            parsedEvents.append(event)
+                        }
+                    }
+                }
+            }
+        }
+
+        let total = parsedEvents.count
+        guard total > 0 else {
+            return AuditSummary(
+                totalEvents: 0,
+                fileSizeBytes: size,
+                firstEventTime: nil,
+                lastEventTime: nil,
+                timeSpanHours: 0.0,
+                successfulVerifications: 0,
+                intruderDetections: 0,
+                pinUnlocks: 0,
+                touchIdUnlocks: 0,
+                shoulderSurfingIncidents: 0,
+                emergencyLockdowns: 0,
+                pinLockouts: 0,
+                verificationSuccessRate: 1.0,
+                topChallengedApplications: [:],
+                averageDailyEvents: 0.0
+            )
+        }
+
+        let firstTime = parsedEvents.first?.timestamp
+        let lastTime = parsedEvents.last?.timestamp
+
+        let isoFormatter = ISO8601DateFormatter()
+        var timeSpanHours: Double = 0.0
+        if let fStr = firstTime, let lStr = lastTime,
+           let fDate = isoFormatter.date(from: fStr),
+           let lDate = isoFormatter.date(from: lStr) {
+            let diff = max(0.0, lDate.timeIntervalSince(fDate))
+            timeSpanHours = diff / 3600.0
+        }
+
+        var successVerif = 0
+        var intruderDet = 0
+        var pinUnlocks = 0
+        var touchIdUnlocks = 0
+        var shoulderInc = 0
+        var emergencyLock = 0
+        var pinLockouts = 0
+        var appChallenges: [String: Int] = [:]
+
+        for event in parsedEvents {
+            let t = event.eventType
+            if t == "face_verified" || t == "wake_verified" {
+                successVerif += 1
+            } else if t == "intruder_detected" || t == "wake_locked" || t == "walkaway_lock" {
+                intruderDet += 1
+            } else if t == "pin_unlocked" {
+                pinUnlocks += 1
+            } else if t == "touchid_unlocked" {
+                touchIdUnlocks += 1
+            } else if t == "shoulder_surfing" {
+                shoulderInc += 1
+            } else if t == "emergency_lockdown" {
+                emergencyLock += 1
+            } else if t == "pin_bruteforce" {
+                pinLockouts += 1
+            }
+
+            if let app = event.appName, !app.isEmpty, app != "FaceLock CLI", app != "System" {
+                appChallenges[app, default: 0] += 1
+            }
+        }
+
+        let totalAttempts = successVerif + intruderDet
+        let successRate = totalAttempts > 0 ? Double(successVerif) / Double(totalAttempts) : 1.0
+        let days = max(1.0, timeSpanHours / 24.0)
+        let avgDaily = Double(total) / days
+
+        let sortedApps = appChallenges.sorted { $0.value > $1.value }.prefix(5)
+        var topApps: [String: Int] = [:]
+        for (k, v) in sortedApps {
+            topApps[k] = v
+        }
+
+        return AuditSummary(
+            totalEvents: total,
+            fileSizeBytes: size,
+            firstEventTime: firstTime,
+            lastEventTime: lastTime,
+            timeSpanHours: timeSpanHours,
+            successfulVerifications: successVerif,
+            intruderDetections: intruderDet,
+            pinUnlocks: pinUnlocks,
+            touchIdUnlocks: touchIdUnlocks,
+            shoulderSurfingIncidents: shoulderInc,
+            emergencyLockdowns: emergencyLock,
+            pinLockouts: pinLockouts,
+            verificationSuccessRate: successRate,
+            topChallengedApplications: topApps,
+            averageDailyEvents: avgDaily
+        )
+    }
+
     public func exportAudit(
         to destinationPath: String,
         filterType: String? = nil,

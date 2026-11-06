@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/MaxSphinx/FaceLock/releases"><img src="https://img.shields.io/github/v/release/MaxSphinx/FaceLock?style=flat-square&color=00BBF9" alt="Latest Release" /></a>
   <a href="https://github.com/MaxSphinx/FaceLock/actions"><img src="https://img.shields.io/github/actions/workflow/status/MaxSphinx/FaceLock/build.yml?branch=main&style=flat-square&label=build" alt="Build Status" /></a>
-  <img src="https://img.shields.io/badge/tests-554%20passed%20(100%25)-brightgreen?style=flat-square" alt="Tests" />
+  <img src="https://img.shields.io/badge/tests-635%20passed%20(100%25)-brightgreen?style=flat-square" alt="Tests" />
   <img src="https://img.shields.io/badge/platform-macOS%2014.0%2B-blue?style=flat-square" alt="Platform" />
   <img src="https://img.shields.io/badge/arch-Apple%20Silicon%20(arm64)-orange?style=flat-square" alt="Architecture" />
   <img src="https://img.shields.io/badge/swift-6.0%2B-F05138?style=flat-square&logo=swift&logoColor=white" alt="Swift" />
@@ -87,7 +87,7 @@ Built strictly in modern **Swift & native AppKit**, with **zero external package
   - Profile switcher, 3D face calibration wizard, dynamic camera switcher.
   - Interactive Incident Gallery with 24h / 7d period filtering and one-click pruning.
   - Security Audit Log viewer with category filtering, pruning, and JSONL/CSV/JSON export.
-- **🧪 100% Automated Test Suite**: 554 unit tests and microsecond Apple Silicon vector benchmarks built directly into the binary (`make test`).
+- **🧪 100% Automated Test Suite**: 635 unit tests and microsecond Apple Silicon vector benchmarks built directly into the binary (`make test`).
 
 ---
 
@@ -213,6 +213,7 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --backup-config, --export-config <path>` | Backup active FaceLock configuration to JSON |
 | `facelock --restore-config, --import-config <path>` | Restore FaceLock configuration from JSON |
 | `facelock --vectors [--json]` | Inspect enrolled biometric facial vectors & cluster metrics |
+| `facelock --vector-consistency [--json]` | Analyze cluster cohesion score, medoid index & angle diversity |
 | `facelock --optimize-vectors [--json]` | Prune redundant face vectors & outliers to optimize cluster compactness |
 | `facelock --export-vectors <path>` | Backup enrolled face vectors to JSON file |
 | `facelock --import-vectors <path>` | Restore or merge face vectors from JSON file |
@@ -232,6 +233,8 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --status` | Display daemon status and biometric template metrics |
 | `facelock --incidents [--json]` | List logged intruder incident captures and disk usage |
 | `facelock --incidents-summary [--json]` | Telemetry summary: total, 24h & 7d counts, size, timestamps |
+| `facelock --incidents-integrity [--json]` | Check intruder capture files for truncated or corrupted headers |
+| `facelock --repair-incidents [--json]` | Safely prune corrupted and zero-byte incident captures |
 | `facelock --incident <filename>` | Inspect details of a specific intruder incident photo |
 | `facelock --delete-incident <file>` | Delete a specific intruder incident photo from disk |
 | `facelock --latest-incident [--json]` | Inspect details of the most recent intruder capture |
@@ -243,6 +246,7 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --audit [--tail N] [--type T] [--query Q]` | View security audit log trail with category and query filtering |
 | `facelock --audit-search <query> [--json]` | Search audit log events across app name, bundle ID, details and event type |
 | `facelock --audit-stats [--json]` | Show security audit statistics, success rates and event breakdown |
+| `facelock --audit-summary [--json]` | Analytical audit digest: verification success rate & challenged apps |
 | `facelock --clear-audit` | Purge all security audit log events from disk |
 | `facelock --export-audit <path> [--type T] [--format F]` | Export audit log events to file (JSONL, JSON array, or RFC-4180 CSV) |
 | `facelock --export-audit-csv <path>` | Export security audit log events directly to RFC-4180 CSV file |

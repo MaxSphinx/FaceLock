@@ -885,6 +885,148 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         return (removedCount, remainingCount, freedBytes)
     }
 
+    public struct IncidentIntegrityReport {
+        public let totalFilesScanned: Int
+        public let validCapturesCount: Int
+        public let corruptedCount: Int
+        public let zeroByteCount: Int
+        public let nonImageCount: Int
+        public let totalValidSizeBytes: UInt64
+        public let totalCorruptedSizeBytes: UInt64
+        public let directory: String
+        public let corruptedFilenames: [String]
+        public let status: String
+
+        public func toDictionary() -> [String: Any] {
+            return [
+                "totalFilesScanned": totalFilesScanned,
+                "validCapturesCount": validCapturesCount,
+                "corruptedCount": corruptedCount,
+                "zeroByteCount": zeroByteCount,
+                "nonImageCount": nonImageCount,
+                "totalValidSizeBytes": totalValidSizeBytes,
+                "totalCorruptedSizeBytes": totalCorruptedSizeBytes,
+                "directory": directory,
+                "corruptedFilenames": corruptedFilenames,
+                "status": status
+            ]
+        }
+    }
+
+    public static func isImageHeaderValid(data: Data) -> Bool {
+        guard data.count >= 4 else { return false }
+        let isJpeg = data[0] == 0xFF && data[1] == 0xD8 && data[2] == 0xFF
+        let isPng = data[0] == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47
+        return isJpeg || isPng
+    }
+
+    public func verifyIncidentsIntegrity(directoryURL: URL? = nil) -> IncidentIntegrityReport {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let dir = directoryURL ?? home.appendingPathComponent(".facelock/intruders", isDirectory: true)
+        guard let files = try? FileManager.default.contentsOfDirectory(atPath: dir.path) else {
+            return IncidentIntegrityReport(
+                totalFilesScanned: 0,
+                validCapturesCount: 0,
+                corruptedCount: 0,
+                zeroByteCount: 0,
+                nonImageCount: 0,
+                totalValidSizeBytes: 0,
+                totalCorruptedSizeBytes: 0,
+                directory: dir.path,
+                corruptedFilenames: [],
+                status: "HEALTHY"
+            )
+        }
+
+        var validCount = 0
+        var zeroByteCount = 0
+        var nonImageCount = 0
+        var corruptedCount = 0
+        var totalValidSize: UInt64 = 0
+        var totalCorruptedSize: UInt64 = 0
+        var corruptedNames: [String] = []
+
+        for f in files {
+            if f.hasPrefix(".") { continue }
+            let p = dir.appendingPathComponent(f).path
+            guard let attrs = try? FileManager.default.attributesOfItem(atPath: p) else { continue }
+            let sz = (attrs[.size] as? UInt64) ?? 0
+
+            let isImageExt = f.hasSuffix(".jpg") || f.hasSuffix(".jpeg") || f.hasSuffix(".png")
+            if !isImageExt {
+                nonImageCount += 1
+                corruptedNames.append(f)
+                totalCorruptedSize += sz
+                continue
+            }
+
+            if sz == 0 {
+                zeroByteCount += 1
+                corruptedCount += 1
+                corruptedNames.append(f)
+                continue
+            }
+
+            if let handle = try? FileHandle(forReadingFrom: URL(fileURLWithPath: p)) {
+                let header = handle.readData(ofLength: 4)
+                handle.closeFile()
+                if CameraScanner.isImageHeaderValid(data: header) {
+                    validCount += 1
+                    totalValidSize += sz
+                } else {
+                    corruptedCount += 1
+                    corruptedNames.append(f)
+                    totalCorruptedSize += sz
+                }
+            } else {
+                corruptedCount += 1
+                corruptedNames.append(f)
+                totalCorruptedSize += sz
+            }
+        }
+
+        let isHealthy = (corruptedCount == 0 && zeroByteCount == 0 && nonImageCount == 0)
+        return IncidentIntegrityReport(
+            totalFilesScanned: validCount + corruptedCount + nonImageCount,
+            validCapturesCount: validCount,
+            corruptedCount: corruptedCount,
+            zeroByteCount: zeroByteCount,
+            nonImageCount: nonImageCount,
+            totalValidSizeBytes: totalValidSize,
+            totalCorruptedSizeBytes: totalCorruptedSize,
+            directory: dir.path,
+            corruptedFilenames: corruptedNames,
+            status: isHealthy ? "HEALTHY" : "CORRUPTED_DETECTED"
+        )
+    }
+
+    public func repairCorruptedIncidents(directoryURL: URL? = nil) -> (repairedCount: Int, freedBytes: UInt64, remainingValid: Int) {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let dir = directoryURL ?? home.appendingPathComponent(".facelock/intruders", isDirectory: true)
+        let report = verifyIncidentsIntegrity(directoryURL: dir)
+
+        var repaired = 0
+        var freed: UInt64 = 0
+
+        for f in report.corruptedFilenames {
+            let p = dir.appendingPathComponent(f).path
+            if let attrs = try? FileManager.default.attributesOfItem(atPath: p),
+               let sz = attrs[.size] as? UInt64 {
+                freed += sz
+            }
+            if (try? FileManager.default.removeItem(atPath: p)) != nil {
+                repaired += 1
+            }
+        }
+
+        if repaired > 0 {
+            SecurityAuditLogger.shared.logIncidentsAction(action: "Repaired \(repaired) corrupted incident captures via CLI", count: repaired)
+        }
+
+        let remaining = report.validCapturesCount
+        return (repaired, freed, remaining)
+    }
+
     public func exportIncidents(to destinationPath: String, filterType: String? = nil) throws -> [String: Any] {
         let expanded = NSString(string: destinationPath).expandingTildeInPath
         let destURL = URL(fileURLWithPath: expanded)

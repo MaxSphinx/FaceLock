@@ -76,6 +76,7 @@ public final class FaceLockTestSuite {
         testIncidentAndAuditAgePruning()
         testConfigValidationSuiteAndIncidentSearch()
         testIncidentDeletionExportAndAuditStats()
+        testMaintenanceV119Enhancements()
         testVectorMatchingBenchmark()
 
         let elapsed = Date().timeIntervalSince(startTime)
@@ -1482,6 +1483,136 @@ public final class FaceLockTestSuite {
         assertEqual(AppDelegate.normalizeArguments(["--set-pin-json"]), ["--set-pin", "--json"], "Normalizes --set-pin-json")
         assertEqual(AppDelegate.normalizeArguments(["--pin-attempts"]), ["--set-pin-attempts"], "Normalizes --pin-attempts alias")
         assertEqual(AppDelegate.normalizeArguments(["--pin-lockout"]), ["--set-pin-lockout"], "Normalizes --pin-lockout alias")
+    }
+
+    // MARK: - Maintenance & Reliability Enhancements (v1.1.9)
+    private func testMaintenanceV119Enhancements() {
+        print("\n▶ Test Suite: Biometric Consistency, Incident Integrity & Audit Digest (v1.1.9)")
+
+        // 1. Image Header Magic Bytes Validation
+        let validJpegHeader = Data([0xFF, 0xD8, 0xFF, 0xE0])
+        let validPngHeader = Data([0x89, 0x50, 0x4E, 0x47])
+        let shortHeader = Data([0xFF, 0xD8])
+        let textHeader = Data("PLAIN_TEXT_NOT_IMAGE".utf8)
+
+        assert(CameraScanner.isImageHeaderValid(data: validJpegHeader), "isImageHeaderValid accepts valid JPEG magic bytes")
+        assert(CameraScanner.isImageHeaderValid(data: validPngHeader), "isImageHeaderValid accepts valid PNG magic bytes")
+        assert(!CameraScanner.isImageHeaderValid(data: shortHeader), "isImageHeaderValid rejects truncated header < 4 bytes")
+        assert(!CameraScanner.isImageHeaderValid(data: textHeader), "isImageHeaderValid rejects text headers")
+
+        // 2. Incident Integrity & Corrupted Capture Repair
+        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("facelock_test_incidents_\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        let validImgPath = tempDir.appendingPathComponent("intruder_20261106_01.jpg").path
+        let zeroByteImgPath = tempDir.appendingPathComponent("intruder_20261106_02.jpg").path
+        let corruptedImgPath = tempDir.appendingPathComponent("intruder_20261106_03.jpg").path
+        let nonImgPath = tempDir.appendingPathComponent("intruder_20261106_04.txt").path
+
+        FileManager.default.createFile(atPath: validImgPath, contents: Data([0xFF, 0xD8, 0xFF, 0xE0, 0x01, 0x02, 0x03, 0x04]))
+        FileManager.default.createFile(atPath: zeroByteImgPath, contents: Data())
+        FileManager.default.createFile(atPath: corruptedImgPath, contents: Data("NON_IMAGE_CORRUPTED_STREAM".utf8))
+        FileManager.default.createFile(atPath: nonImgPath, contents: Data("notes text".utf8))
+
+        let integrityReport = CameraScanner.shared.verifyIncidentsIntegrity(directoryURL: tempDir)
+        assertEqual(integrityReport.totalFilesScanned, 4, "Incident integrity scans all 4 test files")
+        assertEqual(integrityReport.validCapturesCount, 1, "Identifies exactly 1 valid image capture")
+        assertEqual(integrityReport.corruptedCount, 2, "Identifies 2 corrupted image captures (0-byte + invalid header)")
+        assertEqual(integrityReport.zeroByteCount, 1, "Identifies 1 zero-byte file")
+        assertEqual(integrityReport.nonImageCount, 1, "Identifies 1 non-image file")
+        assertEqual(integrityReport.status, "CORRUPTED_DETECTED", "Integrity status is CORRUPTED_DETECTED")
+        assertEqual(integrityReport.toDictionary()["status"] as? String, "CORRUPTED_DETECTED", "Incident integrity report dictionary contains status")
+
+        let repairResult = CameraScanner.shared.repairCorruptedIncidents(directoryURL: tempDir)
+        assertEqual(repairResult.repairedCount, 3, "Repair cleans 3 invalid/corrupted captures")
+        assertEqual(repairResult.remainingValid, 1, "Exactly 1 valid capture remains after repair")
+
+        let postRepairReport = CameraScanner.shared.verifyIncidentsIntegrity(directoryURL: tempDir)
+        assertEqual(postRepairReport.status, "HEALTHY", "Integrity status transitions to HEALTHY after repair")
+        assertEqual(postRepairReport.corruptedCount, 0, "0 corrupted files remain after repair")
+        try? FileManager.default.removeItem(at: tempDir)
+
+        // 3. Biometric Template Consistency & Medoid Computation
+        let emptyConsistency = Config.shared.analyzeTemplateConsistency(vectors: [])
+        assertEqual(emptyConsistency["status"] as? String, "EMPTY", "Empty vector set yields EMPTY status")
+        assertEqual(emptyConsistency["medoidIndex"] as? Int, -1, "Empty vector set yields -1 medoid")
+
+        let vBase = normalize((0..<128).map { Float($0) * 0.01 })
+        let singleConsistency = Config.shared.analyzeTemplateConsistency(vectors: [vBase])
+        assertEqual(singleConsistency["status"] as? String, "SINGLE_SAMPLE", "Single vector yields SINGLE_SAMPLE status")
+        assertEqual(singleConsistency["medoidIndex"] as? Int, 0, "Single vector yields medoid index 0")
+
+        // Tight cluster of 4 close vectors
+        var tightCluster: [[Float]] = [vBase]
+        for step in 1...3 {
+            var shifted = vBase
+            shifted[step] += 0.05
+            tightCluster.append(normalize(shifted))
+        }
+        let tightReport = Config.shared.analyzeTemplateConsistency(vectors: tightCluster)
+        assertEqual(tightReport["count"] as? Int, 4, "Tight cluster contains 4 vectors")
+        assert((tightReport["cohesionScore"] as? Double ?? 0.0) >= 0.70, "Tight cluster has high cohesion score (>= 0.70)")
+        let medoidIdx = tightReport["medoidIndex"] as? Int ?? -1
+        assert(medoidIdx >= 0 && medoidIdx < 4, "Medoid index is within valid bounds [0..3]")
+        let minPair = tightReport["minPairwiseDistance"] as? Double ?? 0.0
+        let avgPair = tightReport["avgPairwiseDistance"] as? Double ?? 0.0
+        let maxPair = tightReport["maxPairwiseDistance"] as? Double ?? 0.0
+        assert(minPair <= avgPair, "minPairwiseDistance <= avgPairwiseDistance")
+        assert(avgPair <= maxPair, "avgPairwiseDistance <= maxPairwiseDistance")
+
+        // Disperse cluster
+        let vOpposite = normalize((0..<128).map { -Float($0) * 0.01 })
+        let disperseReport = Config.shared.analyzeTemplateConsistency(vectors: [vBase, vOpposite])
+        assertEqual(disperseReport["status"] as? String, "DISPERSE", "Opposite vector pair yields DISPERSE status")
+
+        // 4. Security Audit Analytical Digest (getAuditSummary)
+        let isoFormatter = ISO8601DateFormatter()
+        let t1 = isoFormatter.string(from: Date().addingTimeInterval(-7200))
+        let t2 = isoFormatter.string(from: Date().addingTimeInterval(-3600))
+        let t3 = isoFormatter.string(from: Date())
+
+        let syntheticEvents: [AuditEvent] = [
+            AuditEvent(id: "1", timestamp: t1, eventType: "face_verified", appName: "Safari", bundleId: "com.apple.Safari", details: "ok", isSuccess: true),
+            AuditEvent(id: "2", timestamp: t1, eventType: "face_verified", appName: "Safari", bundleId: "com.apple.Safari", details: "ok", isSuccess: true),
+            AuditEvent(id: "3", timestamp: t2, eventType: "intruder_detected", appName: "Terminal", bundleId: "com.apple.Terminal", details: "intruder", isSuccess: false),
+            AuditEvent(id: "4", timestamp: t2, eventType: "pin_unlocked", appName: "Terminal", bundleId: "com.apple.Terminal", details: "pin ok", isSuccess: true),
+            AuditEvent(id: "5", timestamp: t3, eventType: "shoulder_surfing", appName: nil, bundleId: nil, details: "2 faces", isSuccess: false),
+            AuditEvent(id: "6", timestamp: t3, eventType: "emergency_lockdown", appName: nil, bundleId: nil, details: "lockdown", isSuccess: false),
+            AuditEvent(id: "7", timestamp: t3, eventType: "pin_bruteforce", appName: "Terminal", bundleId: "com.apple.Terminal", details: "lockout", isSuccess: false)
+        ]
+
+        let summary = SecurityAuditLogger.shared.getAuditSummary(events: syntheticEvents)
+        assertEqual(summary.totalEvents, 7, "Audit summary tracks totalEvents")
+        assertEqual(summary.successfulVerifications, 2, "Audit summary counts 2 successful face verifications")
+        assertEqual(summary.intruderDetections, 1, "Audit summary counts 1 intruder detection")
+        assertEqual(summary.pinUnlocks, 1, "Audit summary counts 1 PIN unlock")
+        assertEqual(summary.shoulderSurfingIncidents, 1, "Audit summary counts 1 shoulder surfing incident")
+        assertEqual(summary.emergencyLockdowns, 1, "Audit summary counts 1 emergency lockdown")
+        assertEqual(summary.pinLockouts, 1, "Audit summary counts 1 PIN bruteforce lockout")
+        assertAccuracy(Float(summary.verificationSuccessRate), 2.0 / 3.0, accuracy: 0.02, "Verification success rate is ~66.7%")
+        assertEqual(summary.topChallengedApplications["Safari"], 2, "Top challenged apps includes Safari (2)")
+        assertEqual(summary.topChallengedApplications["Terminal"], 3, "Top challenged apps includes Terminal (3)")
+
+        let summaryDict = summary.toDictionary()
+        assert(summaryDict["totalEvents"] != nil, "Summary dictionary contains totalEvents")
+        assert(summaryDict["verificationSuccessRate"] != nil, "Summary dictionary contains verificationSuccessRate")
+
+        // 5. Diagnostics Enrichment with Consistency & Integrity
+        let diag = Diagnostics.collectReport()
+        let storage = diag["storage"] as? [String: Any] ?? [:]
+        assert(storage["templateConsistency"] != nil, "Diagnostics storage includes templateConsistency")
+        assert(storage["incidentsIntegrity"] != nil, "Diagnostics storage includes incidentsIntegrity")
+
+        // 6. CLI Argument Normalization for v1.1.9 commands
+        assertEqual(AppDelegate.normalizeArguments(["--vector-consistency-json"]), ["--vector-consistency", "--json"], "Normalizes --vector-consistency-json")
+        assertEqual(AppDelegate.normalizeArguments(["--analyze-vectors-json"]), ["--vector-consistency", "--json"], "Normalizes --analyze-vectors-json")
+        assertEqual(AppDelegate.normalizeArguments(["--analyze-vectors"]), ["--vector-consistency"], "Normalizes --analyze-vectors alias")
+        assertEqual(AppDelegate.normalizeArguments(["--incidents-integrity-json"]), ["--incidents-integrity", "--json"], "Normalizes --incidents-integrity-json")
+        assertEqual(AppDelegate.normalizeArguments(["--check-incidents-json"]), ["--incidents-integrity", "--json"], "Normalizes --check-incidents-json")
+        assertEqual(AppDelegate.normalizeArguments(["--check-incidents"]), ["--incidents-integrity"], "Normalizes --check-incidents alias")
+        assertEqual(AppDelegate.normalizeArguments(["--repair-incidents-json"]), ["--repair-incidents", "--json"], "Normalizes --repair-incidents-json")
+        assertEqual(AppDelegate.normalizeArguments(["--clean-corrupted-incidents"]), ["--repair-incidents"], "Normalizes --clean-corrupted-incidents alias")
+        assertEqual(AppDelegate.normalizeArguments(["--audit-summary-json"]), ["--audit-summary", "--json"], "Normalizes --audit-summary-json")
     }
 
     // MARK: - 10. Performance Benchmark

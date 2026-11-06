@@ -181,7 +181,9 @@ public struct Diagnostics {
                 "auditLogSizeBytes": auditStats.fileSizeBytes,
                 "auditLogLastEvent": auditStats.lastEventTime ?? "",
                 "auditStats": auditStats.toDictionary(),
-                "incidentStats": incidentStats.toDictionary()
+                "incidentStats": incidentStats.toDictionary(),
+                "templateConsistency": config.analyzeTemplateConsistency(),
+                "incidentsIntegrity": CameraScanner.shared.verifyIncidentsIntegrity().toDictionary()
             ],
             "integrations": [
                 "telegramConfigured": tgConfigured,

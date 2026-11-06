@@ -4,6 +4,28 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.9] - 2026-11-06
+
+### Added
+- **Biometric Template Drift & Consistency Analysis (`Config.swift`, `AppDelegate.swift`)**:
+  - Implemented `Config.analyzeTemplateConsistency(vectors:) -> [String: Any]` calculating cluster centroid, medoid template index, intra-cluster dispersion, cohesion score (0.0 to 1.0), and angle/pose diversity score.
+  - Added intelligent enrollment status classification (`OPTIMAL`, `ADEQUATE`, `DISPERSE`, `REDUNDANT`, `SINGLE_SAMPLE`, `EMPTY`) with actionable advice for multi-angle biometric calibration.
+  - Added CLI command `--vector-consistency` (with `--analyze-vectors` alias and `--*-json` normalization) presenting rich ANSI status cards and structured JSON telemetry.
+- **Intruder Capture Integrity Verification & Corrupted Photo Repair (`CameraScanner.swift`, `AppDelegate.swift`)**:
+  - Implemented `CameraScanner.isImageHeaderValid(data:)` with magic byte validation for JPEG (`0xFF 0xD8 0xFF`) and PNG (`0x89 0x50 0x4E 0x47`) formats.
+  - Implemented `CameraScanner.verifyIncidentsIntegrity()` and `IncidentIntegrityReport` identifying truncated captures, 0-byte photos, non-image files, and directory size metrics.
+  - Implemented `CameraScanner.repairCorruptedIncidents()` to safely purge corrupted and zero-byte incident captures while preserving valid security intruder photos.
+  - Added CLI options `--incidents-integrity` (with `--check-incidents` alias) and `--repair-incidents` (with `--clean-corrupted-incidents` alias and full `--*-json` support).
+- **Security Audit Analytical Digest & Success Rate Metrics (`SecurityAuditLogger.swift`, `AppDelegate.swift`)**:
+  - Implemented `SecurityAuditLogger.AuditSummary` struct and `SecurityAuditLogger.getAuditSummary()` calculating active logging duration, biometric verification success rate, fallback breakdown (PIN, Touch ID), security alert distribution (shoulder surfing, emergency lockdown, PIN bruteforce), and top challenged applications.
+  - Added CLI command `--audit-summary` (with `--audit-summary-json` normalization) for real-time audit digest and application challenge frequency analysis.
+- **Diagnostics Report Enrichment (`Diagnostics.swift`)**:
+  - Enriched `Diagnostics.collectReport()["storage"]` with live `templateConsistency` and `incidentsIntegrity` dictionaries for autonomous monitoring.
+- **Makefile & CLI Workflow Automation (`Makefile`)**:
+  - Added Makefile targets `vector-consistency`, `vector-consistency-json`, `incidents-integrity`, `incidents-integrity-json`, `check-incidents`, `check-incidents-json`, `repair-incidents`, `repair-incidents-json`, `audit-summary`, `audit-summary-json`.
+- **Automated Test Suite Expansion (`Tests/FaceLockTests.swift`)**:
+  - Scaled automated test suite to 635 unit tests across 33 specialized test suites with 100% pass rate, covering image header magic byte verification, incident integrity scanning, corrupted capture repair, biometric cluster cohesion, medoid index computation, audit analytical digest aggregation, and CLI argument normalizations.
+
 ## [1.1.8] - 2026-11-05
 
 ### Added

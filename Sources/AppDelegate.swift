@@ -43,6 +43,16 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--audit", "--json"])
             case "--apps-json":
                 args.append(contentsOf: ["--apps", "--json"])
+            case "--protect-app-json":
+                args.append(contentsOf: ["--protect-app", "--json"])
+            case "--unprotect-app-json":
+                args.append(contentsOf: ["--unprotect-app", "--json"])
+            case "--ignore-app-json":
+                args.append(contentsOf: ["--ignore-app", "--json"])
+            case "--unignore-app-json":
+                args.append(contentsOf: ["--unignore-app", "--json"])
+            case "--check-app-json":
+                args.append(contentsOf: ["--check-app", "--json"])
             case "--version-json":
                 args.append(contentsOf: ["--version", "--json"])
             case "--toggle-walkaway-json":
@@ -145,6 +155,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--prune-audit", "--json"])
             case "--prune-audit-days-json", "--prune-logs-days-json":
                 args.append(contentsOf: ["--prune-audit-days", "--json"])
+            case "--vector-consistency-json", "--analyze-vectors-json":
+                args.append(contentsOf: ["--vector-consistency", "--json"])
+            case "--incidents-integrity-json", "--check-incidents-json":
+                args.append(contentsOf: ["--incidents-integrity", "--json"])
+            case "--repair-incidents-json", "--clean-corrupted-incidents-json":
+                args.append(contentsOf: ["--repair-incidents", "--json"])
+            case "--audit-summary-json":
+                args.append(contentsOf: ["--audit-summary", "--json"])
             case "--prune-logs-days":
                 args.append("--prune-audit-days")
             case "--verify-pin-json":
@@ -185,6 +203,12 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append("--audit-search")
             case "--search-incidents", "--incident-search":
                 args.append("--incidents-search")
+            case "--analyze-vectors":
+                args.append("--vector-consistency")
+            case "--check-incidents":
+                args.append("--incidents-integrity")
+            case "--clean-corrupted-incidents":
+                args.append("--repair-incidents")
             case "--prune-logs":
                 args.append("--prune-audit")
             case "--log-stats":
@@ -237,6 +261,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --export-latest-incident <p> Copy latest intruder photo capture to destination path
               --export-incident <f> <p>  Copy specific intruder photo capture to destination path
               --clear-incidents [--type T] Purge saved intruder incident captures (optionally by type)
+              --incidents-integrity, --check-incidents [--json] Verify intruder capture file headers & detect corruption
+              --repair-incidents [--json] Prune corrupted or zero-byte intruder photo captures
               --prune-incidents <count>  Prune intruder captures keeping latest N photos
               --prune-incidents-days <d> Prune intruder captures older than N days
               --diagnostics [--json]     Run full biometric, hardware & storage diagnostics
@@ -248,6 +274,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --prune-logs, --prune-audit <count> Prune older audit events keeping latest N
               --prune-audit-days, --prune-logs-days <d> Prune audit log events older than N days
               --export-logs, --export-audit <path> [--type T] [--format <jsonl|json|csv>] Export security audit log
+              --audit-summary [--json]   Analytical audit digest (verification rate & app challenge metrics)
               --verify-face [--timeout]  One-shot face biometric check without locking
               --verify-pin <pin>         Verify whether given PIN matches lock screen PIN
               --lock, --test-lock        Trigger immediate fullscreen lock screen
@@ -278,6 +305,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --toggle-wake              Toggle lock verification upon Mac screen wake
               --vectors [--json]         Inspect enrolled biometric facial vectors & cluster metrics
               --optimize-vectors [--json] Prune redundant templates & outliers to optimize cluster compactness
+              --vector-consistency [--json] Analyze enrolled faceprint cluster cohesion & medoid
               --export-vectors, --backup-vectors <path> Export enrolled facial biometric vectors to JSON file
               --import-vectors, --restore-vectors <path> Import facial biometric vectors from JSON file
               --clear-vectors, --reset   Purge all enrolled facial templates from disk
@@ -322,9 +350,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if args.contains("--version") || args.contains("-v") {
             if args.contains("--json") {
-                print("{\"name\":\"FaceLock\",\"version\":\"1.1.8\",\"platform\":\"darwin-arm64\"}")
+                print("{\"name\":\"FaceLock\",\"version\":\"1.1.9\",\"platform\":\"darwin-arm64\"}")
             } else {
-                print("FaceLock v1.1.8 (darwin-arm64)")
+                print("FaceLock v1.1.9 (darwin-arm64)")
             }
             exit(0)
         }
@@ -423,10 +451,13 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(0)
         }
 
-        if let idx = args.firstIndex(of: "--check-app"), idx + 1 < args.count {
-            let bundleId = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !bundleId.isEmpty else {
-                print("Error: Missing bundle identifier. Usage: facelock --check-app <bundleId>")
+        if args.contains("--check-app") {
+            guard let bundleId = AppDelegate.valueForOption("--check-app", in: args), Config.isValidBundleIdentifier(bundleId) else {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"Invalid or missing bundle identifier for --check-app\"}")
+                } else {
+                    print("Error: Invalid or missing bundle identifier. Usage: facelock --check-app <bundleId>")
+                }
                 exit(1)
             }
             let config = Config.shared
@@ -448,6 +479,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
             if args.contains("--json") {
                 let dict: [String: Any] = [
+                    "success": true,
                     "bundleId": bundleId,
                     "shieldActive": config.isEnabled,
                     "mode": config.protectionMode,
@@ -468,7 +500,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                   Shield Enabled: \(config.isEnabled ? "Yes" : "No")
                   Protection Mode: \(config.protectionMode)
                   Ignored List: \(isIgnored ? "Yes (Ignored)" : "No")
-                  Protected List: \(config.protectedBundleIdentifiers.contains(bundleId) ? "Yes" : "No")
+                  Protected List: \(isProtected ? "Yes (Protected)" : "No")
+                  Triggers Biometrics: \(willTrigger ? "Yes (Biometric Challenge Required)" : "No (Pass-through)")
                 """)
             }
             exit(0)
@@ -502,7 +535,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
             if args.contains("--json") {
                 let statusDict: [String: Any] = [
-                    "version": "1.1.8",
+                    "version": "1.1.9",
                     "daemon": isAlreadyRunning ? "running" : "stopped",
                     "shieldState": Config.shared.isEnabled ? "active" : "paused",
                     "protectionMode": Config.shared.protectionMode,
@@ -534,7 +567,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             let recent24hStr = recent24hCount > 0 ? " (\(recent24hCount) in past 24h)" : ""
             print("""
             FaceLock Status:
-              Version: 1.1.8 (darwin-arm64)
+              Version: 1.1.9 (darwin-arm64)
               Daemon: \(isAlreadyRunning ? "RUNNING" : "STOPPED")
               Shield: \(Config.shared.isEnabled ? "ACTIVE" : "PAUSED")
               Mode: \(Config.shared.protectionMode)
@@ -572,7 +605,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             if args.contains("--json") {
                 let out: [String: Any] = [
                     "healthy": isHealthy,
-                    "version": "1.1.8",
+                    "version": "1.1.9",
                     "daemonRunning": isAlreadyRunning,
                     "shieldActive": Config.shared.isEnabled,
                     "activeProfile": Config.shared.activeProfile,
@@ -691,10 +724,13 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        if let idx = args.firstIndex(of: "--protect-app"), idx + 1 < args.count {
-            let bundleId = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !bundleId.isEmpty else {
-                print("Error: Missing bundle identifier. Usage: facelock --protect-app <bundleId>")
+        if args.contains("--protect-app") {
+            guard let bundleId = AppDelegate.valueForOption("--protect-app", in: args), Config.isValidBundleIdentifier(bundleId) else {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"Invalid or missing bundle identifier for --protect-app\"}")
+                } else {
+                    print("Error: Invalid or missing bundle identifier. Usage: facelock --protect-app <bundleId>")
+                }
                 exit(1)
             }
             let added = Config.shared.addProtectedApp(bundleId)
@@ -714,10 +750,13 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(0)
         }
 
-        if let idx = args.firstIndex(of: "--unprotect-app"), idx + 1 < args.count {
-            let bundleId = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !bundleId.isEmpty else {
-                print("Error: Missing bundle identifier. Usage: facelock --unprotect-app <bundleId>")
+        if args.contains("--unprotect-app") {
+            guard let bundleId = AppDelegate.valueForOption("--unprotect-app", in: args), Config.isValidBundleIdentifier(bundleId) else {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"Invalid or missing bundle identifier for --unprotect-app\"}")
+                } else {
+                    print("Error: Invalid or missing bundle identifier. Usage: facelock --unprotect-app <bundleId>")
+                }
                 exit(1)
             }
             let removed = Config.shared.removeProtectedApp(bundleId)
@@ -737,10 +776,13 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(0)
         }
 
-        if let idx = args.firstIndex(of: "--ignore-app"), idx + 1 < args.count {
-            let bundleId = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !bundleId.isEmpty else {
-                print("Error: Missing bundle identifier. Usage: facelock --ignore-app <bundleId>")
+        if args.contains("--ignore-app") {
+            guard let bundleId = AppDelegate.valueForOption("--ignore-app", in: args), Config.isValidBundleIdentifier(bundleId) else {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"Invalid or missing bundle identifier for --ignore-app\"}")
+                } else {
+                    print("Error: Invalid or missing bundle identifier. Usage: facelock --ignore-app <bundleId>")
+                }
                 exit(1)
             }
             let added = Config.shared.addIgnoredApp(bundleId)
@@ -760,10 +802,13 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(0)
         }
 
-        if let idx = args.firstIndex(of: "--unignore-app"), idx + 1 < args.count {
-            let bundleId = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !bundleId.isEmpty else {
-                print("Error: Missing bundle identifier. Usage: facelock --unignore-app <bundleId>")
+        if args.contains("--unignore-app") {
+            guard let bundleId = AppDelegate.valueForOption("--unignore-app", in: args), Config.isValidBundleIdentifier(bundleId) else {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"Invalid or missing bundle identifier for --unignore-app\"}")
+                } else {
+                    print("Error: Invalid or missing bundle identifier. Usage: facelock --unignore-app <bundleId>")
+                }
                 exit(1)
             }
             let removed = Config.shared.removeIgnoredApp(bundleId)
@@ -1073,6 +1118,43 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 • Optimized Cluster Quality: \(optQuality)
                 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                 ✓ Enrolled facial template cluster optimized successfully.
+                """)
+            }
+            exit(0)
+        }
+
+        if args.contains("--vector-consistency") || args.contains("--analyze-vectors") {
+            let res = Config.shared.analyzeTemplateConsistency()
+            if args.contains("--json") {
+                if let data = try? JSONSerialization.data(withJSONObject: res, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                let count = res["count"] as? Int ?? 0
+                let status = res["status"] as? String ?? "UNKNOWN"
+                let cohesion = res["cohesionScore"] as? Double ?? 0.0
+                let diversity = res["diversityScore"] as? Double ?? 0.0
+                let medoid = res["medoidIndex"] as? Int ?? -1
+                let minPair = res["minPairwiseDistance"] as? Double ?? 0.0
+                let avgPair = res["avgPairwiseDistance"] as? Double ?? 0.0
+                let maxPair = res["maxPairwiseDistance"] as? Double ?? 0.0
+                let avgCentroid = res["avgDistanceToCentroid"] as? Double ?? 0.0
+                let rec = res["recommendation"] as? String ?? ""
+
+                print("""
+                ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                       🧬  FaceLock Neural Vector Consistency Analysis       
+                ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                • Enrolled Templates: \(count)
+                • Cluster Status: \(status)
+                • Cluster Cohesion Score: \(String(format: "%.3f", cohesion)) (1.0 = compact)
+                • Angle/Pose Diversity Score: \(String(format: "%.3f", diversity))
+                • Cluster Medoid Template: \(medoid >= 0 ? "Index #\(medoid)" : "N/A")
+                • Avg Distance to Centroid: \(String(format: "%.4f", avgCentroid))
+                • Cosine Distance Range: [\(String(format: "%.4f", minPair)) .. \(String(format: "%.4f", avgPair)) .. \(String(format: "%.4f", maxPair))]
+                ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                💡 Recommendation: \(rec)
                 """)
             }
             exit(0)
@@ -1988,6 +2070,62 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        if args.contains("--incidents-integrity") || args.contains("--check-incidents") {
+            let report = CameraScanner.shared.verifyIncidentsIntegrity()
+            if args.contains("--json") {
+                let dict = report.toDictionary()
+                if let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                let validKB = Double(report.totalValidSizeBytes) / 1024.0
+                let statusIcon = report.status == "HEALTHY" ? "✓ HEALTHY" : "⚠️ ATTENTION NEEDED"
+                print("""
+                FaceLock Intruder Captures Integrity Report:
+                  Status: \(statusIcon)
+                  Total Files Scanned: \(report.totalFilesScanned)
+                  Valid Captures: \(report.validCapturesCount) (\(String(format: "%.2f", validKB)) KB)
+                  Corrupted Files: \(report.corruptedCount)
+                  Zero-Byte Captures: \(report.zeroByteCount)
+                  Non-Image Files: \(report.nonImageCount)
+                  Directory: \(report.directory)
+                """)
+                if !report.corruptedFilenames.isEmpty {
+                    print("  Corrupted / Invalid Files:")
+                    for f in report.corruptedFilenames.prefix(10) {
+                        print("    • \(f)")
+                    }
+                    print("  💡 Tip: Run 'facelock --repair-incidents' to purge corrupted captures.")
+                }
+            }
+            exit(0)
+        }
+
+        if args.contains("--repair-incidents") || args.contains("--clean-corrupted-incidents") {
+            let res = CameraScanner.shared.repairCorruptedIncidents()
+            if args.contains("--json") {
+                let outDict: [String: Any] = [
+                    "success": true,
+                    "repairedCount": res.repairedCount,
+                    "freedSizeBytes": res.freedBytes,
+                    "remainingValidCaptures": res.remainingValid
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: outDict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                let freedKB = Double(res.freedBytes) / 1024.0
+                if res.repairedCount > 0 {
+                    print("✓ Successfully repaired intruder captures: purged \(res.repairedCount) corrupted file(s) (\(String(format: "%.2f", freedKB)) KB freed). \(res.remainingValid) valid captures retained.")
+                } else {
+                    print("✓ Intruder captures directory is completely healthy. 0 corrupted files found (\(res.remainingValid) valid captures).")
+                }
+            }
+            exit(0)
+        }
+
         if args.contains("--latest-incident") {
             let home = FileManager.default.homeDirectoryForCurrentUser
             let dir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
@@ -2381,6 +2519,41 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 print("  Top Event Types:")
                 for (type, cnt) in sortedTypes {
                     print("    • \(type): \(cnt)")
+                }
+            }
+            exit(0)
+        }
+
+        if args.contains("--audit-summary") {
+            let summary = SecurityAuditLogger.shared.getAuditSummary()
+            if args.contains("--json") {
+                let dict = summary.toDictionary()
+                if let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                let sizeKB = Double(summary.fileSizeBytes) / 1024.0
+                let successPct = summary.verificationSuccessRate * 100.0
+                print("""
+                FaceLock Security Audit Analytical Digest:
+                  Total Audit Events: \(summary.totalEvents) (\(String(format: "%.2f", sizeKB)) KB)
+                  Time Span: \(String(format: "%.1f", summary.timeSpanHours)) hours (Avg \(String(format: "%.1f", summary.averageDailyEvents)) events/day)
+                  Active Span: [\(summary.firstEventTime ?? "None") .. \(summary.lastEventTime ?? "None")]
+                  Biometric Verification Success Rate: \(String(format: "%.1f", successPct))%
+                  Successful Unlocks: \(summary.successfulVerifications)
+                  Intruder / Security Breaches: \(summary.intruderDetections)
+                  PIN Fallbacks: \(summary.pinUnlocks) | Touch ID Fallbacks: \(summary.touchIdUnlocks)
+                  Shoulder Surfing Alerts: \(summary.shoulderSurfingIncidents)
+                  Emergency Lockdowns: \(summary.emergencyLockdowns)
+                  PIN Lockouts: \(summary.pinLockouts)
+                """)
+                if !summary.topChallengedApplications.isEmpty {
+                    print("  Top Challenged Applications:")
+                    let sortedApps = summary.topChallengedApplications.sorted { $0.value > $1.value }
+                    for (app, count) in sortedApps {
+                        print("    • \(app): \(count)")
+                    }
                 }
             }
             exit(0)

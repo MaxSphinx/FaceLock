@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health health-json toggle toggle-json pause pause-json resume resume-json toggle-wake toggle-wake-json wake reload reload-json reset-session reset-session-json check-app vectors vectors-json optimize-vectors optimize-vectors-json clear-vectors clear-vectors-json reset-vectors reset-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents clear-incidents-json clear-incidents-type clear-incidents-type-json prune-incidents prune-incidents-days prune-incidents-days-json export-incidents export-incidents-json test-telegram test-telegram-json incidents incidents-summary incidents-summary-json incidents-search incidents-search-json latest-incident latest-incident-json export-latest-incident export-latest-incident-json incident incident-json delete-incident delete-incident-json verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-stats-json log-stats log-stats-json audit-gui audit-search audit-search-json prune-audit prune-audit-days prune-audit-days-json prune-logs-days prune-logs-days-json clear-audit clear-audit-json export-audit export-audit-json export-audit-csv export-audit-csv-json export-logs export-logs-json set-threshold set-threshold-json set-timeout set-timeout-json set-debounce set-debounce-json set-mode set-mode-json set-walkaway set-walkaway-json pin-attempts pin-attempts-json pin-lockout pin-lockout-json set-pin set-pin-json cameras cameras-json set-camera reset-camera backup-config backup-config-json export-config export-config-json restore-config restore-config-json import-config import-config-json export-vectors export-vectors-json backup-vectors backup-vectors-json import-vectors import-vectors-json restore-vectors restore-vectors-json test profiles profiles-json profile profile-json toggle-shoulder toggle-shoulder-json toggle-audible toggle-audible-json toggle-battery toggle-battery-json toggle-presentation toggle-presentation-json toggle-liveness toggle-liveness-json toggle-touchid toggle-touchid-json toggle-walkaway toggle-walkaway-json battery-status battery-status-json
+.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health health-json toggle toggle-json pause pause-json resume resume-json toggle-wake toggle-wake-json wake reload reload-json reset-session reset-session-json check-app vectors vectors-json optimize-vectors optimize-vectors-json vector-consistency vector-consistency-json clear-vectors clear-vectors-json reset-vectors reset-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents clear-incidents-json clear-incidents-type clear-incidents-type-json prune-incidents prune-incidents-days prune-incidents-days-json export-incidents export-incidents-json test-telegram test-telegram-json incidents incidents-summary incidents-summary-json incidents-search incidents-search-json incidents-integrity incidents-integrity-json check-incidents check-incidents-json repair-incidents repair-incidents-json latest-incident latest-incident-json export-latest-incident export-latest-incident-json incident incident-json delete-incident delete-incident-json verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-stats-json log-stats log-stats-json audit-summary audit-summary-json audit-gui audit-search audit-search-json prune-audit prune-audit-days prune-audit-days-json prune-logs-days prune-logs-days-json clear-audit clear-audit-json export-audit export-audit-json export-audit-csv export-audit-csv-json export-logs export-logs-json set-threshold set-threshold-json set-timeout set-timeout-json set-debounce set-debounce-json set-mode set-mode-json set-walkaway set-walkaway-json pin-attempts pin-attempts-json pin-lockout pin-lockout-json set-pin set-pin-json cameras cameras-json set-camera reset-camera backup-config backup-config-json export-config export-config-json restore-config restore-config-json import-config import-config-json export-vectors export-vectors-json backup-vectors backup-vectors-json import-vectors import-vectors-json restore-vectors restore-vectors-json test profiles profiles-json profile profile-json toggle-shoulder toggle-shoulder-json toggle-audible toggle-audible-json toggle-battery toggle-battery-json toggle-presentation toggle-presentation-json toggle-liveness toggle-liveness-json toggle-touchid toggle-touchid-json toggle-walkaway toggle-walkaway-json battery-status battery-status-json
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -347,6 +347,12 @@ optimize-vectors: build
 optimize-vectors-json: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --optimize-vectors --json
 
+vector-consistency: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --vector-consistency
+
+vector-consistency-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --vector-consistency --json
+
 export-vectors: build
 	@if [ -z "$(DEST)" ]; then \
 		echo "Usage: make export-vectors DEST=/path/to/vectors.json"; \
@@ -536,6 +542,22 @@ prune-incidents-days: build
 prune-incidents-days-json: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --prune-incidents-days $(or $(DAYS),30) --json
 
+incidents-integrity: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents-integrity
+
+incidents-integrity-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents-integrity --json
+
+check-incidents: incidents-integrity
+
+check-incidents-json: incidents-integrity-json
+
+repair-incidents: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --repair-incidents
+
+repair-incidents-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --repair-incidents --json
+
 test-telegram: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --test-telegram
 
@@ -573,6 +595,12 @@ log-stats: build
 
 log-stats-json: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-stats --json
+
+audit-summary: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-summary
+
+audit-summary-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-summary --json
 
 audit-gui: build
 	@echo "Opening Security Audit Log..."

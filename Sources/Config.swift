@@ -255,6 +255,22 @@ public final class Config: Codable {
         return seconds >= 1.0 && seconds <= 60.0
     }
 
+    public static func isValidBundleIdentifier(_ bundleId: String) -> Bool {
+        let trimmed = bundleId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed.count <= 255 else { return false }
+        guard !trimmed.hasPrefix("-") else { return false }
+        guard !trimmed.hasPrefix("."), !trimmed.hasSuffix(".") else { return false }
+        guard !trimmed.contains("..") else { return false }
+        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_")
+        guard trimmed.unicodeScalars.allSatisfy({ allowed.contains($0) }) else { return false }
+        let components = trimmed.components(separatedBy: ".")
+        guard components.allSatisfy({ comp in
+            guard let first = comp.first else { return false }
+            return first.isLetter || first.isNumber || first == "_"
+        }) else { return false }
+        return true
+    }
+
     public static var allProfileNames: [String] {
         return SecurityProfile.allCases.map { $0.rawValue }
     }
@@ -568,7 +584,7 @@ public final class Config: Codable {
 
     public func addProtectedApp(_ bundleId: String) -> Bool {
         let trimmed = bundleId.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return false }
+        guard Config.isValidBundleIdentifier(trimmed) else { return false }
         if !isProtected(bundleId: trimmed) {
             protectedBundleIdentifiers.append(trimmed)
             save()
@@ -579,7 +595,7 @@ public final class Config: Codable {
 
     public func removeProtectedApp(_ bundleId: String) -> Bool {
         let trimmed = bundleId.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return false }
+        guard Config.isValidBundleIdentifier(trimmed) else { return false }
         if let idx = protectedBundleIdentifiers.firstIndex(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame }) {
             protectedBundleIdentifiers.remove(at: idx)
             save()
@@ -590,7 +606,7 @@ public final class Config: Codable {
 
     public func addIgnoredApp(_ bundleId: String) -> Bool {
         let trimmed = bundleId.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return false }
+        guard Config.isValidBundleIdentifier(trimmed) else { return false }
         if !isIgnored(bundleId: trimmed) {
             ignoredBundleIdentifiers.append(trimmed)
             save()
@@ -601,7 +617,7 @@ public final class Config: Codable {
 
     public func removeIgnoredApp(_ bundleId: String) -> Bool {
         let trimmed = bundleId.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return false }
+        guard Config.isValidBundleIdentifier(trimmed) else { return false }
         if let idx = ignoredBundleIdentifiers.firstIndex(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame }) {
             ignoredBundleIdentifiers.remove(at: idx)
             save()
@@ -923,6 +939,103 @@ public final class Config: Codable {
             "optimizedQuality": finalQuality,
             "initialAvgDistance": initialAvgDist,
             "optimizedAvgDistance": finalAvgDist
+        ]
+    }
+
+    public func analyzeTemplateConsistency(vectors: [[Float]]? = nil) -> [String: Any] {
+        let actualVectors = vectors ?? loadEnrolledVectors()
+        let count = actualVectors.count
+        guard count >= 2 else {
+            return [
+                "count": count,
+                "status": count == 1 ? "SINGLE_SAMPLE" : "EMPTY",
+                "cohesionScore": count == 1 ? 1.0 : 0.0,
+                "diversityScore": 0.0,
+                "medoidIndex": count == 1 ? 0 : -1,
+                "recommendation": count == 1
+                    ? "Enroll 3-5 additional angles in different lighting to improve biometric stability."
+                    : "No facial vectors enrolled. Run 'facelock --enroll' to calibrate."
+            ]
+        }
+
+        let dim = actualVectors[0].count
+        // 1. Calculate centroid
+        var centroid = [Float](repeating: 0.0, count: dim)
+        for vec in actualVectors {
+            for i in 0..<dim {
+                centroid[i] += vec[i]
+            }
+        }
+        for i in 0..<dim {
+            centroid[i] /= Float(count)
+        }
+        let norm = sqrt(centroid.reduce(0) { $0 + $1 * $1 })
+        if norm > 0.0001 {
+            for i in 0..<dim {
+                centroid[i] /= norm
+            }
+        }
+
+        // 2. Find medoid (vector closest to centroid)
+        var minCentroidDist: Float = Float.greatestFiniteMagnitude
+        var medoidIdx = 0
+        var distancesToCentroid: [Float] = []
+
+        for (idx, vec) in actualVectors.enumerated() {
+            let dist = FaceprintExtractor.cosineDistance(vec, centroid)
+            distancesToCentroid.append(dist)
+            if dist < minCentroidDist {
+                minCentroidDist = dist
+                medoidIdx = idx
+            }
+        }
+
+        let avgDistToCentroid = distancesToCentroid.reduce(0, +) / Float(count)
+
+        // 3. Pairwise distances
+        var pairwiseDistances: [Float] = []
+        for i in 0..<count {
+            for j in (i + 1)..<count {
+                pairwiseDistances.append(FaceprintExtractor.cosineDistance(actualVectors[i], actualVectors[j]))
+            }
+        }
+
+        let avgPairwise = pairwiseDistances.isEmpty ? 0.0 : (pairwiseDistances.reduce(0, +) / Float(pairwiseDistances.count))
+        let minPairwise = pairwiseDistances.min() ?? 0.0
+        let maxPairwise = pairwiseDistances.max() ?? 0.0
+
+        // Cohesion: 1.0 is highest (tight cluster <= 0.05), dropping to 0.0 at >= 0.25
+        let cohesion = max(0.0, min(1.0, 1.0 - (Double(avgPairwise) / 0.25)))
+
+        // Diversity: evaluates spread between min and max pairwise distance
+        let hasNearDuplicates = minPairwise < 0.02
+        let diversityScore = max(0.0, min(1.0, Double(maxPairwise - minPairwise) / 0.18))
+
+        var rec: String = "Biometric cluster is well-balanced."
+        var statusStr = "OPTIMAL"
+
+        if avgPairwise > 0.20 {
+            statusStr = "DISPERSE"
+            rec = "Template cluster shows high variance (>0.20). Consider pruning outliers with 'facelock --optimize-vectors'."
+        } else if hasNearDuplicates && count > 6 {
+            statusStr = "REDUNDANT"
+            rec = "Detected near-identical template captures. Pruning redundant vectors will increase check speeds."
+        } else if count < 4 {
+            statusStr = "ADEQUATE"
+            rec = "Good baseline. Enrolling 2-3 additional angles (with glasses, smile, slight tilt) will boost recognition."
+        }
+
+        return [
+            "count": count,
+            "status": statusStr,
+            "cohesionScore": Double(round(cohesion * 1000) / 1000),
+            "diversityScore": Double(round(diversityScore * 1000) / 1000),
+            "medoidIndex": medoidIdx,
+            "minPairwiseDistance": Double(minPairwise),
+            "maxPairwiseDistance": Double(maxPairwise),
+            "avgPairwiseDistance": Double(avgPairwise),
+            "avgDistanceToCentroid": Double(avgDistToCentroid),
+            "recommendation": rec
         ]
     }
 }
