@@ -1613,6 +1613,36 @@ public final class FaceLockTestSuite {
         assertEqual(AppDelegate.normalizeArguments(["--repair-incidents-json"]), ["--repair-incidents", "--json"], "Normalizes --repair-incidents-json")
         assertEqual(AppDelegate.normalizeArguments(["--clean-corrupted-incidents"]), ["--repair-incidents"], "Normalizes --clean-corrupted-incidents alias")
         assertEqual(AppDelegate.normalizeArguments(["--audit-summary-json"]), ["--audit-summary", "--json"], "Normalizes --audit-summary-json")
+        assertEqual(AppDelegate.normalizeArguments(["--protect-app-json"]), ["--protect-app", "--json"], "Normalizes --protect-app-json")
+        assertEqual(AppDelegate.normalizeArguments(["--unprotect-app-json"]), ["--unprotect-app", "--json"], "Normalizes --unprotect-app-json")
+        assertEqual(AppDelegate.normalizeArguments(["--ignore-app-json"]), ["--ignore-app", "--json"], "Normalizes --ignore-app-json")
+        assertEqual(AppDelegate.normalizeArguments(["--unignore-app-json"]), ["--unignore-app", "--json"], "Normalizes --unignore-app-json")
+        assertEqual(AppDelegate.normalizeArguments(["--check-app-json"]), ["--check-app", "--json"], "Normalizes --check-app-json")
+
+        // 7. Bundle Identifier Validation Suite
+        assert(Config.isValidBundleIdentifier("com.apple.Safari"), "com.apple.Safari is valid bundle identifier")
+        assert(Config.isValidBundleIdentifier("io.github.facelock"), "io.github.facelock is valid bundle identifier")
+        assert(Config.isValidBundleIdentifier("ru.keepcoder.Telegram"), "ru.keepcoder.Telegram is valid bundle identifier")
+        assert(Config.isValidBundleIdentifier("com.google.Chrome"), "com.google.Chrome is valid bundle identifier")
+        assert(Config.isValidBundleIdentifier("WhatsApp-Beta"), "WhatsApp-Beta is valid bundle identifier")
+        assert(Config.isValidBundleIdentifier("app_123.tool-beta"), "app_123.tool-beta is valid bundle identifier")
+
+        assert(!Config.isValidBundleIdentifier(""), "Empty bundle identifier is invalid")
+        assert(!Config.isValidBundleIdentifier("   "), "Whitespace-only bundle identifier is invalid")
+        assert(!Config.isValidBundleIdentifier("--json"), "CLI flag --json is invalid bundle identifier")
+        assert(!Config.isValidBundleIdentifier("-v"), "Short CLI flag -v is invalid bundle identifier")
+        assert(!Config.isValidBundleIdentifier(".com.apple.Safari"), "Leading dot is invalid")
+        assert(!Config.isValidBundleIdentifier("com.apple.Safari."), "Trailing dot is invalid")
+        assert(!Config.isValidBundleIdentifier("com..apple"), "Consecutive dots are invalid")
+        assert(!Config.isValidBundleIdentifier("com.apple/Safari"), "Slash in bundle identifier is invalid")
+        assert(!Config.isValidBundleIdentifier("com apple Safari"), "Spaces in bundle identifier are invalid")
+        assert(!Config.isValidBundleIdentifier(String(repeating: "a", count: 256)), "Overly long bundle identifier (>255) is invalid")
+
+        // Rejection in Config methods
+        assert(!Config.shared.addProtectedApp("--json"), "Config.addProtectedApp rejects --json")
+        assert(!Config.shared.addIgnoredApp("..invalid"), "Config.addIgnoredApp rejects ..invalid")
+        assert(!Config.shared.removeProtectedApp("--json"), "Config.removeProtectedApp rejects --json")
+        assert(!Config.shared.removeIgnoredApp("--json"), "Config.removeIgnoredApp rejects --json")
     }
 
     // MARK: - 10. Performance Benchmark

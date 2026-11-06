@@ -21,10 +21,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added CLI command `--audit-summary` (with `--audit-summary-json` normalization) for real-time audit digest and application challenge frequency analysis.
 - **Diagnostics Report Enrichment (`Diagnostics.swift`)**:
   - Enriched `Diagnostics.collectReport()["storage"]` with live `templateConsistency` and `incidentsIntegrity` dictionaries for autonomous monitoring.
+- **Bundle Identifier Validation Suite & Hardened App Controls (`Config.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `Config.isValidBundleIdentifier(_:)` strictly validating Apple reverse-DNS CFBundleIdentifier specifications: character constraints (alphanumeric, dots, hyphens, underscores), length (1-255), and rejecting CLI flag injection (e.g. `--json`).
+  - Hardened `--protect-app`, `--unprotect-app`, `--ignore-app`, `--unignore-app`, and `--check-app` with safe argument parsing via `valueForOption` and structured JSON error responses.
+  - Added CLI flag normalizations: `--protect-app-json`, `--unprotect-app-json`, `--ignore-app-json`, `--unignore-app-json`, and `--check-app-json`.
+  - Added Makefile targets `check-app-json`, `protect-app-json`, `unprotect-app-json`, `ignore-app-json`, and `unignore-app-json`.
 - **Makefile & CLI Workflow Automation (`Makefile`)**:
   - Added Makefile targets `vector-consistency`, `vector-consistency-json`, `incidents-integrity`, `incidents-integrity-json`, `check-incidents`, `check-incidents-json`, `repair-incidents`, `repair-incidents-json`, `audit-summary`, `audit-summary-json`.
 - **Automated Test Suite Expansion (`Tests/FaceLockTests.swift`)**:
-  - Scaled automated test suite to 635 unit tests across 33 specialized test suites with 100% pass rate, covering image header magic byte verification, incident integrity scanning, corrupted capture repair, biometric cluster cohesion, medoid index computation, audit analytical digest aggregation, and CLI argument normalizations.
+  - Scaled automated test suite to 660 unit tests across 34 specialized test suites with 100% pass rate, covering bundle identifier validation, image header magic byte verification, incident integrity scanning, corrupted capture repair, biometric cluster cohesion, medoid index computation, audit analytical digest aggregation, and CLI argument normalizations.
 
 ## [1.1.8] - 2026-11-05
 

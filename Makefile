@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app unprotect-app ignore-app unignore-app reset-apps diagnostics diagnostics-gui health health-json toggle toggle-json pause pause-json resume resume-json toggle-wake toggle-wake-json wake reload reload-json reset-session reset-session-json check-app vectors vectors-json optimize-vectors optimize-vectors-json vector-consistency vector-consistency-json clear-vectors clear-vectors-json reset-vectors reset-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents clear-incidents-json clear-incidents-type clear-incidents-type-json prune-incidents prune-incidents-days prune-incidents-days-json export-incidents export-incidents-json test-telegram test-telegram-json incidents incidents-summary incidents-summary-json incidents-search incidents-search-json incidents-integrity incidents-integrity-json check-incidents check-incidents-json repair-incidents repair-incidents-json latest-incident latest-incident-json export-latest-incident export-latest-incident-json incident incident-json delete-incident delete-incident-json verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-stats-json log-stats log-stats-json audit-summary audit-summary-json audit-gui audit-search audit-search-json prune-audit prune-audit-days prune-audit-days-json prune-logs-days prune-logs-days-json clear-audit clear-audit-json export-audit export-audit-json export-audit-csv export-audit-csv-json export-logs export-logs-json set-threshold set-threshold-json set-timeout set-timeout-json set-debounce set-debounce-json set-mode set-mode-json set-walkaway set-walkaway-json pin-attempts pin-attempts-json pin-lockout pin-lockout-json set-pin set-pin-json cameras cameras-json set-camera reset-camera backup-config backup-config-json export-config export-config-json restore-config restore-config-json import-config import-config-json export-vectors export-vectors-json backup-vectors backup-vectors-json import-vectors import-vectors-json restore-vectors restore-vectors-json test profiles profiles-json profile profile-json toggle-shoulder toggle-shoulder-json toggle-audible toggle-audible-json toggle-battery toggle-battery-json toggle-presentation toggle-presentation-json toggle-liveness toggle-liveness-json toggle-touchid toggle-touchid-json toggle-walkaway toggle-walkaway-json battery-status battery-status-json
+.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app protect-app-json unprotect-app unprotect-app-json ignore-app ignore-app-json unignore-app unignore-app-json reset-apps diagnostics diagnostics-gui health health-json toggle toggle-json pause pause-json resume resume-json toggle-wake toggle-wake-json wake reload reload-json reset-session reset-session-json check-app check-app-json vectors vectors-json optimize-vectors optimize-vectors-json vector-consistency vector-consistency-json clear-vectors clear-vectors-json reset-vectors reset-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents clear-incidents-json clear-incidents-type clear-incidents-type-json prune-incidents prune-incidents-days prune-incidents-days-json export-incidents export-incidents-json test-telegram test-telegram-json incidents incidents-summary incidents-summary-json incidents-search incidents-search-json incidents-integrity incidents-integrity-json check-incidents check-incidents-json repair-incidents repair-incidents-json latest-incident latest-incident-json export-latest-incident export-latest-incident-json incident incident-json delete-incident delete-incident-json verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-stats-json log-stats log-stats-json audit-summary audit-summary-json audit-gui audit-search audit-search-json prune-audit prune-audit-days prune-audit-days-json prune-logs-days prune-logs-days-json clear-audit clear-audit-json export-audit export-audit-json export-audit-csv export-audit-csv-json export-logs export-logs-json set-threshold set-threshold-json set-timeout set-timeout-json set-debounce set-debounce-json set-mode set-mode-json set-walkaway set-walkaway-json pin-attempts pin-attempts-json pin-lockout pin-lockout-json set-pin set-pin-json cameras cameras-json set-camera reset-camera backup-config backup-config-json export-config export-config-json restore-config restore-config-json import-config import-config-json export-vectors export-vectors-json backup-vectors backup-vectors-json import-vectors import-vectors-json restore-vectors restore-vectors-json test profiles profiles-json profile profile-json toggle-shoulder toggle-shoulder-json toggle-audible toggle-audible-json toggle-battery toggle-battery-json toggle-presentation toggle-presentation-json toggle-liveness toggle-liveness-json toggle-touchid toggle-touchid-json toggle-walkaway toggle-walkaway-json battery-status battery-status-json
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -29,6 +29,7 @@ help:
 	@echo "  make reload         - Hot-reload active configuration in running daemon"
 	@echo "  make reset-session  - Invalidate active biometric verification session cache"
 	@echo "  make check-app APP= - Inspect if bundle ID triggers biometric shield"
+	@echo "  make check-app-json APP= - Inspect if bundle ID triggers shield (JSON output)"
 	@echo "  make status         - Display current protection & biometric status"
 	@echo "  make status-json    - Display status in JSON format"
 	@echo "  make health         - Fast operational healthcheck (exit 0 if healthy)"
@@ -36,9 +37,13 @@ help:
 	@echo "  make apps           - List protected and ignored application bundle IDs"
 	@echo "  make apps-gui       - Open interactive application protection policy window"
 	@echo "  make protect-app APP= - Add application bundle ID to protected list"
+	@echo "  make protect-app-json APP= - Add application bundle ID to protected list (JSON)"
 	@echo "  make unprotect-app APP= - Remove application bundle ID from protected list"
+	@echo "  make unprotect-app-json APP= - Remove application bundle ID from protected list (JSON)"
 	@echo "  make ignore-app APP= - Add application bundle ID to ignored list"
+	@echo "  make ignore-app-json APP= - Add application bundle ID to ignored list (JSON)"
 	@echo "  make unignore-app APP= - Remove application bundle ID from ignored list"
+	@echo "  make unignore-app-json APP= - Remove application bundle ID from ignored list (JSON)"
 	@echo "  make reset-apps     - Reset application protection rules to factory defaults"
 	@echo "  make cameras        - List available video capture cameras and active selection"
 	@echo "  make cameras-json   - List video capture cameras in JSON format"
@@ -223,7 +228,18 @@ reset-session-json: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --reset-session --json
 
 check-app: build
-	@build/FaceLock.app/Contents/MacOS/FaceLock --check-app $(APP)
+	@if [ -z "$(APP)" ]; then \
+		echo "Usage: make check-app APP=<bundleId>"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --check-app "$(APP)"
+
+check-app-json: build
+	@if [ -z "$(APP)" ]; then \
+		echo "{\"success\":false,\"error\":\"Usage: make check-app-json APP=<bundleId>\"}"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --check-app "$(APP)" --json
 
 settings: build
 	@echo "Opening Settings..."
@@ -261,12 +277,26 @@ protect-app: build
 	fi
 	@build/FaceLock.app/Contents/MacOS/FaceLock --protect-app "$(APP)"
 
+protect-app-json: build
+	@if [ -z "$(APP)" ]; then \
+		echo "{\"success\":false,\"error\":\"Usage: make protect-app-json APP=<bundleId>\"}"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --protect-app "$(APP)" --json
+
 unprotect-app: build
 	@if [ -z "$(APP)" ]; then \
 		echo "Usage: make unprotect-app APP=<bundleId>"; \
 		exit 1; \
 	fi
 	@build/FaceLock.app/Contents/MacOS/FaceLock --unprotect-app "$(APP)"
+
+unprotect-app-json: build
+	@if [ -z "$(APP)" ]; then \
+		echo "{\"success\":false,\"error\":\"Usage: make unprotect-app-json APP=<bundleId>\"}"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --unprotect-app "$(APP)" --json
 
 ignore-app: build
 	@if [ -z "$(APP)" ]; then \
@@ -275,12 +305,26 @@ ignore-app: build
 	fi
 	@build/FaceLock.app/Contents/MacOS/FaceLock --ignore-app "$(APP)"
 
+ignore-app-json: build
+	@if [ -z "$(APP)" ]; then \
+		echo "{\"success\":false,\"error\":\"Usage: make ignore-app-json APP=<bundleId>\"}"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --ignore-app "$(APP)" --json
+
 unignore-app: build
 	@if [ -z "$(APP)" ]; then \
 		echo "Usage: make unignore-app APP=<bundleId>"; \
 		exit 1; \
 	fi
 	@build/FaceLock.app/Contents/MacOS/FaceLock --unignore-app "$(APP)"
+
+unignore-app-json: build
+	@if [ -z "$(APP)" ]; then \
+		echo "{\"success\":false,\"error\":\"Usage: make unignore-app-json APP=<bundleId>\"}"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --unignore-app "$(APP)" --json
 
 reset-apps: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --reset-apps
@@ -781,15 +825,34 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-wake --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-lock-on-wake off --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --ignore-app com.apple.calculator --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --ignore-app-json com.apple.calculator > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --unignore-app com.apple.calculator --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --unignore-app-json com.apple.calculator > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --protect-app com.apple.calculator --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --protect-app-json com.apple.calculator > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --unprotect-app com.apple.calculator --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --unprotect-app-json com.apple.calculator > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --reset-apps --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --reload --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --reset-session --json > /dev/null
-	@build/FaceLock.app/Contents/MacOS/FaceLock --reset-session --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --check-app com.apple.Safari --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --check-app-json com.apple.Safari > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --check-app com.apple.dock --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --vector-consistency > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --vector-consistency --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --vector-consistency-json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --analyze-vectors --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents-integrity > /dev/null || true
+	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents-integrity --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --incidents-integrity-json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --check-incidents --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --repair-incidents > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --repair-incidents --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --repair-incidents-json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --clean-corrupted-incidents --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-summary > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-summary --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-summary-json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --is-locked --json > /dev/null || true
 	@build/FaceLock.app/Contents/MacOS/FaceLock --optimize-vectors --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-pin-attempts 3 --json > /dev/null
