@@ -77,6 +77,7 @@ public final class FaceLockTestSuite {
         testConfigValidationSuiteAndIncidentSearch()
         testIncidentDeletionExportAndAuditStats()
         testMaintenanceV119Enhancements()
+        testMaintenanceV120Enhancements()
         testVectorMatchingBenchmark()
 
         let elapsed = Date().timeIntervalSince(startTime)
@@ -1643,6 +1644,176 @@ public final class FaceLockTestSuite {
         assert(!Config.shared.addIgnoredApp("..invalid"), "Config.addIgnoredApp rejects ..invalid")
         assert(!Config.shared.removeProtectedApp("--json"), "Config.removeProtectedApp rejects --json")
         assert(!Config.shared.removeIgnoredApp("--json"), "Config.removeIgnoredApp rejects --json")
+    }
+
+    private func testMaintenanceV120Enhancements() {
+        print("\n▶ Test Suite: Security Posture Assessment & Meeting Telemetry (v1.2.0)")
+
+        // 1. Hardened Security Posture Assessment (100 / 100)
+        let hardenedConfig = Config(
+            pin: "983412", // 6 digits (hardened)
+            similarityThreshold: 0.20,
+            verificationTimeout: 2.0,
+            debounceSeconds: 2.0,
+            isEnabled: true, // 15 pts
+            strictFaceMatch: true,
+            showHUD: true,
+            autoTriggerTouchID: true,
+            ignoredBundleIdentifiers: Config.defaultIgnoredBundleIdentifiers,
+            telegramBotToken: "test_token_123",
+            telegramChatId: "998877",
+            telegramEnabled: true, // 5 pts
+            protectionMode: "all",
+            protectedBundleIdentifiers: Config.defaultProtectedBundleIdentifiers,
+            livenessDetectionEnabled: true, // 10 pts
+            walkAwayLockEnabled: true, // 10 pts
+            walkAwayIdleSeconds: 30.0, // <= 60s
+            lockOnWake: true, // 5 pts
+            maxFailedPinAttempts: 3, // <= 5
+            pinLockoutSeconds: 10.0, // >= 5s (pin pts: 10 + 5 = 15)
+            activeProfile: "lockdown",
+            shoulderSurfingDefense: true, // 10 pts
+            batteryAwareScanning: true, // 5 pts
+            audibleAlerts: true,
+            presentationModeSuppression: true
+        )
+
+        // 5 highly cohesive vectors (bio pts: 15 + 5 = 20)
+        var dummyBase = Array(repeating: Float(0.5), count: 128)
+        dummyBase[0] = 1.0
+        let baseNorm = normalize(dummyBase)
+        let cohesiveVectors = (0..<5).map { idx in
+            var v = baseNorm
+            v[1] += Float(idx) * 0.001
+            return normalize(v)
+        }
+
+        let cleanIntegrity = CameraScanner.IncidentIntegrityReport(
+            totalFilesScanned: 5,
+            validCapturesCount: 5,
+            corruptedCount: 0,
+            zeroByteCount: 0,
+            nonImageCount: 0,
+            totalValidSizeBytes: 10240,
+            totalCorruptedSizeBytes: 0,
+            directory: "/tmp/clean",
+            corruptedFilenames: [],
+            status: "HEALTHY"
+        )
+
+        let reportHardened = Diagnostics.assessSecurityPosture(
+            config: hardenedConfig,
+            enrolledVectors: cohesiveVectors,
+            integrityReport: cleanIntegrity
+        )
+
+        assertEqual(reportHardened.score, 100, "Hardened security posture achieves maximum score 100")
+        assertEqual(reportHardened.maxScore, 100, "Maximum score is 100")
+        assertEqual(reportHardened.grade, "A+", "Hardened configuration earns grade A+")
+        assertEqual(reportHardened.status, "EXCELLENT", "Hardened status is EXCELLENT")
+        assert(reportHardened.recommendations.isEmpty, "Hardened configuration yields 0 recommendations")
+
+        let dict = reportHardened.toDictionary()
+        assertEqual(dict["score"] as? Int, 100, "Report dictionary contains score")
+        assertEqual(dict["grade"] as? String, "A+", "Report dictionary contains grade")
+        assertEqual(dict["status"] as? String, "EXCELLENT", "Report dictionary contains status")
+
+        // 2. Degraded Posture & Actionable Recommendations
+        let degradedConfig = Config(
+            pin: "0000", // default pin (0 pts)
+            isEnabled: false, // shield paused (0 pts)
+            telegramBotToken: "",
+            telegramChatId: "",
+            telegramEnabled: false, // 0 pts
+            livenessDetectionEnabled: false, // 0 pts
+            walkAwayLockEnabled: false, // 0 pts
+            lockOnWake: false, // 0 pts
+            maxFailedPinAttempts: 10,
+            pinLockoutSeconds: 1.0, // weak lockout (2 pts)
+            shoulderSurfingDefense: false, // 0 pts
+            batteryAwareScanning: false, // 0 pts
+            presentationModeSuppression: false // 0 pts
+        )
+
+        let reportDegraded = Diagnostics.assessSecurityPosture(
+            config: degradedConfig,
+            enrolledVectors: [], // 0 vectors (0 pts)
+            integrityReport: cleanIntegrity
+        )
+
+        assert(reportDegraded.score < 50, "Degraded configuration scores below 50 (\(reportDegraded.score))")
+        assertEqual(reportDegraded.grade, "D", "Degraded configuration earns grade D")
+        assertEqual(reportDegraded.status, "VULNERABLE", "Degraded status is VULNERABLE")
+        assert(reportDegraded.recommendations.count >= 5, "Degraded posture yields multiple actionable recommendations (\(reportDegraded.recommendations.count))")
+
+        // 3. Corrupted Capture Penalty
+        let corruptedIntegrity = CameraScanner.IncidentIntegrityReport(
+            totalFilesScanned: 3,
+            validCapturesCount: 1,
+            corruptedCount: 2,
+            zeroByteCount: 1,
+            nonImageCount: 1,
+            totalValidSizeBytes: 512,
+            totalCorruptedSizeBytes: 512,
+            directory: "/tmp/corrupt",
+            corruptedFilenames: ["corrupt.jpg"],
+            status: "CORRUPTED_DETECTED"
+        )
+
+        let reportWithCorruption = Diagnostics.assessSecurityPosture(
+            config: hardenedConfig,
+            enrolledVectors: cohesiveVectors,
+            integrityReport: corruptedIntegrity
+        )
+
+        assertEqual(reportWithCorruption.score, 95, "5-point penalty applied for corrupted captures (100 -> 95)")
+        assert(reportWithCorruption.recommendations.contains(where: { $0.contains("repair-incidents") }), "Recommends repair-incidents when corruption detected")
+
+        // 4. Presentation & Meeting Mode Catalog Telemetry
+        let catalog = WalkAwayMonitor.presentationCatalog
+        assert(catalog.count >= 30, "Presentation catalog contains at least 30 known meeting/presentation apps (\(catalog.count))")
+
+        assert(catalog.contains(where: { $0.bundleId == "com.apple.iWork.Keynote" && $0.category == "Presentation" }), "Keynote is in Presentation category")
+        assert(catalog.contains(where: { $0.bundleId == "us.zoom.xos" && $0.category == "Meeting" }), "Zoom is in Meeting category")
+        assert(catalog.contains(where: { $0.bundleId == "com.microsoft.teams" && $0.category == "Meeting" }), "Teams is in Meeting category")
+        assert(catalog.contains(where: { $0.bundleId == "com.obsproject.obs-studio" && $0.category == "Streaming" }), "OBS is in Streaming category")
+        assert(catalog.contains(where: { $0.bundleId == "org.videolan.vlc" && $0.category == "Media" }), "VLC is in Media category")
+        assert(catalog.contains(where: { $0.bundleId == "com.anydesk.anydesk" && $0.category == "Screen Sharing" }), "AnyDesk is in Screen Sharing category")
+        assert(catalog.contains(where: { $0.bundleId == "com.apple.FaceTime" && $0.category == "Communication" }), "FaceTime is in Communication category")
+
+        // 5. checkPresentationStatus Inspection
+        let keynoteStatus = WalkAwayMonitor.checkPresentationStatus(bundleId: "com.apple.iWork.Keynote")
+        assertEqual(keynoteStatus["isPresentationApp"] as? Bool, true, "Keynote identified as presentation app")
+        assertEqual(keynoteStatus["matchedName"] as? String, "Keynote", "Keynote matched name is Keynote")
+        assertEqual(keynoteStatus["matchedCategory"] as? String, "Presentation", "Keynote category is Presentation")
+
+        let zoomStatus = WalkAwayMonitor.checkPresentationStatus(bundleId: "us.zoom.xos")
+        assertEqual(zoomStatus["isPresentationApp"] as? Bool, true, "Zoom identified as meeting app")
+        assertEqual(zoomStatus["matchedCategory"] as? String, "Meeting", "Zoom category is Meeting")
+
+        let safariStatus = WalkAwayMonitor.checkPresentationStatus(bundleId: "com.apple.Safari")
+        assertEqual(safariStatus["isPresentationApp"] as? Bool, false, "Safari is not a presentation app")
+
+        let finderStatus = WalkAwayMonitor.checkPresentationStatus(bundleId: "com.apple.finder")
+        assertEqual(finderStatus["isPresentationApp"] as? Bool, false, "Finder is not a presentation app")
+
+        assert(WalkAwayMonitor.isPresentationActive(bundleId: "com.apple.iWork.Keynote"), "isPresentationActive returns true for Keynote")
+        assert(!WalkAwayMonitor.isPresentationActive(bundleId: "com.apple.Safari"), "isPresentationActive returns false for Safari")
+
+        // 6. Diagnostics report integration
+        let fullReport = Diagnostics.collectReport()
+        assert(fullReport["securityPosture"] != nil, "Diagnostics report includes securityPosture dictionary")
+
+        // 7. CLI Argument Normalization for v1.2.0
+        assertEqual(AppDelegate.normalizeArguments(["--security-score-json"]), ["--security-score", "--json"], "Normalizes --security-score-json")
+        assertEqual(AppDelegate.normalizeArguments(["--posture-score-json"]), ["--security-score", "--json"], "Normalizes --posture-score-json")
+        assertEqual(AppDelegate.normalizeArguments(["--posture-json"]), ["--security-score", "--json"], "Normalizes --posture-json")
+        assertEqual(AppDelegate.normalizeArguments(["--posture"]), ["--security-score"], "Normalizes --posture")
+        assertEqual(AppDelegate.normalizeArguments(["--security-posture"]), ["--security-score"], "Normalizes --security-posture")
+        assertEqual(AppDelegate.normalizeArguments(["--presentation-apps-json"]), ["--presentation-apps", "--json"], "Normalizes --presentation-apps-json")
+        assertEqual(AppDelegate.normalizeArguments(["--meeting-apps-json"]), ["--presentation-apps", "--json"], "Normalizes --meeting-apps-json")
+        assertEqual(AppDelegate.normalizeArguments(["--meeting-apps"]), ["--presentation-apps"], "Normalizes --meeting-apps")
+        assertEqual(AppDelegate.normalizeArguments(["--check-presentation-json"]), ["--check-presentation", "--json"], "Normalizes --check-presentation-json")
     }
 
     // MARK: - 10. Performance Benchmark

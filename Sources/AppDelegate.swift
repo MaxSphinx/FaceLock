@@ -219,6 +219,16 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append("--toggle-shoulder-defense")
             case "--toggle-presentation-mode":
                 args.append("--toggle-presentation")
+            case "--security-score-json", "--posture-score-json", "--posture-json", "--security-posture-json":
+                args.append(contentsOf: ["--security-score", "--json"])
+            case "--posture", "--posture-score", "--security-posture":
+                args.append("--security-score")
+            case "--presentation-apps-json", "--meeting-apps-json", "--meetings-apps-json":
+                args.append(contentsOf: ["--presentation-apps", "--json"])
+            case "--meeting-apps", "--meetings-apps":
+                args.append("--presentation-apps")
+            case "--check-presentation-json":
+                args.append(contentsOf: ["--check-presentation", "--json"])
             default:
                 args.append(arg)
             }
@@ -320,6 +330,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --battery-status [--json]  Inspect battery power source & adaptive throttling state
               --toggle-presentation, --toggle-presentation-mode Toggle meeting / presentation lock auto-suppression
               --set-presentation-mode <on|off|toggle> Enable or disable meeting lock auto-suppression
+              --presentation-apps, --meeting-apps [--json] List recognized meeting & presentation apps
+              --check-presentation [bundleId] [--json] Check if bundle ID or active app triggers meeting lock suppression
+              --security-score, --posture [--json] Assess comprehensive Mac security posture score & recommendations
               --test, --run-tests        Execute automated unit test suite and benchmarks
               --health [--json]          Fast operational healthcheck (exit 0 if healthy)
               --set-pin <pin>            Update lock screen unlock PIN
@@ -350,9 +363,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if args.contains("--version") || args.contains("-v") {
             if args.contains("--json") {
-                print("{\"name\":\"FaceLock\",\"version\":\"1.1.9\",\"platform\":\"darwin-arm64\"}")
+                print("{\"name\":\"FaceLock\",\"version\":\"1.2.0\",\"platform\":\"darwin-arm64\"}")
             } else {
-                print("FaceLock v1.1.9 (darwin-arm64)")
+                print("FaceLock v1.2.0 (darwin-arm64)")
             }
             exit(0)
         }
@@ -365,6 +378,110 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if args.contains("--diagnostics") || args.contains("-d") {
             Diagnostics.run(jsonOutput: args.contains("--json"))
+            exit(0)
+        }
+
+        if args.contains("--security-score") || args.contains("--posture") {
+            let report = Diagnostics.assessSecurityPosture()
+            if args.contains("--json") {
+                if let data = try? JSONSerialization.data(withJSONObject: report.toDictionary(), options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                let badge: String
+                switch report.score {
+                case 90...100: badge = "EXCELLENT 🛡️"
+                case 80...89:  badge = "HARDENED 🛡️"
+                case 70...79:  badge = "STANDARD ⚖️"
+                case 55...69:  badge = "MODERATE ⚠️"
+                default:       badge = "VULNERABLE ❌"
+                }
+                print("=======================================================")
+                print("       🛡️  FaceLock Security Posture Assessment       ")
+                print("=======================================================")
+                print("  • Score: \(report.score)/\(report.maxScore) (Grade: \(report.grade) - \(badge))")
+                let shieldDict = report.breakdown["shieldState"] as? [String: Any]
+                let isShieldActive = ((shieldDict?["isActive"] as? Bool) ?? false)
+                print("  • Shield: \(isShieldActive ? "ACTIVE (15/15 pts) ✅" : "PAUSED (0/15 pts) ⏸️")")
+                print("  • Master PIN: \((report.breakdown["pinSecurity"] as? [String: Any])?["points"] ?? 0)/15 pts")
+                print("  • Biometric Templates: \((report.breakdown["biometrics"] as? [String: Any])?["points"] ?? 0)/20 pts")
+                print("  • Walk-Away Lock: \((report.breakdown["walkAwayLock"] as? [String: Any])?["points"] ?? 0)/10 pts")
+                print("  • Shoulder-Surfing: \((report.breakdown["shoulderSurfingDefense"] as? [String: Any])?["points"] ?? 0)/10 pts")
+                print("  • Liveness Detection: \((report.breakdown["livenessDetection"] as? [String: Any])?["points"] ?? 0)/10 pts")
+                print("  • Lock-on-Wake: \((report.breakdown["lockOnWake"] as? [String: Any])?["points"] ?? 0)/5 pts")
+                print("  • Battery-Aware: \((report.breakdown["batteryAwareScanning"] as? [String: Any])?["points"] ?? 0)/5 pts")
+                print("  • Telegram Alerts: \((report.breakdown["telegramAlerts"] as? [String: Any])?["points"] ?? 0)/5 pts")
+                print("  • Meeting Auto-Suppression: \((report.breakdown["presentationSuppression"] as? [String: Any])?["points"] ?? 0)/5 pts")
+                if let penalty = (report.breakdown["incidentIntegrity"] as? [String: Any])?["penalty"] as? Int, penalty > 0 {
+                    print("  • Integrity Penalty: -\(penalty) pts (Corrupted captures detected ⚠️)")
+                }
+                if report.recommendations.isEmpty {
+                    print("\n  🎉 Optimal security posture: Mac is fully hardened.")
+                } else {
+                    print("\n  📋 Actionable Recommendations (\(report.recommendations.count)):")
+                    for (idx, rec) in report.recommendations.enumerated() {
+                        print("    \(idx + 1). \(rec)")
+                    }
+                }
+                print("=======================================================\n")
+            }
+            exit(0)
+        }
+
+        if args.contains("--presentation-apps") {
+            let catalog = WalkAwayMonitor.presentationCatalog
+            if args.contains("--json") {
+                let dicts = catalog.map { $0.toDictionary() }
+                let payload: [String: Any] = [
+                    "count": dicts.count,
+                    "apps": dicts,
+                    "suppressionEnabled": Config.shared.presentationModeSuppression
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                print("   🎯  FaceLock Presentation & Meeting Suppression Catalog   ")
+                print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                print("Suppression Active: \(Config.shared.presentationModeSuppression ? "YES ✅" : "NO ⏸️")")
+                print("Recognized Applications (\(catalog.count)):")
+                for app in catalog {
+                    print("  • [\(app.category)] \(app.name) — \(app.bundleId)")
+                }
+                print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            }
+            exit(0)
+        }
+
+        if args.contains("--check-presentation") {
+            let bundle = AppDelegate.valueForOption("--check-presentation", in: args)
+            let status = WalkAwayMonitor.checkPresentationStatus(bundleId: bundle)
+            if args.contains("--json") {
+                if let data = try? JSONSerialization.data(withJSONObject: status, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                let isPres = status["isPresentationApp"] as? Bool ?? false
+                let name = status["matchedName"] as? String ?? "N/A"
+                let cat = status["matchedCategory"] as? String ?? "N/A"
+                let isSupp = status["isLockSuppressed"] as? Bool ?? false
+                let target = bundle ?? (status["frontmostBundleId"] as? String ?? "Frontmost Application")
+
+                print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                print("        🎯  FaceLock Presentation Mode Inspection           ")
+                print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                print("  • Target App: \(target)")
+                print("  • Presentation/Meeting App: \(isPres ? "YES (\(name) - \(cat)) ✅" : "NO ❌")")
+                print("  • Frontmost Application: \(status["frontmostName"] as? String ?? "") [\(status["frontmostBundleId"] as? String ?? "")]")
+                print("  • Display Sleep Assertion: \((status["hasDisplaySleepAssertion"] as? Bool == true) ? "ACTIVE (Presentation in progress) ⚡️" : "None")")
+                print("  • Suppression Configured: \((status["presentationModeSuppressionConfigured"] as? Bool == true) ? "Enabled" : "Disabled")")
+                print("  • Walk-Away Auto-Lock Suppressed: \(isSupp ? "YES (Will not lock screen) 🛡️" : "NO (Normal lock active) 🔒")")
+                print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            }
             exit(0)
         }
 

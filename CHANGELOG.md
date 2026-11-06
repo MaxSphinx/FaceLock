@@ -4,6 +4,37 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-11-06
+
+### Added
+- **Comprehensive Mac Security Posture & Hardening Assessment Suite (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `Diagnostics.assessSecurityPosture()` and `SecurityPostureReport` evaluating the end-to-end security hardening of macOS and FaceLock on a 100-point scale:
+    - Shield Active (15 pts): Active vs paused state validation.
+    - Master PIN Hardening & Lockout (15 pts): Evaluates non-default PIN, length (6+ digits bonus), and brute-force cooling lockout rules.
+    - Biometric Vector Density & Cohesion (20 pts): Enrolled templates count (3-5+ templates) and multi-angle cluster cohesion score ($S_{cohesion} \ge 0.70$).
+    - Walk-Away Defense (10 pts): Auto-lock enabled with strict idle timeout threshold ($\le 60\text{s}$).
+    - Shoulder-Surfing Defense (10 pts): Bystander detection and secondary face snooping monitor.
+    - Neural Liveness & Anti-Spoofing (10 pts): Deep neural anti-spoofing verification.
+    - Screen Wake Clamshell Lock (5 pts): Instant biometric lock on Mac display / lid wake.
+    - Battery-Aware Adaptive Polling (5 pts): Adaptive sweep throttling via live IOKit power status.
+    - Remote Telegram Gateway (5 pts): Instant intrusion alerting via configured Telegram bot.
+    - Intruder Integrity Audit Penalty (-5 pts penalty applied if corrupted captures exist).
+  - Categorizes security posture into actionable grades (`A+` 90-100 EXCELLENT, `A` 80-89 HARDENED, `B` 70-79 STANDARD, `C` 55-69 MODERATE, `D` <55 VULNERABLE).
+  - Dynamically synthesizes prioritized actionable recommendations to harden system security.
+  - Added CLI options `--security-score` and `--posture` (with `--security-score-json`, `--posture-json`, `--posture-score-json` normalizations).
+  - Enriched `Diagnostics.collectReport()` with structured `"securityPosture"` dictionary.
+  - Enriched human-readable `Diagnostics.run()` with Section `[8] Security Posture & Hardening Assessment`.
+- **Presentation & Meeting Mode Telemetry Suite (`WalkAwayMonitor.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `WalkAwayMonitor.presentationCatalog` cataloging 33 popular macOS presentation, meeting, streaming, recording, communication, and media player applications (Keynote, PowerPoint, Freeform, Zoom Meetings/Rooms, Teams, Webex, Telemost, Google Meet, Slack, Discord, Skype, OBS Studio, Loom, AnyDesk, TeamViewer, QuickTime, VLC, IINA, FaceTime, etc.).
+  - Implemented `WalkAwayMonitor.checkPresentationStatus(bundleId:) -> [String: Any]` inspecting target application or frontmost window, checking for active macOS display sleep assertions (`IOPMCopyAssertionsByProcess`), and determining lock suppression status.
+  - Added CLI commands `--presentation-apps` (with `--meeting-apps` alias and `--presentation-apps-json`) and `--check-presentation [bundleId]` (with `--check-presentation-json`).
+- **Makefile & CLI Workflow Automation (`Makefile`)**:
+  - Added Makefile targets `security-score`, `security-score-json`, `posture`, `posture-json`, `presentation-apps`, `presentation-apps-json`, `meeting-apps`, `meeting-apps-json`, `check-presentation APP=`, `check-presentation-json APP=`.
+  - Updated `make help` with documentation for new posture assessment and meeting telemetry targets.
+  - Integrated verification of all new CLI commands and JSON outputs into `make test`.
+- **Automated Test Suite Expansion (`Tests/FaceLockTests.swift`)**:
+  - Expanded automated test suite across 35 test suites covering hardened 100/100 score verification, degraded configuration scoring, corrupted capture penalty deduction, actionable recommendation synthesis, presentation catalog enumeration, meeting application detection, and CLI argument normalizations.
+
 ## [1.1.9] - 2026-11-06
 
 ### Added

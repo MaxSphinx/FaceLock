@@ -4,6 +4,46 @@ import AVFoundation
 import Vision
 import LocalAuthentication
 
+public struct SecurityPostureReport {
+    public let score: Int
+    public let grade: String
+    public let status: String
+    public let maxScore: Int
+    public let percentage: Double
+    public let breakdown: [String: Any]
+    public let recommendations: [String]
+
+    public init(
+        score: Int,
+        grade: String,
+        status: String,
+        maxScore: Int = 100,
+        percentage: Double,
+        breakdown: [String: Any],
+        recommendations: [String]
+    ) {
+        self.score = score
+        self.grade = grade
+        self.status = status
+        self.maxScore = maxScore
+        self.percentage = percentage
+        self.breakdown = breakdown
+        self.recommendations = recommendations
+    }
+
+    public func toDictionary() -> [String: Any] {
+        return [
+            "score": score,
+            "maxScore": maxScore,
+            "percentage": percentage,
+            "grade": grade,
+            "status": status,
+            "breakdown": breakdown,
+            "recommendations": recommendations
+        ]
+    }
+}
+
 public struct Diagnostics {
     public static func collectReport() -> [String: Any] {
         // 1. System & Architecture
@@ -119,6 +159,7 @@ public struct Diagnostics {
         let agentInstalled = FileManager.default.fileExists(atPath: launchAgentPath)
         let auditStats = SecurityAuditLogger.shared.getAuditStats()
         let incidentStats = CameraScanner.shared.getDetailedIncidentStats()
+        let posture = assessSecurityPosture(config: config, enrolledVectors: vectors)
 
         return [
             "timestamp": ISO8601DateFormatter().string(from: Date()),
@@ -185,6 +226,7 @@ public struct Diagnostics {
                 "templateConsistency": config.analyzeTemplateConsistency(),
                 "incidentsIntegrity": CameraScanner.shared.verifyIncidentsIntegrity().toDictionary()
             ],
+            "securityPosture": posture.toDictionary(),
             "integrations": [
                 "telegramConfigured": tgConfigured,
                 "telegramEnabled": config.telegramEnabled,
@@ -192,6 +234,236 @@ public struct Diagnostics {
                 "maintainerInstalled": agentInstalled
             ]
         ]
+    }
+
+    public static func assessSecurityPosture(
+        config: Config = .shared,
+        enrolledVectors: [[Float]]? = nil,
+        integrityReport: CameraScanner.IncidentIntegrityReport? = nil
+    ) -> SecurityPostureReport {
+        var score = 0
+        var breakdown: [String: Any] = [:]
+        var recommendations: [String] = []
+
+        // 1. Shield Active (15 pts)
+        let shieldActive = config.isEnabled
+        let shieldPts = shieldActive ? 15 : 0
+        score += shieldPts
+        breakdown["shieldState"] = [
+            "points": shieldPts,
+            "maxPoints": 15,
+            "isActive": shieldActive
+        ]
+        if !shieldActive {
+            recommendations.append("Shield protection is currently paused. Run 'facelock --resume' to activate live defense.")
+        }
+
+        // 2. Master PIN Hardening & Lockout (15 pts)
+        let isDefaultPin = (config.pin == "0000")
+        var pinPts = 0
+        if !isDefaultPin {
+            if config.pin.count >= 6 {
+                pinPts += 10
+            } else {
+                pinPts += 7
+            }
+        } else {
+            recommendations.append("Default master PIN '0000' is in use. Set a custom 6+ digit PIN via 'facelock --set-pin <pin>'.")
+        }
+
+        let lockoutHardened = (config.maxFailedPinAttempts <= 5 && config.pinLockoutSeconds >= 5.0)
+        let lockoutPts = lockoutHardened ? 5 : 2
+        pinPts += lockoutPts
+        score += pinPts
+        breakdown["pinSecurity"] = [
+            "points": pinPts,
+            "maxPoints": 15,
+            "isDefaultPin": isDefaultPin,
+            "pinLength": config.pin.count,
+            "maxFailedAttempts": config.maxFailedPinAttempts,
+            "lockoutSeconds": config.pinLockoutSeconds
+        ]
+        if !lockoutHardened {
+            recommendations.append("Harden PIN brute-force defense via 'facelock --pin-attempts 3 --pin-lockout 10'.")
+        }
+
+        // 3. Biometric Vectors & Cluster Cohesion (20 pts)
+        let vectors = enrolledVectors ?? config.loadEnrolledVectors()
+        var bioPts = 0
+        if vectors.count >= 5 {
+            bioPts += 15
+        } else if vectors.count >= 3 {
+            bioPts += 12
+        } else if vectors.count >= 1 {
+            bioPts += 7
+            recommendations.append("Enroll at least 3-5 multi-angle face templates via 'facelock --enroll' for higher cluster accuracy.")
+        } else {
+            recommendations.append("No biometric face templates enrolled. Run 'facelock --enroll' to enable neural facial verification.")
+        }
+
+        var cohesionScore: Double = 0.0
+        if vectors.count >= 2 {
+            let consistency = config.analyzeTemplateConsistency(vectors: vectors)
+            cohesionScore = consistency["cohesionScore"] as? Double ?? 0.0
+            if cohesionScore >= 0.70 {
+                bioPts += 5
+            } else {
+                bioPts += 2
+                recommendations.append("Biometric cluster cohesion is low. Run 'facelock --optimize-vectors' or re-enroll.")
+            }
+        } else if vectors.count == 1 {
+            bioPts += 2
+        }
+        score += bioPts
+        breakdown["biometrics"] = [
+            "points": bioPts,
+            "maxPoints": 20,
+            "enrolledCount": vectors.count,
+            "cohesionScore": cohesionScore
+        ]
+
+        // 4. Walk-Away Auto-Lock (10 pts)
+        let walkAwayActive = config.walkAwayLockEnabled
+        var walkAwayPts = 0
+        if walkAwayActive {
+            if config.walkAwayIdleSeconds <= 60.0 {
+                walkAwayPts = 10
+            } else {
+                walkAwayPts = 7
+                recommendations.append("Walk-away timeout is > 60s (\(Int(config.walkAwayIdleSeconds))s). Tighten via 'facelock --set-walkaway 45'.")
+            }
+        } else {
+            recommendations.append("Walk-away lock is disabled. Run 'facelock --toggle-walkaway' to auto-lock when leaving your desk.")
+        }
+        score += walkAwayPts
+        breakdown["walkAwayLock"] = [
+            "points": walkAwayPts,
+            "maxPoints": 10,
+            "enabled": walkAwayActive,
+            "idleSeconds": config.walkAwayIdleSeconds
+        ]
+
+        // 5. Shoulder-Surfing Bystander Defense (10 pts)
+        let shoulderActive = config.shoulderSurfingDefense
+        let shoulderPts = shoulderActive ? 10 : 0
+        score += shoulderPts
+        breakdown["shoulderSurfingDefense"] = [
+            "points": shoulderPts,
+            "maxPoints": 10,
+            "enabled": shoulderActive
+        ]
+        if !shoulderActive {
+            recommendations.append("Enable Shoulder-Surfing bystander detection ('facelock --toggle-shoulder') to block over-the-shoulder peeking.")
+        }
+
+        // 6. Neural Liveness & Anti-Spoofing (10 pts)
+        let livenessActive = config.livenessDetectionEnabled
+        let livenessPts = livenessActive ? 10 : 0
+        score += livenessPts
+        breakdown["livenessDetection"] = [
+            "points": livenessPts,
+            "maxPoints": 10,
+            "enabled": livenessActive
+        ]
+        if !livenessActive {
+            recommendations.append("Enable anti-spoofing liveness verification via 'facelock --set-liveness on'.")
+        }
+
+        // 7. Lock-on-Wake Clamshell Defense (5 pts)
+        let wakeActive = config.lockOnWake
+        let wakePts = wakeActive ? 5 : 0
+        score += wakePts
+        breakdown["lockOnWake"] = [
+            "points": wakePts,
+            "maxPoints": 5,
+            "enabled": wakeActive
+        ]
+        if !wakeActive {
+            recommendations.append("Enable lock-on-wake via 'facelock --toggle-wake' to lock immediately upon Mac clamshell wake.")
+        }
+
+        // 8. Battery-Aware Adaptive Polling (5 pts)
+        let batteryAware = config.batteryAwareScanning
+        let batteryPts = batteryAware ? 5 : 0
+        score += batteryPts
+        breakdown["batteryAwareScanning"] = [
+            "points": batteryPts,
+            "maxPoints": 5,
+            "enabled": batteryAware
+        ]
+
+        // 9. Remote Telegram Incident Gateway (5 pts)
+        let tgActive = config.telegramEnabled && !config.telegramBotToken.isEmpty && !config.telegramChatId.isEmpty
+        let tgPts = tgActive ? 5 : 0
+        score += tgPts
+        breakdown["telegramAlerts"] = [
+            "points": tgPts,
+            "maxPoints": 5,
+            "configured": tgActive
+        ]
+        if !tgActive {
+            recommendations.append("Configure Telegram bot alerts in settings ('facelock --settings') for remote intrusion alerts.")
+        }
+
+        // 10. Meeting & Presentation Mode Auto-Suppression (5 pts)
+        let presActive = config.presentationModeSuppression
+        let presPts = presActive ? 5 : 0
+        score += presPts
+        breakdown["presentationSuppression"] = [
+            "points": presPts,
+            "maxPoints": 5,
+            "enabled": presActive
+        ]
+        if !presActive {
+            recommendations.append("Enable presentation mode suppression ('facelock --set-presentation-mode on') to avoid unintended locks during calls.")
+        }
+
+        // 11. Intruder Capture Integrity Check (-5 pts penalty if corrupted)
+        let integrity = integrityReport ?? CameraScanner.shared.verifyIncidentsIntegrity()
+        var integrityPenalty = 0
+        if integrity.corruptedCount > 0 {
+            integrityPenalty = 5
+            score = max(0, score - integrityPenalty)
+            recommendations.append("Corrupted intruder captures detected (\(integrity.corruptedCount)). Run 'facelock --repair-incidents'.")
+        }
+        breakdown["incidentIntegrity"] = [
+            "corruptedCount": integrity.corruptedCount,
+            "penalty": integrityPenalty,
+            "status": integrity.status
+        ]
+
+        let finalScore = min(100, max(0, score))
+        let percentage = Double(finalScore)
+
+        let grade: String
+        let status: String
+        switch finalScore {
+        case 90...100:
+            grade = "A+"
+            status = "EXCELLENT"
+        case 80...89:
+            grade = "A"
+            status = "HARDENED"
+        case 70...79:
+            grade = "B"
+            status = "STANDARD"
+        case 55...69:
+            grade = "C"
+            status = "MODERATE"
+        default:
+            grade = "D"
+            status = "VULNERABLE"
+        }
+
+        return SecurityPostureReport(
+            score: finalScore,
+            grade: grade,
+            status: status,
+            maxScore: 100,
+            percentage: percentage,
+            breakdown: breakdown,
+            recommendations: recommendations
+        )
     }
 
     public static func run(jsonOutput: Bool = false) {
@@ -373,6 +645,26 @@ public struct Diagnostics {
             print("  • Telegram Bot Alerts: Not configured ℹ️")
         }
         print("  • 24/7 Autonomous Maintainer: \(agentInstalled ? "Installed & Active ✅" : "Not installed (Run 'make maintainer-install') ℹ️")")
+
+        print("\n[8] Security Posture & Hardening Assessment:")
+        let posture = assessSecurityPosture()
+        let scoreBadge: String
+        switch posture.score {
+        case 90...100: scoreBadge = "EXCELLENT 🛡️"
+        case 80...89:  scoreBadge = "HARDENED 🛡️"
+        case 70...79:  scoreBadge = "STANDARD ⚖️"
+        case 55...69:  scoreBadge = "MODERATE ⚠️"
+        default:       scoreBadge = "VULNERABLE ❌"
+        }
+        print("  • Security Score: \(posture.score)/\(posture.maxScore) (Grade: \(posture.grade) - \(scoreBadge))")
+        if posture.recommendations.isEmpty {
+            print("  • Hardening Status: All recommended defense mechanisms are active! ✅")
+        } else {
+            print("  • Recommendations (\(posture.recommendations.count)):")
+            for rec in posture.recommendations {
+                print("    - \(rec)")
+            }
+        }
 
         print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
         print(" Diagnostics complete: All core biometric subsystems verified.")

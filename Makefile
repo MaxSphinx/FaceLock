@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app protect-app-json unprotect-app unprotect-app-json ignore-app ignore-app-json unignore-app unignore-app-json reset-apps diagnostics diagnostics-gui health health-json toggle toggle-json pause pause-json resume resume-json toggle-wake toggle-wake-json wake reload reload-json reset-session reset-session-json check-app check-app-json vectors vectors-json optimize-vectors optimize-vectors-json vector-consistency vector-consistency-json clear-vectors clear-vectors-json reset-vectors reset-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents clear-incidents-json clear-incidents-type clear-incidents-type-json prune-incidents prune-incidents-days prune-incidents-days-json export-incidents export-incidents-json test-telegram test-telegram-json incidents incidents-summary incidents-summary-json incidents-search incidents-search-json incidents-integrity incidents-integrity-json check-incidents check-incidents-json repair-incidents repair-incidents-json latest-incident latest-incident-json export-latest-incident export-latest-incident-json incident incident-json delete-incident delete-incident-json verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-stats-json log-stats log-stats-json audit-summary audit-summary-json audit-gui audit-search audit-search-json prune-audit prune-audit-days prune-audit-days-json prune-logs-days prune-logs-days-json clear-audit clear-audit-json export-audit export-audit-json export-audit-csv export-audit-csv-json export-logs export-logs-json set-threshold set-threshold-json set-timeout set-timeout-json set-debounce set-debounce-json set-mode set-mode-json set-walkaway set-walkaway-json pin-attempts pin-attempts-json pin-lockout pin-lockout-json set-pin set-pin-json cameras cameras-json set-camera reset-camera backup-config backup-config-json export-config export-config-json restore-config restore-config-json import-config import-config-json export-vectors export-vectors-json backup-vectors backup-vectors-json import-vectors import-vectors-json restore-vectors restore-vectors-json test profiles profiles-json profile profile-json toggle-shoulder toggle-shoulder-json toggle-audible toggle-audible-json toggle-battery toggle-battery-json toggle-presentation toggle-presentation-json toggle-liveness toggle-liveness-json toggle-touchid toggle-touchid-json toggle-walkaway toggle-walkaway-json battery-status battery-status-json
+.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app protect-app-json unprotect-app unprotect-app-json ignore-app ignore-app-json unignore-app unignore-app-json reset-apps diagnostics diagnostics-gui health health-json toggle toggle-json pause pause-json resume resume-json toggle-wake toggle-wake-json wake reload reload-json reset-session reset-session-json check-app check-app-json vectors vectors-json optimize-vectors optimize-vectors-json vector-consistency vector-consistency-json clear-vectors clear-vectors-json reset-vectors reset-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents clear-incidents-json clear-incidents-type clear-incidents-type-json prune-incidents prune-incidents-days prune-incidents-days-json export-incidents export-incidents-json test-telegram test-telegram-json incidents incidents-summary incidents-summary-json incidents-search incidents-search-json incidents-integrity incidents-integrity-json check-incidents check-incidents-json repair-incidents repair-incidents-json latest-incident latest-incident-json export-latest-incident export-latest-incident-json incident incident-json delete-incident delete-incident-json verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-stats-json log-stats log-stats-json audit-summary audit-summary-json audit-gui audit-search audit-search-json prune-audit prune-audit-days prune-audit-days-json prune-logs-days prune-logs-days-json clear-audit clear-audit-json export-audit export-audit-json export-audit-csv export-audit-csv-json export-logs export-logs-json set-threshold set-threshold-json set-timeout set-timeout-json set-debounce set-debounce-json set-mode set-mode-json set-walkaway set-walkaway-json pin-attempts pin-attempts-json pin-lockout pin-lockout-json set-pin set-pin-json cameras cameras-json set-camera reset-camera backup-config backup-config-json export-config export-config-json restore-config restore-config-json import-config import-config-json export-vectors export-vectors-json backup-vectors backup-vectors-json import-vectors import-vectors-json restore-vectors restore-vectors-json test profiles profiles-json profile profile-json toggle-shoulder toggle-shoulder-json toggle-audible toggle-audible-json toggle-battery toggle-battery-json toggle-presentation toggle-presentation-json toggle-liveness toggle-liveness-json toggle-touchid toggle-touchid-json toggle-walkaway toggle-walkaway-json battery-status battery-status-json security-score security-score-json posture posture-json presentation-apps presentation-apps-json meeting-apps meeting-apps-json check-presentation check-presentation-json
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -87,6 +87,14 @@ help:
 	@echo "  make pin-attempts-json ATTEMPTS= - Set max failed PIN attempts (JSON output)"
 	@echo "  make pin-lockout SECONDS= - Set cooling lockout delay after failed PINs"
 	@echo "  make pin-lockout-json SECONDS= - Set cooling lockout delay (JSON output)"
+	@echo "  make security-score - Assess comprehensive Mac security posture score & recommendations"
+	@echo "  make security-score-json - Output security posture assessment in JSON format"
+	@echo "  make posture        - Alias for security-score"
+	@echo "  make posture-json   - Output posture score in JSON format"
+	@echo "  make presentation-apps - List recognized meeting & presentation apps"
+	@echo "  make presentation-apps-json - List meeting apps in JSON format"
+	@echo "  make check-presentation APP= - Check if bundle ID triggers meeting lock suppression"
+	@echo "  make check-presentation-json APP= - Check meeting suppression in JSON format"
 	@echo "  make test-telegram  - Dispatch test notification to Telegram chat"
 	@echo "  make diagnostics    - Run full biometric, hardware & storage diagnostics"
 	@echo "  make diagnostics-gui - Open interactive system diagnostics & health window"
@@ -879,6 +887,19 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-battery-aware --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --toggle-presentation --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-presentation-mode on --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --presentation-apps > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --presentation-apps --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --presentation-apps-json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --meeting-apps --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --check-presentation com.apple.iWork.Keynote > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --check-presentation com.apple.iWork.Keynote --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --check-presentation-json com.apple.iWork.Keynote > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --check-presentation com.apple.Safari --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --security-score > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --security-score --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --security-score-json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --posture > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --posture-json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-profile normal --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --health --json > /dev/null || true
 	@echo "✓ All CLI tests passed!"
@@ -892,6 +913,32 @@ diagnostics-json: build
 diagnostics-gui: build
 	@echo "Opening Diagnostics & System Health window..."
 	@build/FaceLock.app/Contents/MacOS/FaceLock --diagnostics-gui
+
+security-score: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --security-score
+
+security-score-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --security-score --json
+
+posture: security-score
+
+posture-json: security-score-json
+
+presentation-apps: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --presentation-apps
+
+presentation-apps-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --presentation-apps --json
+
+meeting-apps: presentation-apps
+
+meeting-apps-json: presentation-apps-json
+
+check-presentation: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --check-presentation $(APP)
+
+check-presentation-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --check-presentation $(APP) --json
 
 commit:
 	@./scripts/autocommit.sh
