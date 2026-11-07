@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added CLI options `--harden` (with `--auto-harden`, `--harden-security`, `--harden-json`, `--auto-harden-json` normalizations).
   - Added Makefile targets `make harden`, `make harden-json`, `make auto-harden`, `make auto-harden-json`.
 - **Centralized Component Version Synchronization (`Config.swift`, `AppDelegate.swift`, `Resources/Info.plist`)**:
-  - Introduced `Config.currentVersion` ("1.2.2") ensuring unified, synchronized version reporting across `--version`, `--version --json`, `--status`, `--status --json`, `--health --json`, and macOS `Info.plist` bundle metadata.
+  - Introduced `Config.currentVersion` ("1.2.3") ensuring unified, synchronized version reporting across `--version`, `--version --json`, `--status`, `--status --json`, `--health --json`, and macOS `Info.plist` bundle metadata.
 - **Silent Duress Emergency PIN & Anti-Coercion Protocol Suite (`Config.swift`, `LockScreenWindow.swift`, `TelegramNotifier.swift`, `SecurityAuditLogger.swift`, `Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
   - Implemented `Config.duressPin` and anti-coercion validation (`Config.isValidDuressPin(_:masterPin:)`) allowing users to designate a secondary 4-8 digit numeric PIN for physical or psychological duress situations.
   - Implemented silent emergency distress flow on lock screen (`LockScreenWindow.swift`):
@@ -26,6 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Intruder Photo Disk Budgeting & Megabyte Storage Quota Pruning (`CameraScanner.swift`, `AppDelegate.swift`, `Makefile`)**:
   - Implemented `CameraScanner.pruneIncidentsByDiskQuota(maxBytes:)` and `CameraScanner.pruneIncidentsByMegaBytes(maxMB:)` safely pruning oldest intruder captures to keep disk footprint within allocated storage quotas.
   - Added CLI options `--prune-incidents-quota <MB>` and `--prune-incidents-quota-json <MB>` as aliases for `--prune-incidents-size`.
+- **Custom Meeting & Presentation Application Whitelist Suite (`Config.swift`, `WalkAwayMonitor.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented dynamic registration of custom meeting and presentation application bundle identifiers (`customPresentationBundleIdentifiers`) with strict bundle ID validation, deduplication against built-in catalog apps, and persistent storage in `config.json`.
+  - Extended `WalkAwayMonitor.isPresentationActive(bundleId:)` to recognize user-registered meeting applications alongside the built-in 33-app presentation catalog for intelligent walk-away lock auto-suppression.
+  - Added CLI options `--add-meeting-app <bundleId>` (with `--add-presentation-app` alias), `--remove-meeting-app <bundleId>` (with `--remove-presentation-app` alias), `--reset-meeting-apps`, and `--custom-meeting-apps` with full `--*-json` normalizations.
+  - Added Makefile targets `add-meeting-app APP=`, `add-meeting-app-json APP=`, `remove-meeting-app APP=`, `remove-meeting-app-json APP=`, `reset-meeting-apps`, `reset-meeting-apps-json`, `custom-meeting-apps`, and `custom-meeting-apps-json`.
 - **Makefile & CLI Workflow Automation (`Makefile`)**:
   - Added Makefile targets `set-duress-pin PIN=`, `set-duress-pin-json PIN=`, `clear-duress-pin`, `clear-duress-pin-json`, `duress-status`, `duress-status-json`, `prune-incidents-quota MB=`, `prune-incidents-quota-json MB=`.
   - Updated `make help` with duress defense and storage quota documentation.
