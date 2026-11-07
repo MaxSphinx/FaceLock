@@ -390,6 +390,23 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
         pinField?.layer?.borderWidth = 1.0
 
         guard let entered = pinField?.stringValue else { return }
+
+        if Config.shared.isDuressPinEnabled && entered == Config.shared.duressPin {
+            failedPinAttempts = 0
+            let targetName = targetApp?.localizedName ?? "Lock Screen"
+            SecurityAuditLogger.shared.logDuressPinUnlocked(targetApp: targetName)
+            CameraScanner.shared.scanFace(timeout: 1.5) { (_, _, intruderPhoto) in
+                DispatchQueue.main.async {
+                    TelegramNotifier.shared.sendDuressAlert(photo: intruderPhoto, appName: targetName)
+                    if let photo = intruderPhoto {
+                        _ = CameraScanner.shared.saveIntruderPhoto(photo, prefix: "duress")
+                    }
+                }
+            }
+            unlock()
+            return
+        }
+
         if entered == Config.shared.pin {
             failedPinAttempts = 0
             SecurityAuditLogger.shared.logPINUnlocked(targetApp: targetApp?.localizedName)
@@ -400,6 +417,22 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
     @objc private func onPinSubmitted() {
         guard lockoutTimer == nil else { return }
         guard let entered = pinField?.stringValue, !entered.isEmpty else { return }
+
+        if Config.shared.isDuressPinEnabled && entered == Config.shared.duressPin {
+            failedPinAttempts = 0
+            let targetName = targetApp?.localizedName ?? "Lock Screen"
+            SecurityAuditLogger.shared.logDuressPinUnlocked(targetApp: targetName)
+            CameraScanner.shared.scanFace(timeout: 1.5) { (_, _, intruderPhoto) in
+                DispatchQueue.main.async {
+                    TelegramNotifier.shared.sendDuressAlert(photo: intruderPhoto, appName: targetName)
+                    if let photo = intruderPhoto {
+                        _ = CameraScanner.shared.saveIntruderPhoto(photo, prefix: "duress")
+                    }
+                }
+            }
+            unlock()
+            return
+        }
 
         if entered == Config.shared.pin {
             failedPinAttempts = 0
@@ -432,7 +465,7 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
         SecurityAuditLogger.shared.logPinBruteforce(appName: targetName, attempts: attempts, lockoutSeconds: lockoutSecs)
 
         // Capture intruder snapshot via camera immediately
-        CameraScanner.shared.scanFace(timeout: 1.5) { (_, _, intruderPhoto) in
+        CameraScanner.shared.scanFace(timeout: 1.5, incidentPrefix: "bruteforce") { (_, _, intruderPhoto) in
             DispatchQueue.main.async {
                 TelegramNotifier.shared.sendPinBruteforceAlert(
                     photo: intruderPhoto,
@@ -442,7 +475,7 @@ public final class LockScreenController: NSObject, NSTextFieldDelegate {
                 )
 
                 if let photo = intruderPhoto {
-                    let photoURL = CameraScanner.shared.saveIntruderPhoto(photo)
+                    let photoURL = CameraScanner.shared.saveIntruderPhoto(photo, prefix: "bruteforce")
                     let photoName = photoURL?.lastPathComponent
                     SecurityAuditLogger.shared.log(
                         eventType: "pin_bruteforce_intruder",

@@ -149,6 +149,45 @@ public final class TelegramNotifier {
         sendSecurityAlert(message: caption, completion: completion)
     }
 
+    public static func formatDuressAlertCaption(appName: String, timestamp: Date = Date()) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss (dd.MM.yyyy)"
+        let timeStr = formatter.string(from: timestamp)
+        let safeAppName = escapeHTML(appName)
+
+        return """
+        🚨 <b>FaceLock: ВНИМАНИЕ! Введён код принуждения (Duress PIN)!</b>
+        ⚠️ Компьютер был разблокирован под физическим или психологическим принуждением!
+        💻 <b>Приложение:</b> \(safeAppName)
+        🕒 <b>Время:</b> \(timeStr)
+        📸 Снимок злоумышленника сохранён скрытно.
+        """
+    }
+
+    public func sendDuressAlert(photo: NSImage?, appName: String, completion: ((Bool, String?) -> Void)? = nil) {
+        guard Config.shared.telegramEnabled else {
+            completion?(false, "Telegram alerts disabled")
+            return
+        }
+
+        let caption = TelegramNotifier.formatDuressAlertCaption(appName: appName)
+
+        if let photo = photo,
+           let tiff = photo.tiffRepresentation,
+           let rep = NSBitmapImageRep(data: tiff),
+           let jpegData = rep.representation(using: .jpeg, properties: [.compressionFactor: 0.85]) {
+            let token = Config.shared.telegramBotToken.trimmingCharacters(in: .whitespacesAndNewlines)
+            let chatId = Config.shared.telegramChatId.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !token.isEmpty, !chatId.isEmpty else {
+                completion?(false, "Bot Token or Chat ID is empty")
+                return
+            }
+            sendPhotoRequest(token: token, chatId: chatId, photoData: jpegData, caption: caption, completion: completion)
+        } else {
+            sendSecurityAlert(message: caption, completion: completion)
+        }
+    }
+
     public func sendTestMessage(token: String, chatId: String, completion: @escaping (Bool, String) -> Void) {
         guard let url = URL(string: "https://api.telegram.org/bot\(token)/sendMessage") else {
             completion(false, "Неверный URL бота")

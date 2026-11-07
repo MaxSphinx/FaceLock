@@ -4,6 +4,87 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.3] - 2026-11-07
+
+### Added
+- **Autonomous Security Hardening & Remediation Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `Diagnostics.autoHardenSecurity()` auto-remediating security vulnerabilities: re-engaging paused shield, enabling shoulder-surfing bystander defense, enabling lock-on-wake, activating battery-aware adaptive polling, turning on meeting/presentation suppression, enabling deep neural liveness anti-spoofing, tightening walk-away timeouts to 45s, enforcing PIN brute-force attempt and cooling lockout limits, repairing corrupted captures, optimizing biometric cluster cohesion, and logging audit telemetry.
+  - Added CLI options `--harden` (with `--auto-harden`, `--harden-security`, `--harden-json`, `--auto-harden-json` normalizations).
+  - Added Makefile targets `make harden`, `make harden-json`, `make auto-harden`, `make auto-harden-json`.
+- **Centralized Component Version Synchronization (`Config.swift`, `AppDelegate.swift`, `Resources/Info.plist`)**:
+  - Introduced `Config.currentVersion` ("1.2.2") ensuring unified, synchronized version reporting across `--version`, `--version --json`, `--status`, `--status --json`, `--health --json`, and macOS `Info.plist` bundle metadata.
+- **Silent Duress Emergency PIN & Anti-Coercion Protocol Suite (`Config.swift`, `LockScreenWindow.swift`, `TelegramNotifier.swift`, `SecurityAuditLogger.swift`, `Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `Config.duressPin` and anti-coercion validation (`Config.isValidDuressPin(_:masterPin:)`) allowing users to designate a secondary 4-8 digit numeric PIN for physical or psychological duress situations.
+  - Implemented silent emergency distress flow on lock screen (`LockScreenWindow.swift`):
+    - Smoothly unlocks the display without alert beeps, audio cues, or visual warnings so the coercer remains unaware that a distress signal was initiated.
+    - Concurrently triggers silent camera snapshot via `CameraScanner.shared.scanFace(timeout: 1.5)` saving photo with `duress_` prefix.
+    - Immediately dispatches high-urgency distress alert to Telegram via `TelegramNotifier.shared.sendDuressAlert()` with HTML formatting and application context.
+    - Records security audit event `duress_pin_unlocked` in `SecurityAuditLogger.shared`.
+  - Added `duressPinUnlocks` counter to `SecurityAuditLogger.AuditSummary`.
+  - Added CLI commands `--set-duress-pin <pin>`, `--clear-duress-pin`, and `--duress-status` with full `--*-json` normalization.
+  - Integrated `duressDefense` status telemetry into `Diagnostics.assessSecurityPosture()` breakdown.
+- **Intruder Photo Disk Budgeting & Megabyte Storage Quota Pruning (`CameraScanner.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `CameraScanner.pruneIncidentsByDiskQuota(maxBytes:)` and `CameraScanner.pruneIncidentsByMegaBytes(maxMB:)` safely pruning oldest intruder captures to keep disk footprint within allocated storage quotas.
+  - Added CLI options `--prune-incidents-quota <MB>` and `--prune-incidents-quota-json <MB>` as aliases for `--prune-incidents-size`.
+- **Makefile & CLI Workflow Automation (`Makefile`)**:
+  - Added Makefile targets `set-duress-pin PIN=`, `set-duress-pin-json PIN=`, `clear-duress-pin`, `clear-duress-pin-json`, `duress-status`, `duress-status-json`, `prune-incidents-quota MB=`, `prune-incidents-quota-json MB=`.
+  - Updated `make help` with duress defense and storage quota documentation.
+  - Integrated verification of all new CLI commands and JSON outputs into `make test`.
+- **Autonomous Status & Telegram Reporter Enrichment (`scripts/telegram_report.sh`)**:
+  - Added real-time Security Posture Rating, Threat Intelligence Level, and Duress Defense status badges to autonomous Telegram status reports.
+- **Automated Test Suite Expansion (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV123Enhancements()` covering valid/invalid duress PINs, master PIN collision rejection, duress enable/clear state, audit log summary tracking, duress Telegram caption escaping, storage quota pruning, posture breakdown integration, and CLI argument normalizations.
+
+## [1.2.2] - 2026-11-06
+
+### Added
+- **Physical Security Threat Intelligence & Intrusion Risk Engine (`SecurityAuditLogger.swift`, `Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `SecurityAuditLogger.analyzeThreatIntelligence()` and `ThreatIntelligenceReport` assessing physical attack vectors and calculating real-time intrusion risk scores (0-100 scale):
+    - Attack Vector Breakdown: PIN brute-force attempts, shoulder-surfing snooping captures, unrecognized intruder photos, walk-away locks, and wake locks.
+    - Velocity Tracking: Event frequency tracking in past 24 hours and past 7 days.
+    - 24-Hour Temporal Distribution: Bucketing incidents across 0..23 hours and identifying `peakThreatHour`.
+    - Targeted Application Profiling: Tracking targeted apps (`Terminal`, `Keychain Access`, `Safari`, `System Settings`, etc.) categorized by sensitivity risk (`CRITICAL`, `HIGH`, `MEDIUM`).
+    - Anomaly Pattern Recognition: `PIN_BRUTEFORCE_DETECTED`, `HIGH_VELOCITY_INTRUSIONS`, `PERSISTENT_SHOULDER_SURFING`, `OFF_HOURS_ACCESS_ATTEMPT`, and `PRIVILEGED_TARGET_ACCESS`.
+    - Context-Aware Actionable Mitigations: Dynamic recommendations to harden defense profiles, tighten timeouts, enable bystander shield, or configure Telegram alerts.
+  - Added CLI options `--threat-intel` and `--risk-level` (supporting `--threat-intel-json`, `--threat-intelligence-json`, `--risk-level-json` normalizations).
+  - Enriched `Diagnostics.collectReport()` with `"threatIntelligence"` telemetry and added Section `[9] Physical Threat Intelligence & Intrusion Risk` to `Diagnostics.run()`.
+- **Configuration Security & Syntax Validation Suite (`Config.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `Config.validateConfig()` and `ConfigValidationReport` performing deep validation:
+    - Master PIN compliance (4-8 digits) and default PIN warning (`0000`, `1234`).
+    - Similarity threshold bounds (0.05 - 0.50) and loose threshold warnings.
+    - Timer bounds (verification timeout, debounce interval, walk-away idle, PIN lockout cooling).
+    - Application policy validation: CFBundleIdentifier syntax checking, duplicate detection, and protected/ignored collision warnings.
+    - Telegram gateway credentials validation (token format, chat ID).
+  - Added CLI options `--validate-config` and `--check-config` (with `--validate-config-json` and `--check-config-json`).
+  - Added Section `[10] Configuration Integrity & Security Validation` to `Diagnostics.run()`.
+- **Makefile & CLI Workflow Automation (`Makefile`)**:
+  - Added Makefile targets `threat-intel`, `threat-intel-json`, `risk-level`, `risk-level-json`, `validate-config`, `validate-config-json`, `check-config`, `check-config-json`.
+  - Updated `make help` with documentation for threat intelligence and validation targets.
+  - Added verification of all new flags into `make test`.
+- **Automated Test Suite Expansion (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV122Enhancements()` covering clean baseline telemetry, critical threat scoring, anomaly detection, off-hours access, targeted app ranking, configuration validation, and CLI argument normalizations.
+
+## [1.2.1] - 2026-11-07
+
+### Added
+- **Cryptographic Security Audit Log Integrity & Tamper Verification Suite (`SecurityAuditLogger.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `SecurityAuditLogger.verifyAuditIntegrity()` and `AuditIntegrityReport` performing end-to-end audit validation:
+    - Calculates live SHA-256 cryptographic digest of `audit_log.jsonl` using Apple `CryptoKit`.
+    - Detects unparseable/corrupted JSON lines and records line indices.
+    - Validates chronological monotonicity of event timestamps to detect timestamp tampering or system clock rollback anomalies (`WARNING_CHRONOLOGY`).
+    - Validates event types against canonical security event taxonomy (`SecurityAuditLogger.knownEventTypes`).
+    - Evaluates health status (`VERIFIED`, `WARNING_CHRONOLOGY`, `CORRUPTED_DETECTED`, `EMPTY`).
+  - Implemented `SecurityAuditLogger.repairAuditLog()` creating an atomic timestamped `.bak` backup copy, pruning corrupted/malformed JSON records, and rewriting clean JSONL events.
+  - Added CLI options `--audit-integrity` (with `--check-audit` alias), `--repair-audit` (with `--clean-corrupted-audit` alias), and `--audit-digest` (with `--audit-checksum` alias) supporting structured JSON telemetry (`--*-json`).
+  - Integrated audit log integrity into `Diagnostics.collectReport()` (`auditIntegrity` dictionary) and `Diagnostics.run()` storage report with SHA-256 fingerprint attestation.
+  - Extended `Diagnostics.assessSecurityPosture()` with -5 point penalty and actionable remediation advice (`"Run 'facelock --repair-audit'"`) upon detected audit corruption.
+- **Makefile & Build Workflow Enhancements (`Makefile`, `build.sh`)**:
+  - Added Makefile targets `audit-integrity`, `audit-integrity-json`, `check-audit`, `check-audit-json`, `repair-audit`, `repair-audit-json`, `audit-digest`, `audit-digest-json`.
+  - Linked `-framework CryptoKit` in `build.sh` for Apple Silicon cryptographic hashing acceleration.
+  - Integrated CLI verification of audit integrity flags into `make test`.
+- **Automated Test Suite Expansion (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV121Enhancements()` validating clean audit verification, chronology anomaly detection, corrupted record repair with backup creation, security posture deduction, diagnostics dictionary integration, and CLI argument normalization aliases.
+
 ## [1.2.0] - 2026-11-06
 
 ### Added

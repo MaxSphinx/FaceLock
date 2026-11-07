@@ -70,7 +70,7 @@ public final class WalkAwayMonitor {
         isChecking = true
         print("[WalkAwayMonitor] User idle for \(Int(idleSeconds))s. Checking if user is still in front of screen...")
 
-        CameraScanner.shared.scanFace(timeout: 1.5) { [weak self] (success, _, intruderImage) in
+        CameraScanner.shared.scanFace(timeout: 1.5, incidentPrefix: "walkaway") { [weak self] (success, _, intruderImage) in
             DispatchQueue.main.async {
                 guard let self = self else { return }
                 self.isChecking = false
@@ -157,7 +157,21 @@ public final class WalkAwayMonitor {
         PresentationAppInfo(bundleId: "com.colliderli.iina", name: "IINA Media Player", category: "Media")
     ]
 
-    public static let presentationBundleIdentifiers: Set<String> = Set(presentationCatalog.map { $0.bundleId })
+    public static var effectivePresentationCatalog: [PresentationAppInfo] {
+        var catalog = presentationCatalog
+        let custom = Config.shared.customPresentationBundleIdentifiers
+        for bundle in custom {
+            if !catalog.contains(where: { $0.bundleId.caseInsensitiveCompare(bundle) == .orderedSame }) {
+                let name = Config.localizedAppName(for: bundle)
+                catalog.append(PresentationAppInfo(bundleId: bundle, name: name, category: "Custom Meeting"))
+            }
+        }
+        return catalog
+    }
+
+    public static var presentationBundleIdentifiers: Set<String> {
+        return Set(effectivePresentationCatalog.map { $0.bundleId })
+    }
 
     public static func hasDisplaySleepAssertion() -> Bool {
         var assertionsByProcess: Unmanaged<CFDictionary>?
@@ -198,7 +212,7 @@ public final class WalkAwayMonitor {
         let frontmostName = frontmostApp?.localizedName ?? "N/A"
 
         let targetBundle = bundleId ?? frontmostApp?.bundleIdentifier
-        let appInfo = targetBundle != nil ? presentationCatalog.first(where: { $0.bundleId.caseInsensitiveCompare(targetBundle!) == .orderedSame }) : nil
+        let appInfo = targetBundle != nil ? effectivePresentationCatalog.first(where: { $0.bundleId.caseInsensitiveCompare(targetBundle!) == .orderedSame }) : nil
         let isPresApp = appInfo != nil || (targetBundle != nil && presentationBundleIdentifiers.contains(where: { $0.caseInsensitiveCompare(targetBundle!) == .orderedSame }))
 
         let hasAssertion = hasDisplaySleepAssertion()

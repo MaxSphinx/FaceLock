@@ -229,6 +229,62 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append("--presentation-apps")
             case "--check-presentation-json":
                 args.append(contentsOf: ["--check-presentation", "--json"])
+            case "--prune-incidents-quota-json", "--prune-incidents-size-json", "--prune-incidents-mb-json":
+                args.append(contentsOf: ["--prune-incidents-size", "--json"])
+            case "--prune-incidents-quota", "--prune-incidents-mb", "--trim-incidents-size":
+                args.append("--prune-incidents-size")
+            case "--set-duress-pin-json":
+                args.append(contentsOf: ["--set-duress-pin", "--json"])
+            case "--clear-duress-pin-json":
+                args.append(contentsOf: ["--clear-duress-pin", "--json"])
+            case "--duress-status-json":
+                args.append(contentsOf: ["--duress-status", "--json"])
+            case "--add-meeting-app-json", "--add-presentation-app-json":
+                args.append(contentsOf: ["--add-meeting-app", "--json"])
+            case "--add-presentation-app":
+                args.append("--add-meeting-app")
+            case "--remove-meeting-app-json", "--remove-presentation-app-json":
+                args.append(contentsOf: ["--remove-meeting-app", "--json"])
+            case "--remove-presentation-app":
+                args.append("--remove-meeting-app")
+            case "--reset-meeting-apps-json", "--reset-presentation-apps-json":
+                args.append(contentsOf: ["--reset-meeting-apps", "--json"])
+            case "--reset-presentation-apps":
+                args.append("--reset-meeting-apps")
+            case "--custom-meeting-apps-json", "--custom-presentation-apps-json":
+                args.append(contentsOf: ["--custom-meeting-apps", "--json"])
+            case "--custom-presentation-apps":
+                args.append("--custom-meeting-apps")
+            case "--archive-incidents-json":
+                args.append(contentsOf: ["--archive-incidents", "--json"])
+            case "--threat-intel-json", "--threat-intelligence-json", "--risk-level-json", "--threat-level-json", "--threat-summary-json", "--threat-assessment-json", "--threat-json":
+                args.append(contentsOf: ["--threat-intel", "--json"])
+            case "--threat-intelligence", "--risk-level", "--threat-level", "--threat-summary", "--threat-assessment", "--threat":
+                args.append("--threat-intel")
+            case "--validate-config-json", "--check-config-json":
+                args.append(contentsOf: ["--validate-config", "--json"])
+            case "--check-config":
+                args.append("--validate-config")
+            case "--harden-json", "--auto-harden-json", "--harden-security-json":
+                args.append(contentsOf: ["--harden", "--json"])
+            case "--auto-harden", "--harden-security":
+                args.append("--harden")
+            case "--storage-summary-json", "--storage-stats-json":
+                args.append(contentsOf: ["--storage-summary", "--json"])
+            case "--storage-stats":
+                args.append("--storage-summary")
+            case "--audit-integrity-json", "--check-audit-json":
+                args.append(contentsOf: ["--audit-integrity", "--json"])
+            case "--check-audit":
+                args.append("--audit-integrity")
+            case "--repair-audit-json", "--clean-corrupted-audit-json":
+                args.append(contentsOf: ["--repair-audit", "--json"])
+            case "--clean-corrupted-audit":
+                args.append("--repair-audit")
+            case "--audit-digest-json", "--audit-checksum-json":
+                args.append(contentsOf: ["--audit-digest", "--json"])
+            case "--audit-checksum":
+                args.append("--audit-digest")
             default:
                 args.append(arg)
             }
@@ -275,6 +331,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --repair-incidents [--json] Prune corrupted or zero-byte intruder photo captures
               --prune-incidents <count>  Prune intruder captures keeping latest N photos
               --prune-incidents-days <d> Prune intruder captures older than N days
+              --prune-incidents-quota <MB> Prune oldest intruder captures exceeding disk budget (in MB)
               --diagnostics [--json]     Run full biometric, hardware & storage diagnostics
               --diagnostics-gui, --diagnostics-ui Open system hardware and biometrics diagnostics window
               --logs, --audit [--tail N] [--type T] [--query Q] [--json] View security audit event log
@@ -332,10 +389,17 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --set-presentation-mode <on|off|toggle> Enable or disable meeting lock auto-suppression
               --presentation-apps, --meeting-apps [--json] List recognized meeting & presentation apps
               --check-presentation [bundleId] [--json] Check if bundle ID or active app triggers meeting lock suppression
+              --add-meeting-app <bundleId> Add custom application to meeting suppression whitelist
+              --remove-meeting-app <bundleId> Remove custom application from meeting suppression whitelist
+              --reset-meeting-apps       Clear all custom meeting suppression applications
+              --custom-meeting-apps [--json] List user-configured custom meeting applications
               --security-score, --posture [--json] Assess comprehensive Mac security posture score & recommendations
               --test, --run-tests        Execute automated unit test suite and benchmarks
               --health [--json]          Fast operational healthcheck (exit 0 if healthy)
               --set-pin <pin>            Update lock screen unlock PIN
+              --set-duress-pin <pin>     Configure silent duress distress PIN (4-8 digits)
+              --clear-duress-pin         Clear duress PIN and disable coerced unlock detection
+              --duress-status [--json]   Inspect duress emergency protection status
               --set-pin-attempts <count> Set allowed failed PIN attempts before lockout (1-10, default: 3)
               --set-pin-lockout <sec>    Set cooling lockout delay after failed PIN attempts (1-60s, default: 5s)
               --set-telegram <tok> <id>  Configure Telegram bot credentials and enable alerts
@@ -352,6 +416,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --reset-camera [--json]    Reset preferred camera selection to default front/built-in camera
               --diagnostics, -d [--json] Run complete biometric & hardware system diagnostics
               --status [--json]          Print current daemon status and vector metrics
+              --security-score [--json]  Evaluate macOS security posture and hardening score
+              --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
               --test-telegram            Dispatch a verification alert to configured Telegram chat
               --reset                    Purge all enrolled facial vectors
               --update                   Check GitHub for updates, pull, recompile & reload
@@ -363,9 +429,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if args.contains("--version") || args.contains("-v") {
             if args.contains("--json") {
-                print("{\"name\":\"FaceLock\",\"version\":\"1.2.0\",\"platform\":\"darwin-arm64\"}")
+                print("{\"name\":\"FaceLock\",\"version\":\"\(Config.currentVersion)\",\"platform\":\"darwin-arm64\"}")
             } else {
-                print("FaceLock v1.2.0 (darwin-arm64)")
+                print("FaceLock v\(Config.currentVersion) (darwin-arm64)")
             }
             exit(0)
         }
@@ -375,6 +441,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             let passed = suite.runAll()
             exit(passed ? 0 : 1)
         }
+
+        // Inter-process command dispatching if instance is already running
+        let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: "io.github.facelock")
+            .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
+        let isAlreadyRunning = !runningApps.isEmpty
 
         if args.contains("--diagnostics") || args.contains("-d") {
             Diagnostics.run(jsonOutput: args.contains("--json"))
@@ -402,19 +473,31 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 print("=======================================================")
                 print("  • Score: \(report.score)/\(report.maxScore) (Grade: \(report.grade) - \(badge))")
                 let shieldDict = report.breakdown["shieldState"] as? [String: Any]
-                let isShieldActive = ((shieldDict?["isActive"] as? Bool) ?? false)
+                let isShieldActive = (shieldDict?["isActive"] as? Bool) == true
                 print("  • Shield: \(isShieldActive ? "ACTIVE (15/15 pts) ✅" : "PAUSED (0/15 pts) ⏸️")")
-                print("  • Master PIN: \((report.breakdown["pinSecurity"] as? [String: Any])?["points"] ?? 0)/15 pts")
-                print("  • Biometric Templates: \((report.breakdown["biometrics"] as? [String: Any])?["points"] ?? 0)/20 pts")
-                print("  • Walk-Away Lock: \((report.breakdown["walkAwayLock"] as? [String: Any])?["points"] ?? 0)/10 pts")
-                print("  • Shoulder-Surfing: \((report.breakdown["shoulderSurfingDefense"] as? [String: Any])?["points"] ?? 0)/10 pts")
-                print("  • Liveness Detection: \((report.breakdown["livenessDetection"] as? [String: Any])?["points"] ?? 0)/10 pts")
-                print("  • Lock-on-Wake: \((report.breakdown["lockOnWake"] as? [String: Any])?["points"] ?? 0)/5 pts")
-                print("  • Battery-Aware: \((report.breakdown["batteryAwareScanning"] as? [String: Any])?["points"] ?? 0)/5 pts")
-                print("  • Telegram Alerts: \((report.breakdown["telegramAlerts"] as? [String: Any])?["points"] ?? 0)/5 pts")
-                print("  • Meeting Auto-Suppression: \((report.breakdown["presentationSuppression"] as? [String: Any])?["points"] ?? 0)/5 pts")
+                let pinPts = (report.breakdown["pinSecurity"] as? [String: Any])?["points"] as? Int ?? 0
+                print("  • Master PIN: \(pinPts)/15 pts")
+                let bioPts = (report.breakdown["biometrics"] as? [String: Any])?["points"] as? Int ?? 0
+                print("  • Biometric Templates: \(bioPts)/20 pts")
+                let walkPts = (report.breakdown["walkAwayLock"] as? [String: Any])?["points"] as? Int ?? 0
+                print("  • Walk-Away Lock: \(walkPts)/10 pts")
+                let shoulderPts = (report.breakdown["shoulderSurfingDefense"] as? [String: Any])?["points"] as? Int ?? 0
+                print("  • Shoulder-Surfing: \(shoulderPts)/10 pts")
+                let livenessPts = (report.breakdown["livenessDetection"] as? [String: Any])?["points"] as? Int ?? 0
+                print("  • Liveness Detection: \(livenessPts)/10 pts")
+                let wakePts = (report.breakdown["lockOnWake"] as? [String: Any])?["points"] as? Int ?? 0
+                print("  • Lock-on-Wake: \(wakePts)/5 pts")
+                let batteryPts = (report.breakdown["batteryAwareScanning"] as? [String: Any])?["points"] as? Int ?? 0
+                print("  • Battery-Aware: \(batteryPts)/5 pts")
+                let tgPts = (report.breakdown["telegramAlerts"] as? [String: Any])?["points"] as? Int ?? 0
+                print("  • Telegram Alerts: \(tgPts)/5 pts")
+                let presPts = (report.breakdown["presentationSuppression"] as? [String: Any])?["points"] as? Int ?? 0
+                print("  • Meeting Auto-Suppression: \(presPts)/5 pts")
                 if let penalty = (report.breakdown["incidentIntegrity"] as? [String: Any])?["penalty"] as? Int, penalty > 0 {
                     print("  • Integrity Penalty: -\(penalty) pts (Corrupted captures detected ⚠️)")
+                }
+                if let auditPen = (report.breakdown["auditIntegrity"] as? [String: Any])?["penalty"] as? Int, auditPen > 0 {
+                    print("  • Audit Integrity Penalty: -\(auditPen) pts (Corrupted audit records detected ⚠️)")
                 }
                 if report.recommendations.isEmpty {
                     print("\n  🎉 Optimal security posture: Mac is fully hardened.")
@@ -429,13 +512,53 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(0)
         }
 
+        if args.contains("--harden") {
+            let result = Diagnostics.autoHardenSecurity()
+            if isAlreadyRunning {
+                AppDelegate.notifyDaemonReload()
+            }
+            if args.contains("--json") {
+                if let data = try? JSONSerialization.data(withJSONObject: result.toDictionary(), options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                print("=======================================================")
+                print("       🛡️  FaceLock Autonomous Security Hardening      ")
+                print("=======================================================")
+                print("  • Previous Score: \(result.previousScore)/100 (Grade: \(result.previousGrade) - \(result.previousStatus))")
+                let deltaStr = result.scoreDelta >= 0 ? "+\(result.scoreDelta)" : "\(result.scoreDelta)"
+                print("  • Hardened Score: \(result.newScore)/100 (Grade: \(result.newGrade) - \(result.newStatus)) (\(deltaStr) pts)")
+                if result.appliedFixes.isEmpty {
+                    print("  • Status: All automated hardening policies are already fully applied! ✅")
+                } else {
+                    print("  • Applied Hardening Fixes (\(result.appliedFixes.count)):")
+                    for fix in result.appliedFixes {
+                        print("    ✓ \(fix)")
+                    }
+                }
+                if !result.remainingRecommendations.isEmpty {
+                    print("\n  • Remaining User Actions (\(result.remainingRecommendations.count)):")
+                    for (idx, rec) in result.remainingRecommendations.enumerated() {
+                        print("    \(idx + 1). \(rec)")
+                    }
+                }
+                print("=======================================================\n")
+            }
+            exit(0)
+        }
+
         if args.contains("--presentation-apps") {
             let catalog = WalkAwayMonitor.presentationCatalog
+            let customApps = Config.shared.customPresentationBundleIdentifiers
             if args.contains("--json") {
                 let dicts = catalog.map { $0.toDictionary() }
                 let payload: [String: Any] = [
                     "count": dicts.count,
                     "apps": dicts,
+                    "customApps": customApps,
+                    "customAppsCount": customApps.count,
+                    "totalAppsCount": dicts.count + customApps.count,
                     "suppressionEnabled": Config.shared.presentationModeSuppression
                 ]
                 if let data = try? JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys]),
@@ -447,9 +570,15 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 print("   🎯  FaceLock Presentation & Meeting Suppression Catalog   ")
                 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
                 print("Suppression Active: \(Config.shared.presentationModeSuppression ? "YES ✅" : "NO ⏸️")")
-                print("Recognized Applications (\(catalog.count)):")
+                print("Recognized Catalog Applications (\(catalog.count)):")
                 for app in catalog {
                     print("  • [\(app.category)] \(app.name) — \(app.bundleId)")
+                }
+                if !customApps.isEmpty {
+                    print("\nCustom Registered Meeting Applications (\(customApps.count)):")
+                    for app in customApps {
+                        print("  ★ [Custom] \(app)")
+                    }
                 }
                 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
             }
@@ -485,11 +614,340 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(0)
         }
 
-        // Inter-process command dispatching if instance is already running
-        let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: "io.github.facelock")
-            .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
-        let isAlreadyRunning = !runningApps.isEmpty
+        if args.contains("--threat-intel") {
+            let report = SecurityAuditLogger.shared.analyzeThreatIntelligence()
+            if args.contains("--json") {
+                if let data = try? JSONSerialization.data(withJSONObject: report.toDictionary(), options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                print("=======================================================")
+                print("    🛡️  FaceLock Physical Threat Intelligence & Risk   ")
+                print("=======================================================")
+                print("  • Risk Level:        \(report.riskLevel) \(report.statusBadge) (Score: \(report.riskScore)/100)")
+                print("  • 24h Threat Events: \(report.past24HoursCount)")
+                print("  • 7d Threat Events:  \(report.past7DaysCount)")
+                print("  • Total Incidents:   \(report.totalThreatEvents)")
+                print("  • Intruder Captures: \(report.intruderCaptureCount)")
+                print("  • Shoulder Snooping: \(report.shoulderSurfingCount)")
+                print("  • PIN Bruteforce:    \(report.pinBruteforceCount)")
+                print("  • Emergency Locks:   \(report.emergencyLockdownCount)")
+                if let peak = report.peakThreatHour {
+                    print("  • Peak Threat Hour:  \(peak):00 - \(peak + 1):00")
+                }
+                if !report.anomalies.isEmpty {
+                    print("\n  ⚠️ Detected Anomalies (\(report.anomalies.count)):")
+                    for a in report.anomalies {
+                        print("    - [\(a.severity)] \(a.code): \(a.description)")
+                    }
+                }
+                if report.mitigations.isEmpty {
+                    print("\n  🎉 Threat posture optimal: No anomalies or active attack patterns detected.")
+                } else {
+                    print("\n  📋 Recommended Mitigations (\(report.mitigations.count)):")
+                    for (idx, m) in report.mitigations.enumerated() {
+                        print("    \(idx + 1). \(m)")
+                    }
+                }
+                print("=======================================================\n")
+            }
+            exit(0)
+        }
 
+        if args.contains("--validate-config") {
+            let report = Config.validateConfig()
+            if args.contains("--json") {
+                if let data = try? JSONSerialization.data(withJSONObject: report.toDictionary(), options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                print("=======================================================")
+                print("       🛡️  FaceLock Configuration Validation           ")
+                print("=======================================================")
+                print("  • Status:      \(report.isValid ? "VALID ✅" : "ISSUES DETECTED ⚠️")")
+                print("  • Errors:      \(report.errorCount)")
+                print("  • Warnings:    \(report.warningCount)")
+                print("  • Info Items:  \(report.infoCount)")
+                if !report.issues.isEmpty {
+                    print("\n  📋 Detected Issues (\(report.issues.count)):")
+                    for issue in report.issues {
+                        let badge = issue.severity == "ERROR" ? "❌" : (issue.severity == "WARNING" ? "⚠️" : "ℹ️")
+                        print("    [\(issue.severity)] \(badge) [\(issue.key)]: \(issue.message)")
+                    }
+                }
+                if !report.suggestions.isEmpty {
+                    print("\n  💡 Optimization Suggestions (\(report.suggestions.count)):")
+                    for s in report.suggestions {
+                        print("    - \(s)")
+                    }
+                }
+                if report.issues.isEmpty && report.suggestions.isEmpty {
+                    print("\n  🎉 Configuration is clean and fully optimized.")
+                }
+                print("=======================================================\n")
+            }
+            exit(report.errorCount == 0 ? 0 : 1)
+        }
+
+        if args.contains("--storage-summary") {
+            let summary = CameraScanner.shared.getStorageSummary()
+            if args.contains("--json") {
+                if let data = try? JSONSerialization.data(withJSONObject: summary, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                print("=======================================================")
+                print("          🛡️  FaceLock Local Storage Summary          ")
+                print("=======================================================")
+                let totalMB = Double(summary["totalStorageBytes"] as? UInt64 ?? 0) / (1024.0 * 1024.0)
+                let incMB = Double(summary["intrudersSizeBytes"] as? UInt64 ?? 0) / (1024.0 * 1024.0)
+                let auditMB = Double(summary["auditSizeBytes"] as? UInt64 ?? 0) / (1024.0 * 1024.0)
+                print("  • Total Footprint:   \(String(format: "%.2f", totalMB)) MB")
+                print("  • Intruder Captures: \(summary["intrudersCount"] ?? 0) captures (\(String(format: "%.2f", incMB)) MB)")
+                print("  • Security Audit:    \(summary["auditEventsCount"] ?? 0) events (\(String(format: "%.2f", auditMB)) MB)")
+                print("  • Enrolled Templates:\(summary["vectorsCount"] ?? 0) vectors")
+                print("=======================================================\n")
+            }
+            exit(0)
+        }
+
+        if args.contains("--audit-integrity") {
+            let report = SecurityAuditLogger.shared.verifyAuditIntegrity()
+            if args.contains("--json") {
+                if let data = try? JSONSerialization.data(withJSONObject: report.toDictionary(), options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                print("=======================================================")
+                print("       🛡️  FaceLock Security Audit Log Integrity       ")
+                print("=======================================================")
+                print("  • Status:           \(report.status)")
+                print("  • Scanned Lines:    \(report.totalLinesScanned)")
+                print("  • Valid Events:     \(report.validEventsCount)")
+                print("  • Corrupted Lines:  \(report.corruptedLinesCount)")
+                print("  • Empty Lines:      \(report.emptyLinesCount)")
+                print("  • Chronology Gaps:  \(report.chronologyErrorsCount)")
+                print("  • SHA-256 Digest:   \(report.sha256Digest)")
+                print("=======================================================\n")
+            }
+            exit(report.corruptedLinesCount == 0 ? 0 : 1)
+        }
+
+        if args.contains("--repair-audit") {
+            do {
+                let res = try SecurityAuditLogger.shared.repairAuditLog()
+                if args.contains("--json") {
+                    let out: [String: Any] = [
+                        "success": true,
+                        "repairedCount": res.repairedCount,
+                        "purgedCorruptedCount": res.purgedCorruptedCount,
+                        "remainingCount": res.remainingCount,
+                        "backupPath": res.backupPath
+                    ]
+                    if let data = try? JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys]),
+                       let str = String(data: data, encoding: .utf8) {
+                        print(str)
+                    }
+                } else {
+                    print("✓ Audit log repair complete:")
+                    print("  • Preserved valid events: \(res.remainingCount)")
+                    print("  • Purged corrupted lines: \(res.purgedCorruptedCount)")
+                    print("  • Backup saved to:        \(res.backupPath)")
+                }
+                exit(0)
+            } catch {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"\(error.localizedDescription)\"}")
+                } else {
+                    print("Error repairing audit log: \(error.localizedDescription)")
+                }
+                exit(1)
+            }
+        }
+
+        if args.contains("--audit-digest") {
+            let report = SecurityAuditLogger.shared.verifyAuditIntegrity()
+            if args.contains("--json") {
+                let dict: [String: Any] = [
+                    "sha256Digest": report.sha256Digest,
+                    "validEvents": report.validEventsCount,
+                    "fileSizeBytes": report.fileSizeBytes,
+                    "status": report.status,
+                    "firstEvent": report.firstEventTimestamp ?? "",
+                    "lastEvent": report.lastEventTimestamp ?? ""
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                print("Audit Log SHA-256: \(report.sha256Digest)")
+                print("Events: \(report.validEventsCount), Size: \(report.fileSizeBytes) bytes, Status: \(report.status)")
+            }
+            exit(0)
+        }
+
+        if let idx = args.firstIndex(of: "--prune-incidents-size"), idx + 1 < args.count {
+            let mbStr = args[idx + 1]
+            let maxMB = Double(mbStr) ?? 500.0
+            let res = CameraScanner.shared.pruneIncidentsExceedingSize(maxMegabytes: maxMB)
+            if args.contains("--json") {
+                let out: [String: Any] = [
+                    "success": true,
+                    "targetMaxMB": maxMB,
+                    "removedCount": res.removedCount,
+                    "remainingCount": res.remainingCount,
+                    "freedBytes": res.freedBytes
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                let freedMB = Double(res.freedBytes) / (1024.0 * 1024.0)
+                print("✓ Pruned \(res.removedCount) incident photos to stay within \(Int(maxMB)) MB quota (freed \(String(format: "%.2f", freedMB)) MB, \(res.remainingCount) remaining).")
+            }
+            exit(0)
+        } else if args.contains("--prune-incidents-size") {
+            let res = CameraScanner.shared.pruneIncidentsExceedingSize(maxMegabytes: 500.0)
+            if args.contains("--json") {
+                let out: [String: Any] = [
+                    "success": true,
+                    "targetMaxMB": 500.0,
+                    "removedCount": res.removedCount,
+                    "remainingCount": res.remainingCount,
+                    "freedBytes": res.freedBytes
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                let freedMB = Double(res.freedBytes) / (1024.0 * 1024.0)
+                print("✓ Pruned \(res.removedCount) incident photos to stay within 500 MB quota (freed \(String(format: "%.2f", freedMB)) MB, \(res.remainingCount) remaining).")
+            }
+            exit(0)
+        }
+
+        if args.contains("--add-meeting-app") {
+            guard let bundleId = AppDelegate.valueForOption("--add-meeting-app", in: args), Config.isValidBundleIdentifier(bundleId) else {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"Invalid or missing bundle identifier for --add-meeting-app\"}")
+                } else {
+                    print("Error: Invalid or missing bundle identifier. Usage: facelock --add-meeting-app <bundleId>")
+                }
+                exit(1)
+            }
+            let added = Config.shared.addMeetingApp(bundleId)
+            if added {
+                SecurityAuditLogger.shared.logPolicyChanged(action: "Added custom meeting application", bundleId: bundleId)
+                if isAlreadyRunning { AppDelegate.notifyDaemonReload() }
+            }
+            if args.contains("--json") {
+                print("{\"success\":true,\"action\":\"\(added ? "added" : "already_present")\",\"bundleId\":\"\(bundleId)\"}")
+            } else {
+                if added {
+                    print("✓ Added '\(bundleId)' to meeting suppression list.")
+                } else {
+                    print("ℹ️ '\(bundleId)' is already in meeting suppression list.")
+                }
+            }
+            exit(0)
+        }
+
+        if args.contains("--remove-meeting-app") {
+            guard let bundleId = AppDelegate.valueForOption("--remove-meeting-app", in: args), Config.isValidBundleIdentifier(bundleId) else {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"Invalid or missing bundle identifier for --remove-meeting-app\"}")
+                } else {
+                    print("Error: Invalid or missing bundle identifier. Usage: facelock --remove-meeting-app <bundleId>")
+                }
+                exit(1)
+            }
+            let removed = Config.shared.removeMeetingApp(bundleId)
+            if removed {
+                SecurityAuditLogger.shared.logPolicyChanged(action: "Removed custom meeting application", bundleId: bundleId)
+                if isAlreadyRunning { AppDelegate.notifyDaemonReload() }
+            }
+            if args.contains("--json") {
+                print("{\"success\":true,\"action\":\"\(removed ? "removed" : "not_found")\",\"bundleId\":\"\(bundleId)\"}")
+            } else {
+                if removed {
+                    print("✓ Removed '\(bundleId)' from custom meeting suppression list.")
+                } else {
+                    print("ℹ️ '\(bundleId)' was not found in custom meeting suppression list.")
+                }
+            }
+            exit(0)
+        }
+
+        if args.contains("--reset-meeting-apps") {
+            Config.shared.resetMeetingApps()
+            SecurityAuditLogger.shared.logPolicyChanged(action: "Reset custom meeting applications to defaults", bundleId: "all")
+            if isAlreadyRunning { AppDelegate.notifyDaemonReload() }
+            if args.contains("--json") {
+                print("{\"success\":true,\"message\":\"Custom meeting applications reset to defaults\"}")
+            } else {
+                print("✓ Custom meeting applications reset to defaults.")
+            }
+            exit(0)
+        }
+
+        if let idx = args.firstIndex(of: "--archive-incidents"), idx + 1 < args.count {
+            let dest = args[idx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !dest.isEmpty else {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"Usage: facelock --archive-incidents <destinationDirectory> [--type <type>]\"}")
+                } else {
+                    print("Error: Usage: facelock --archive-incidents <destinationDirectory> [--type <type>]")
+                }
+                exit(1)
+            }
+            var filterType: String? = nil
+            if let fIdx = (args.firstIndex(of: "--filter") ?? args.firstIndex(of: "--type")), fIdx + 1 < args.count {
+                filterType = args[fIdx + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            do {
+                let res = try CameraScanner.shared.archiveIncidents(to: dest, filterType: filterType)
+                if args.contains("--json") {
+                    if let d = try? JSONSerialization.data(withJSONObject: res, options: [.prettyPrinted, .sortedKeys]),
+                       let s = String(data: d, encoding: .utf8) {
+                        print(s)
+                    }
+                } else {
+                    let count = res["count"] as? Int ?? 0
+                    let totalBytes = res["totalBytes"] as? UInt64 ?? 0
+                    let sizeMB = Double(totalBytes) / (1024.0 * 1024.0)
+                    let appliedFilter = res["filter"] as? String ?? "all"
+                    let filterMsg = appliedFilter != "all" ? " [Type: \(appliedFilter)]" : ""
+                    let checksum = res["forensicChecksum"] as? String ?? "N/A"
+                    print("✓ Archived \(count) intruder captures (\(String(format: "%.2f", sizeMB)) MB)\(filterMsg) to: \(dest)")
+                    print("  Forensic SHA-256 Root Checksum: \(checksum)")
+                    print("  Forensic manifest generated at: \(res["manifestPath"] ?? "")")
+                }
+                exit(0)
+            } catch {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"\(error.localizedDescription)\"}")
+                } else {
+                    print("Error archiving incidents: \(error.localizedDescription)")
+                }
+                exit(1)
+            }
+        } else if args.contains("--archive-incidents") {
+            if args.contains("--json") {
+                print("{\"success\":false,\"error\":\"Usage: facelock --archive-incidents <destinationDirectory> [--type <type>]\"}")
+            } else {
+                print("Error: Usage: facelock --archive-incidents <destinationDirectory> [--type <type>]")
+            }
+            exit(1)
+        }
+
+        // Inter-process command dispatching if instance is already running
         if args.contains("--diagnostics-gui") || args.contains("--diagnostics-ui") || args.contains("--diagnostics-window") {
             if isAlreadyRunning {
                 DistributedNotificationCenter.default().postNotificationName(
@@ -652,7 +1110,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
             if args.contains("--json") {
                 let statusDict: [String: Any] = [
-                    "version": "1.1.9",
+                    "version": Config.currentVersion,
                     "daemon": isAlreadyRunning ? "running" : "stopped",
                     "shieldState": Config.shared.isEnabled ? "active" : "paused",
                     "protectionMode": Config.shared.protectionMode,
@@ -684,7 +1142,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             let recent24hStr = recent24hCount > 0 ? " (\(recent24hCount) in past 24h)" : ""
             print("""
             FaceLock Status:
-              Version: 1.1.9 (darwin-arm64)
+              Version: \(Config.currentVersion) (darwin-arm64)
               Daemon: \(isAlreadyRunning ? "RUNNING" : "STOPPED")
               Shield: \(Config.shared.isEnabled ? "ACTIVE" : "PAUSED")
               Mode: \(Config.shared.protectionMode)
@@ -722,7 +1180,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             if args.contains("--json") {
                 let out: [String: Any] = [
                     "healthy": isHealthy,
-                    "version": "1.1.9",
+                    "version": Config.currentVersion,
                     "daemonRunning": isAlreadyRunning,
                     "shieldActive": Config.shared.isEnabled,
                     "activeProfile": Config.shared.activeProfile,
@@ -962,6 +1420,96 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             } else {
                 print("✓ Reset protected (\(Config.shared.protectedBundleIdentifiers.count)) and ignored (\(Config.shared.ignoredBundleIdentifiers.count)) application lists to factory defaults.")
+            }
+            exit(0)
+        }
+
+        if args.contains("--add-meeting-app") {
+            guard let bundleId = AppDelegate.valueForOption("--add-meeting-app", in: args), Config.isValidBundleIdentifier(bundleId) else {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"Invalid or missing bundle identifier for --add-meeting-app\"}")
+                } else {
+                    print("Error: Invalid or missing bundle identifier. Usage: facelock --add-meeting-app <bundleId>")
+                }
+                exit(1)
+            }
+            let added = Config.shared.addMeetingApp(bundleId)
+            if added {
+                SecurityAuditLogger.shared.logPolicyChanged(action: "Added custom meeting application", bundleId: bundleId)
+                notifyDaemonIfRunning()
+            }
+            if args.contains("--json") {
+                print("{\"success\":true,\"action\":\"\(added ? "added" : "already_present")\",\"bundleId\":\"\(bundleId)\",\"totalCustomMeetingApps\":\(Config.shared.customPresentationBundleIdentifiers.count)}")
+            } else {
+                if added {
+                    print("✓ Added '\(bundleId)' to custom meeting suppression whitelist.")
+                } else {
+                    print("ℹ️ '\(bundleId)' is already present in custom meeting whitelist.")
+                }
+            }
+            exit(0)
+        }
+
+        if args.contains("--remove-meeting-app") {
+            guard let bundleId = AppDelegate.valueForOption("--remove-meeting-app", in: args), Config.isValidBundleIdentifier(bundleId) else {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"Invalid or missing bundle identifier for --remove-meeting-app\"}")
+                } else {
+                    print("Error: Invalid or missing bundle identifier. Usage: facelock --remove-meeting-app <bundleId>")
+                }
+                exit(1)
+            }
+            let removed = Config.shared.removeMeetingApp(bundleId)
+            if removed {
+                SecurityAuditLogger.shared.logPolicyChanged(action: "Removed custom meeting application", bundleId: bundleId)
+                notifyDaemonIfRunning()
+            }
+            if args.contains("--json") {
+                print("{\"success\":true,\"action\":\"\(removed ? "removed" : "not_found")\",\"bundleId\":\"\(bundleId)\",\"totalCustomMeetingApps\":\(Config.shared.customPresentationBundleIdentifiers.count)}")
+            } else {
+                if removed {
+                    print("✓ Removed '\(bundleId)' from custom meeting whitelist.")
+                } else {
+                    print("ℹ️ '\(bundleId)' was not found in custom meeting applications.")
+                }
+            }
+            exit(0)
+        }
+
+        if args.contains("--reset-meeting-apps") {
+            let previousCount = Config.shared.customPresentationBundleIdentifiers.count
+            Config.shared.resetMeetingApps()
+            SecurityAuditLogger.shared.logPolicyChanged(action: "Reset custom meeting applications", bundleId: "all")
+            notifyDaemonIfRunning()
+            if args.contains("--json") {
+                print("{\"success\":true,\"action\":\"reset\",\"clearedCount\":\(previousCount)}")
+            } else {
+                print("✓ Reset custom meeting applications (\(previousCount) app(s) cleared).")
+            }
+            exit(0)
+        }
+
+        if args.contains("--custom-meeting-apps") {
+            let custom = Config.shared.customPresentationBundleIdentifiers
+            if args.contains("--json") {
+                let payload: [String: Any] = [
+                    "success": true,
+                    "count": custom.count,
+                    "customMeetingApps": custom
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                print("FaceLock Custom Meeting Applications (\(custom.count)):")
+                if custom.isEmpty {
+                    print("  (None configured. Add with 'facelock --add-meeting-app <bundleId>')")
+                } else {
+                    for app in custom {
+                        print("  • \(app)")
+                    }
+                }
             }
             exit(0)
         }
@@ -1481,6 +2029,73 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 exit(1)
             }
+        }
+
+        if args.contains("--set-duress-pin") {
+            if let newDuress = AppDelegate.valueForOption("--set-duress-pin", in: args) {
+                let validation = Config.isValidDuressPin(newDuress, masterPin: Config.shared.pin)
+                if validation.isValid {
+                    let result = Config.shared.setDuressPin(newDuress)
+                    SecurityAuditLogger.shared.logConfigChanged(setting: "duressPin", value: "****", details: "Lock screen duress PIN updated")
+                    notifyDaemonIfRunning()
+                    if args.contains("--json") {
+                        print("{\"success\":true,\"duressPinConfigured\":true,\"length\":\(newDuress.count),\"message\":\"\(result.message)\"}")
+                    } else {
+                        print("✓ Duress PIN configured (\(newDuress.count) digits). Coerced unlock alerts enabled.")
+                    }
+                    exit(0)
+                } else {
+                    let err = validation.error ?? "Invalid duress PIN."
+                    if args.contains("--json") {
+                        print("{\"success\":false,\"error\":\"\(err)\"}")
+                    } else {
+                        print("Error: \(err)")
+                    }
+                    exit(1)
+                }
+            } else {
+                if args.contains("--json") {
+                    print("{\"success\":false,\"error\":\"Missing PIN value. Usage: facelock --set-duress-pin <pin>\"}")
+                } else {
+                    print("Error: Missing PIN value. Usage: facelock --set-duress-pin <pin>")
+                }
+                exit(1)
+            }
+        }
+
+        if args.contains("--clear-duress-pin") {
+            Config.shared.clearDuressPin()
+            SecurityAuditLogger.shared.logConfigChanged(setting: "duressPin", value: "<cleared>", details: "Duress PIN cleared")
+            notifyDaemonIfRunning()
+            if args.contains("--json") {
+                print("{\"success\":true,\"duressPinConfigured\":false,\"message\":\"Код принуждения сброшен\"}")
+            } else {
+                print("✓ Duress PIN cleared. Coerced unlock detection disabled.")
+            }
+            exit(0)
+        }
+
+        if args.contains("--duress-status") {
+            let isConfigured = Config.shared.isDuressPinEnabled
+            let length = Config.shared.duressPin.count
+            if args.contains("--json") {
+                let dict: [String: Any] = [
+                    "enabled": isConfigured,
+                    "isConfigured": isConfigured,
+                    "length": length
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: dict, options: [.sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                if isConfigured {
+                    print("Duress Defense: ACTIVE (\(length) digits configured) 🔏")
+                } else {
+                    print("Duress Defense: NOT CONFIGURED (Run 'facelock --set-duress-pin <pin>' to enable)")
+                }
+            }
+            exit(0)
         }
 
         if let idx = args.firstIndex(of: "--set-telegram"), idx + 2 < args.count {

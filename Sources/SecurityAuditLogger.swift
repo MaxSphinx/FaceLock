@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import CryptoKit
 
 public struct AuditEvent: Codable {
     public let id: String
@@ -80,6 +81,75 @@ public struct AuditStats {
         ]
         if let last = lastEventTime {
             dict["lastEventTime"] = last
+        }
+        return dict
+    }
+}
+
+public struct AuditIntegrityReport: Codable {
+    public let totalLinesScanned: Int
+    public let validEventsCount: Int
+    public let corruptedLinesCount: Int
+    public let emptyLinesCount: Int
+    public let chronologyErrorsCount: Int
+    public let unknownTypeCount: Int
+    public let sha256Digest: String
+    public let fileSizeBytes: UInt64
+    public let filePath: String
+    public let firstEventTimestamp: String?
+    public let lastEventTimestamp: String?
+    public let status: String
+    public let corruptedLineIndices: [Int]
+
+    public init(
+        totalLinesScanned: Int,
+        validEventsCount: Int,
+        corruptedLinesCount: Int,
+        emptyLinesCount: Int,
+        chronologyErrorsCount: Int,
+        unknownTypeCount: Int,
+        sha256Digest: String,
+        fileSizeBytes: UInt64,
+        filePath: String,
+        firstEventTimestamp: String? = nil,
+        lastEventTimestamp: String? = nil,
+        status: String,
+        corruptedLineIndices: [Int] = []
+    ) {
+        self.totalLinesScanned = totalLinesScanned
+        self.validEventsCount = validEventsCount
+        self.corruptedLinesCount = corruptedLinesCount
+        self.emptyLinesCount = emptyLinesCount
+        self.chronologyErrorsCount = chronologyErrorsCount
+        self.unknownTypeCount = unknownTypeCount
+        self.sha256Digest = sha256Digest
+        self.fileSizeBytes = fileSizeBytes
+        self.filePath = filePath
+        self.firstEventTimestamp = firstEventTimestamp
+        self.lastEventTimestamp = lastEventTimestamp
+        self.status = status
+        self.corruptedLineIndices = corruptedLineIndices
+    }
+
+    public func toDictionary() -> [String: Any] {
+        var dict: [String: Any] = [
+            "totalLinesScanned": totalLinesScanned,
+            "validEventsCount": validEventsCount,
+            "corruptedLinesCount": corruptedLinesCount,
+            "emptyLinesCount": emptyLinesCount,
+            "chronologyErrorsCount": chronologyErrorsCount,
+            "unknownTypeCount": unknownTypeCount,
+            "sha256Digest": sha256Digest,
+            "fileSizeBytes": fileSizeBytes,
+            "filePath": filePath,
+            "status": status,
+            "corruptedLineIndices": corruptedLineIndices
+        ]
+        if let first = firstEventTimestamp {
+            dict["firstEventTimestamp"] = first
+        }
+        if let last = lastEventTimestamp {
+            dict["lastEventTimestamp"] = last
         }
         return dict
     }
@@ -257,6 +327,15 @@ public final class SecurityAuditLogger {
         )
     }
 
+    public func logDuressPinUnlocked(targetApp: String?) {
+        log(
+            eventType: "duress_pin_unlocked",
+            appName: targetApp ?? "FaceLock",
+            details: "Duress emergency code entered - silent distress protocol activated",
+            isSuccess: true
+        )
+    }
+
     public func logShoulderSurfingDetected(secondaryCount: Int, details: String? = nil) {
         log(
             eventType: "shoulder_surfing_alert",
@@ -338,12 +417,12 @@ public final class SecurityAuditLogger {
         )
     }
 
-    public func logPolicyChanged(action: String, bundleId: String, details: String? = nil) {
+    public func logPolicyChanged(action: String, bundleId: String? = nil, details: String? = nil) {
         log(
             eventType: "policy_changed",
-            appName: bundleId,
+            appName: bundleId ?? "Policy",
             bundleId: bundleId,
-            details: details ?? "\(action): \(bundleId)",
+            details: details ?? (bundleId != nil ? "\(action): \(bundleId!)" : action),
             isSuccess: true
         )
     }
@@ -705,6 +784,403 @@ public final class SecurityAuditLogger {
         return (stats.totalEvents, stats.fileSizeBytes, stats.lastEventTime, stats.successCount, stats.failureCount, stats.typeBreakdown)
     }
 
+    public struct ThreatAnomaly: Codable {
+        public let code: String
+        public let description: String
+        public let severity: String
+
+        public var title: String {
+            return code
+        }
+
+        public init(code: String, description: String, severity: String) {
+            self.code = code
+            self.description = description
+            self.severity = severity
+        }
+
+        public func toDictionary() -> [String: String] {
+            return [
+                "code": code,
+                "description": description,
+                "severity": severity
+            ]
+        }
+    }
+
+    public struct TargetedAppRisk: Codable {
+        public let appName: String
+        public let bundleId: String?
+        public let attemptCount: Int
+        public let lastAttemptTime: String?
+        public let riskCategory: String
+
+        public init(appName: String, bundleId: String? = nil, attemptCount: Int, lastAttemptTime: String? = nil, riskCategory: String) {
+            self.appName = appName
+            self.bundleId = bundleId
+            self.attemptCount = attemptCount
+            self.lastAttemptTime = lastAttemptTime
+            self.riskCategory = riskCategory
+        }
+
+        public func toDictionary() -> [String: Any] {
+            var d: [String: Any] = [
+                "appName": appName,
+                "attemptCount": attemptCount,
+                "riskCategory": riskCategory
+            ]
+            if let b = bundleId { d["bundleId"] = b }
+            if let l = lastAttemptTime { d["lastAttemptTime"] = l }
+            return d
+        }
+    }
+
+    public struct ThreatIntelligenceReport {
+        public let riskScore: Int
+        public let riskLevel: String
+        public let statusBadge: String
+        public let totalThreatEvents: Int
+        public let past24HoursCount: Int
+        public let past7DaysCount: Int
+        public let pinBruteforceCount: Int
+        public let shoulderSurfingCount: Int
+        public let intruderCaptureCount: Int
+        public let walkawayLockCount: Int
+        public let wakeLockCount: Int
+        public let emergencyLockdownCount: Int
+        public let hourlyDistribution: [Int: Int]
+        public let peakThreatHour: Int?
+        public let targetedApps: [TargetedAppRisk]
+        public let anomalies: [ThreatAnomaly]
+        public let mitigations: [String]
+
+        public init(
+            riskScore: Int,
+            riskLevel: String,
+            statusBadge: String,
+            totalThreatEvents: Int,
+            past24HoursCount: Int,
+            past7DaysCount: Int,
+            pinBruteforceCount: Int,
+            shoulderSurfingCount: Int,
+            intruderCaptureCount: Int,
+            walkawayLockCount: Int,
+            wakeLockCount: Int,
+            emergencyLockdownCount: Int,
+            hourlyDistribution: [Int: Int],
+            peakThreatHour: Int?,
+            targetedApps: [TargetedAppRisk],
+            anomalies: [ThreatAnomaly],
+            mitigations: [String]
+        ) {
+            self.riskScore = riskScore
+            self.riskLevel = riskLevel
+            self.statusBadge = statusBadge
+            self.totalThreatEvents = totalThreatEvents
+            self.past24HoursCount = past24HoursCount
+            self.past7DaysCount = past7DaysCount
+            self.pinBruteforceCount = pinBruteforceCount
+            self.shoulderSurfingCount = shoulderSurfingCount
+            self.intruderCaptureCount = intruderCaptureCount
+            self.walkawayLockCount = walkawayLockCount
+            self.wakeLockCount = wakeLockCount
+            self.emergencyLockdownCount = emergencyLockdownCount
+            self.hourlyDistribution = hourlyDistribution
+            self.peakThreatHour = peakThreatHour
+            self.targetedApps = targetedApps
+            self.anomalies = anomalies
+            self.mitigations = mitigations
+        }
+
+        public func toDictionary() -> [String: Any] {
+            var dict: [String: Any] = [
+                "riskScore": riskScore,
+                "riskLevel": riskLevel,
+                "statusBadge": statusBadge,
+                "totalThreatEvents": totalThreatEvents,
+                "past24HoursCount": past24HoursCount,
+                "past7DaysCount": past7DaysCount,
+                "pinBruteforceCount": pinBruteforceCount,
+                "shoulderSurfingCount": shoulderSurfingCount,
+                "intruderCaptureCount": intruderCaptureCount,
+                "walkawayLockCount": walkawayLockCount,
+                "wakeLockCount": wakeLockCount,
+                "emergencyLockdownCount": emergencyLockdownCount,
+                "hourlyDistribution": Dictionary(uniqueKeysWithValues: hourlyDistribution.map { (String($0.key), $0.value) }),
+                "targetedApps": targetedApps.map { $0.toDictionary() },
+                "anomalies": anomalies.map { $0.toDictionary() },
+                "mitigations": mitigations
+            ]
+            if let peak = peakThreatHour {
+                dict["peakThreatHour"] = peak
+            }
+            return dict
+        }
+    }
+
+    public func analyzeThreatIntelligence(events: [AuditEvent]? = nil) -> ThreatIntelligenceReport {
+        var parsedEvents: [AuditEvent] = []
+        if let evs = events {
+            parsedEvents = evs
+        } else {
+            logQueue.sync {
+                if let content = try? String(contentsOf: self.logFileURL, encoding: .utf8) {
+                    let lines = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+                    let decoder = JSONDecoder()
+                    for line in lines {
+                        if let data = line.data(using: .utf8),
+                           let event = try? decoder.decode(AuditEvent.self, from: data) {
+                            parsedEvents.append(event)
+                        }
+                    }
+                }
+            }
+        }
+
+        let now = Date()
+        let isoFormatter = ISO8601DateFormatter()
+        let fallbackFormatter = DateFormatter()
+        fallbackFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
+
+        var past24h = 0
+        var past7d = 0
+        var pinBruteforce = 0
+        var shoulderSurfing = 0
+        var intruderCaptures = 0
+        var walkawayLocks = 0
+        var wakeLocks = 0
+        var emergencyLockdowns = 0
+        var totalThreat = 0
+
+        var hourlyMap: [Int: Int] = [:]
+        for h in 0..<24 {
+            hourlyMap[h] = 0
+        }
+
+        struct AppAcc {
+            var count: Int = 0
+            var bundleId: String? = nil
+            var lastTime: String? = nil
+        }
+        var appMap: [String: AppAcc] = [:]
+
+        for event in parsedEvents {
+            let t = event.eventType
+            let eventDate: Date = {
+                if let d = isoFormatter.date(from: event.timestamp) { return d }
+                if let d = fallbackFormatter.date(from: event.timestamp) { return d }
+                return now
+            }()
+
+            let age = max(0.0, now.timeIntervalSince(eventDate))
+            let isPast24h = age <= 86400.0
+            let isPast7d = age <= (7.0 * 86400.0)
+
+            let hour = Calendar.current.component(.hour, from: eventDate)
+
+            var isThreatEvent = false
+            if t == "pin_bruteforce" {
+                pinBruteforce += 1
+                isThreatEvent = true
+            } else if t == "shoulder_surfing" {
+                shoulderSurfing += 1
+                isThreatEvent = true
+            } else if t == "intruder_detected" {
+                intruderCaptures += 1
+                isThreatEvent = true
+            } else if t == "walkaway_lock" {
+                walkawayLocks += 1
+                isThreatEvent = true
+            } else if t == "wake_locked" {
+                wakeLocks += 1
+                isThreatEvent = true
+            } else if t == "emergency_lockdown" {
+                emergencyLockdowns += 1
+                isThreatEvent = true
+            } else if t == "pin_failed" {
+                isThreatEvent = true
+            }
+
+            if isThreatEvent {
+                totalThreat += 1
+                if isPast24h { past24h += 1 }
+                if isPast7d { past7d += 1 }
+                hourlyMap[hour, default: 0] += 1
+
+                if let app = event.appName, !app.isEmpty,
+                   app != "FaceLock CLI", app != "System",
+                   app != "Wake Verification", app != "Walk-Away Auto-Lock" {
+                    var acc = appMap[app] ?? AppAcc()
+                    acc.count += 1
+                    if acc.bundleId == nil { acc.bundleId = event.bundleId }
+                    acc.lastTime = event.timestamp
+                    appMap[app] = acc
+                }
+            }
+        }
+
+        // Compute targeted applications and risk categorization
+        var targetedApps: [TargetedAppRisk] = []
+        for (appName, acc) in appMap {
+            let bId = acc.bundleId?.lowercased() ?? ""
+            let nameLower = appName.lowercased()
+            let risk: String
+            if nameLower.contains("terminal") || nameLower.contains("keychain") || nameLower.contains("password") ||
+               nameLower.contains("settings") || nameLower.contains("system preferences") || bId.contains("terminal") ||
+               bId.contains("iterm") || bId.contains("keychain") {
+                risk = "CRITICAL"
+            } else if nameLower.contains("safari") || nameLower.contains("chrome") || nameLower.contains("brave") ||
+                      nameLower.contains("telegram") || nameLower.contains("whatsapp") || nameLower.contains("signal") ||
+                      nameLower.contains("slack") || nameLower.contains("notes") || nameLower.contains("mail") {
+                risk = "HIGH"
+            } else {
+                risk = "MEDIUM"
+            }
+            targetedApps.append(TargetedAppRisk(
+                appName: appName,
+                bundleId: acc.bundleId,
+                attemptCount: acc.count,
+                lastAttemptTime: acc.lastTime,
+                riskCategory: risk
+            ))
+        }
+        targetedApps.sort { $0.attemptCount > $1.attemptCount }
+
+        // Determine peak threat hour
+        var peakHour: Int? = nil
+        var maxHourCount = 0
+        for h in 0..<24 {
+            let c = hourlyMap[h, default: 0]
+            if c > maxHourCount {
+                maxHourCount = c
+                peakHour = h
+            }
+        }
+
+        // Quantitative risk score calculation (0 - 100)
+        var score = 0
+        score += min(40, pinBruteforce * 20)
+        score += min(25, shoulderSurfing * 10)
+        score += min(25, intruderCaptures * 8)
+        score += min(20, emergencyLockdowns * 10)
+
+        if past24h >= 3 {
+            score += 15
+        } else if past24h >= 1 {
+            score += 5
+        }
+
+        let hasCriticalApp = targetedApps.contains { $0.riskCategory == "CRITICAL" }
+        if hasCriticalApp {
+            score += 15
+        }
+
+        let finalScore = min(100, max(0, score))
+
+        let riskLevel: String
+        let badge: String
+        switch finalScore {
+        case 70...100:
+            riskLevel = "CRITICAL"
+            badge = "CRITICAL 🔴"
+        case 45..<70:
+            riskLevel = "HIGH"
+            badge = "HIGH 🟠"
+        case 20..<45:
+            riskLevel = "ELEVATED"
+            badge = "ELEVATED 🟡"
+        default:
+            riskLevel = "LOW"
+            badge = "LOW 🟢"
+        }
+
+        // Anomaly detection
+        var anomalies: [ThreatAnomaly] = []
+        if pinBruteforce > 0 {
+            anomalies.append(ThreatAnomaly(
+                code: "PIN_BRUTEFORCE_DETECTED",
+                description: "\(pinBruteforce) unauthorized PIN brute-force attempt(s) triggered lockouts.",
+                severity: "CRITICAL"
+            ))
+        }
+        if past24h >= 3 {
+            anomalies.append(ThreatAnomaly(
+                code: "HIGH_VELOCITY_INTRUSIONS",
+                description: "\(past24h) physical security intrusion event(s) recorded in the past 24 hours.",
+                severity: "HIGH"
+            ))
+        }
+        if shoulderSurfing >= 2 {
+            anomalies.append(ThreatAnomaly(
+                code: "PERSISTENT_SHOULDER_SURFING",
+                description: "Multiple bystander snooping events detected behind active user.",
+                severity: "HIGH"
+            ))
+        }
+
+        // Check off-hours access (23:00 to 05:59)
+        var offHoursCount = 0
+        for h in [23, 0, 1, 2, 3, 4, 5] {
+            offHoursCount += hourlyMap[h, default: 0]
+        }
+        if offHoursCount > 0 {
+            anomalies.append(ThreatAnomaly(
+                code: "OFF_HOURS_ACCESS_ATTEMPT",
+                description: "\(offHoursCount) suspicious access or intruder event(s) recorded during late night off-hours (23:00-05:59).",
+                severity: "MEDIUM"
+            ))
+        }
+
+        if hasCriticalApp {
+            anomalies.append(ThreatAnomaly(
+                code: "PRIVILEGED_TARGET_ACCESS",
+                description: "Privileged applications (Terminal, Keychain, Settings) targeted by unauthorized users.",
+                severity: "HIGH"
+            ))
+        }
+
+        // Context-aware actionable mitigations
+        var mitigations: [String] = []
+        if pinBruteforce > 0 {
+            mitigations.append("Harden PIN policy: update to 6+ digit PIN (--set-pin) and reduce allowed attempts to 3 with cooling lockout (--set-pin-attempts 3 --set-pin-lockout 10).")
+        }
+        if shoulderSurfing > 0 && !Config.shared.shoulderSurfingDefense {
+            mitigations.append("Enable shoulder-surfing defense to automatically detect bystanders looking over your shoulder (--toggle-shoulder).")
+        }
+        if finalScore >= 45 {
+            mitigations.append("Elevate defense profile: switch to 'cafe' or 'lockdown' profile (--profile lockdown) to enforce strict timeouts and audible alarms.")
+        }
+        if !Config.shared.lockOnWake {
+            mitigations.append("Enable screen wake verification to protect against unauthorized access upon clamshell opening (--toggle-wake).")
+        }
+        if !Config.shared.telegramEnabled || Config.shared.telegramBotToken.isEmpty {
+            mitigations.append("Configure Telegram intruder alerts for instantaneous remote push notifications with intruder capture photos (--set-telegram <token> <chatId>).")
+        }
+        if mitigations.isEmpty {
+            mitigations.append("Maintain current security configuration; no immediate threat mitigations required.")
+        }
+
+        return ThreatIntelligenceReport(
+            riskScore: finalScore,
+            riskLevel: riskLevel,
+            statusBadge: badge,
+            totalThreatEvents: totalThreat,
+            past24HoursCount: past24h,
+            past7DaysCount: past7d,
+            pinBruteforceCount: pinBruteforce,
+            shoulderSurfingCount: shoulderSurfing,
+            intruderCaptureCount: intruderCaptures,
+            walkawayLockCount: walkawayLocks,
+            wakeLockCount: wakeLocks,
+            emergencyLockdownCount: emergencyLockdowns,
+            hourlyDistribution: hourlyMap,
+            peakThreatHour: peakHour,
+            targetedApps: targetedApps,
+            anomalies: anomalies,
+            mitigations: mitigations
+        )
+    }
+
     public struct AuditSummary {
         public let totalEvents: Int
         public let fileSizeBytes: UInt64
@@ -721,6 +1197,43 @@ public final class SecurityAuditLogger {
         public let verificationSuccessRate: Double
         public let topChallengedApplications: [String: Int]
         public let averageDailyEvents: Double
+        public let duressPinUnlocks: Int
+
+        public init(
+            totalEvents: Int,
+            fileSizeBytes: UInt64,
+            firstEventTime: String?,
+            lastEventTime: String?,
+            timeSpanHours: Double,
+            successfulVerifications: Int,
+            intruderDetections: Int,
+            pinUnlocks: Int,
+            touchIdUnlocks: Int,
+            shoulderSurfingIncidents: Int,
+            emergencyLockdowns: Int,
+            pinLockouts: Int,
+            verificationSuccessRate: Double,
+            topChallengedApplications: [String: Int],
+            averageDailyEvents: Double,
+            duressPinUnlocks: Int = 0
+        ) {
+            self.totalEvents = totalEvents
+            self.fileSizeBytes = fileSizeBytes
+            self.firstEventTime = firstEventTime
+            self.lastEventTime = lastEventTime
+            self.timeSpanHours = timeSpanHours
+            self.successfulVerifications = successfulVerifications
+            self.intruderDetections = intruderDetections
+            self.pinUnlocks = pinUnlocks
+            self.touchIdUnlocks = touchIdUnlocks
+            self.shoulderSurfingIncidents = shoulderSurfingIncidents
+            self.emergencyLockdowns = emergencyLockdowns
+            self.pinLockouts = pinLockouts
+            self.verificationSuccessRate = verificationSuccessRate
+            self.topChallengedApplications = topChallengedApplications
+            self.averageDailyEvents = averageDailyEvents
+            self.duressPinUnlocks = duressPinUnlocks
+        }
 
         public func toDictionary() -> [String: Any] {
             return [
@@ -738,7 +1251,8 @@ public final class SecurityAuditLogger {
                 "pinLockouts": pinLockouts,
                 "verificationSuccessRate": Double(round(verificationSuccessRate * 1000) / 1000),
                 "topChallengedApplications": topChallengedApplications,
-                "averageDailyEvents": Double(round(averageDailyEvents * 10) / 10)
+                "averageDailyEvents": Double(round(averageDailyEvents * 10) / 10),
+                "duressPinUnlocks": duressPinUnlocks
             ]
         }
     }
@@ -809,6 +1323,7 @@ public final class SecurityAuditLogger {
         var shoulderInc = 0
         var emergencyLock = 0
         var pinLockouts = 0
+        var duressPinUnlocks = 0
         var appChallenges: [String: Int] = [:]
 
         for event in parsedEvents {
@@ -819,6 +1334,8 @@ public final class SecurityAuditLogger {
                 intruderDet += 1
             } else if t == "pin_unlocked" {
                 pinUnlocks += 1
+            } else if t == "duress_pin_unlocked" {
+                duressPinUnlocks += 1
             } else if t == "touchid_unlocked" {
                 touchIdUnlocks += 1
             } else if t == "shoulder_surfing" {
@@ -860,7 +1377,8 @@ public final class SecurityAuditLogger {
             pinLockouts: pinLockouts,
             verificationSuccessRate: successRate,
             topChallengedApplications: topApps,
-            averageDailyEvents: avgDaily
+            averageDailyEvents: avgDaily,
+            duressPinUnlocks: duressPinUnlocks
         )
     }
 
@@ -985,5 +1503,174 @@ public final class SecurityAuditLogger {
     ) throws -> Int {
         let res = try exportAudit(to: destinationPath, filterType: filterType, format: format)
         return res.exportedCount
+    }
+
+    public static let knownEventTypes: Set<String> = [
+        "face_verified",
+        "intruder_detected",
+        "pin_unlocked",
+        "pin_failed",
+        "touchid_unlocked",
+        "touchid_failed",
+        "shoulder_surfing",
+        "emergency_lockdown",
+        "pin_bruteforce",
+        "walkaway_lock",
+        "wake_verified",
+        "wake_locked",
+        "shield_paused",
+        "shield_resumed",
+        "policy_updated",
+        "config_updated",
+        "vectors_updated",
+        "vectors_optimized",
+        "session_reset",
+        "health_check"
+    ]
+
+    public var auditLogURL: URL {
+        return logFileURL
+    }
+
+    public func verifyAuditIntegrity(fileURL: URL? = nil) -> AuditIntegrityReport {
+        let targetURL = fileURL ?? self.logFileURL
+        return logQueue.sync {
+            guard FileManager.default.fileExists(atPath: targetURL.path),
+                  let data = try? Data(contentsOf: targetURL),
+                  let content = String(data: data, encoding: .utf8) else {
+                return AuditIntegrityReport(
+                    totalLinesScanned: 0,
+                    validEventsCount: 0,
+                    corruptedLinesCount: 0,
+                    emptyLinesCount: 0,
+                    chronologyErrorsCount: 0,
+                    unknownTypeCount: 0,
+                    sha256Digest: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                    fileSizeBytes: 0,
+                    filePath: targetURL.path,
+                    status: "EMPTY",
+                    corruptedLineIndices: []
+                )
+            }
+
+            let shaDigest = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+            let rawLines = content.components(separatedBy: .newlines)
+            let decoder = JSONDecoder()
+            let isoFormatter = ISO8601DateFormatter()
+
+            var validCount = 0
+            var corruptedCount = 0
+            var emptyCount = 0
+            var chronologyErrors = 0
+            var unknownTypeCount = 0
+            var corruptedIndices: [Int] = []
+            var firstTime: String? = nil
+            var lastTime: String? = nil
+            var previousDate: Date? = nil
+
+            for (idx, rawLine) in rawLines.enumerated() {
+                let trimmed = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmed.isEmpty {
+                    if idx < rawLines.count - 1 || rawLines.count == 1 {
+                        emptyCount += 1
+                    }
+                    continue
+                }
+
+                guard let lineData = trimmed.data(using: .utf8),
+                      let event = try? decoder.decode(AuditEvent.self, from: lineData) else {
+                    corruptedCount += 1
+                    corruptedIndices.append(idx + 1)
+                    continue
+                }
+
+                validCount += 1
+                if firstTime == nil {
+                    firstTime = event.timestamp
+                }
+                lastTime = event.timestamp
+
+                if !SecurityAuditLogger.knownEventTypes.contains(event.eventType) {
+                    unknownTypeCount += 1
+                }
+
+                if let curDate = isoFormatter.date(from: event.timestamp) {
+                    if let prev = previousDate, curDate < prev {
+                        chronologyErrors += 1
+                    }
+                    previousDate = curDate
+                }
+            }
+
+            let status: String
+            if validCount == 0 && corruptedCount == 0 {
+                status = "EMPTY"
+            } else if corruptedCount > 0 {
+                status = "CORRUPTED_DETECTED"
+            } else if chronologyErrors > 0 {
+                status = "WARNING_CHRONOLOGY"
+            } else {
+                status = "VERIFIED"
+            }
+
+            return AuditIntegrityReport(
+                totalLinesScanned: rawLines.count,
+                validEventsCount: validCount,
+                corruptedLinesCount: corruptedCount,
+                emptyLinesCount: emptyCount,
+                chronologyErrorsCount: chronologyErrors,
+                unknownTypeCount: unknownTypeCount,
+                sha256Digest: shaDigest,
+                fileSizeBytes: UInt64(data.count),
+                filePath: targetURL.path,
+                firstEventTimestamp: firstTime,
+                lastEventTimestamp: lastTime,
+                status: status,
+                corruptedLineIndices: corruptedIndices
+            )
+        }
+    }
+
+    public func repairAuditLog(fileURL: URL? = nil) throws -> (repairedCount: Int, purgedCorruptedCount: Int, remainingCount: Int, backupPath: String) {
+        let targetURL = fileURL ?? self.logFileURL
+        return try logQueue.sync {
+            guard FileManager.default.fileExists(atPath: targetURL.path),
+                  let data = try? Data(contentsOf: targetURL),
+                  let content = String(data: data, encoding: .utf8) else {
+                return (0, 0, 0, "")
+            }
+
+            let backupName = "audit_log_\(Int(Date().timeIntervalSince1970)).jsonl.bak"
+            let backupURL = targetURL.deletingLastPathComponent().appendingPathComponent(backupName)
+            try data.write(to: backupURL, options: .atomic)
+
+            let rawLines = content.components(separatedBy: .newlines)
+            let decoder = JSONDecoder()
+            let encoder = JSONEncoder()
+
+            var validLines: [String] = []
+            var purgedCount = 0
+
+            for rawLine in rawLines {
+                let trimmed = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmed.isEmpty { continue }
+
+                if let lineData = trimmed.data(using: .utf8),
+                   let event = try? decoder.decode(AuditEvent.self, from: lineData) {
+                    if let reencoded = try? encoder.encode(event), let s = String(data: reencoded, encoding: .utf8) {
+                        validLines.append(s)
+                    } else {
+                        validLines.append(trimmed)
+                    }
+                } else {
+                    purgedCount += 1
+                }
+            }
+
+            let newContent = validLines.joined(separator: "\n") + (validLines.isEmpty ? "" : "\n")
+            try (newContent.data(using: .utf8) ?? Data()).write(to: targetURL, options: .atomic)
+
+            return (validLines.count, purgedCount, validLines.count, backupURL.path)
+        }
     }
 }

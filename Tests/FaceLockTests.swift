@@ -78,6 +78,9 @@ public final class FaceLockTestSuite {
         testIncidentDeletionExportAndAuditStats()
         testMaintenanceV119Enhancements()
         testMaintenanceV120Enhancements()
+        testMaintenanceV121Enhancements()
+        testMaintenanceV122Enhancements()
+        testMaintenanceV123Enhancements()
         testVectorMatchingBenchmark()
 
         let elapsed = Date().timeIntervalSince(startTime)
@@ -1814,6 +1817,372 @@ public final class FaceLockTestSuite {
         assertEqual(AppDelegate.normalizeArguments(["--meeting-apps-json"]), ["--presentation-apps", "--json"], "Normalizes --meeting-apps-json")
         assertEqual(AppDelegate.normalizeArguments(["--meeting-apps"]), ["--presentation-apps"], "Normalizes --meeting-apps")
         assertEqual(AppDelegate.normalizeArguments(["--check-presentation-json"]), ["--check-presentation", "--json"], "Normalizes --check-presentation-json")
+    }
+
+    // MARK: - Maintenance v1.2.1 Enhancements Test Suite
+    private func testMaintenanceV121Enhancements() {
+        print("\n▶ Test Suite: Audit Log Cryptographic Integrity & Tamper Verification (v1.2.1)")
+
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("facelock_test_v121_\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let auditLogURL = tempDir.appendingPathComponent("audit_log.jsonl")
+
+        // 1. Clean audit verification
+        let encoder = JSONEncoder()
+        let event1 = AuditEvent(id: "ev1", timestamp: "2026-11-06T10:00:00Z", eventType: "face_verified", appName: "Safari", isSuccess: true)
+        let event2 = AuditEvent(id: "ev2", timestamp: "2026-11-06T11:00:00Z", eventType: "intruder_detected", appName: "Terminal", isSuccess: false)
+        let event3 = AuditEvent(id: "ev3", timestamp: "2026-11-06T12:00:00Z", eventType: "pin_unlocked", appName: "Notes", isSuccess: true)
+
+        let d1 = try! encoder.encode(event1)
+        let d2 = try! encoder.encode(event2)
+        let d3 = try! encoder.encode(event3)
+        let cleanContent = [String(data: d1, encoding: .utf8)!, String(data: d2, encoding: .utf8)!, String(data: d3, encoding: .utf8)!].joined(separator: "\n") + "\n"
+        try! cleanContent.write(to: auditLogURL, atomically: true, encoding: .utf8)
+
+        let cleanReport = SecurityAuditLogger.shared.verifyAuditIntegrity(fileURL: auditLogURL)
+        assertEqual(cleanReport.status, "VERIFIED", "Clean audit log is marked VERIFIED")
+        assertEqual(cleanReport.validEventsCount, 3, "Valid events count is 3")
+        assertEqual(cleanReport.corruptedLinesCount, 0, "Corrupted lines count is 0")
+        assertEqual(cleanReport.chronologyErrorsCount, 0, "Chronology errors count is 0")
+        assertEqual(cleanReport.sha256Digest.count, 64, "SHA-256 digest is 64 hex characters")
+        assertEqual(cleanReport.firstEventTimestamp, "2026-11-06T10:00:00Z", "First event timestamp matches")
+        assertEqual(cleanReport.lastEventTimestamp, "2026-11-06T12:00:00Z", "Last event timestamp matches")
+
+        let cleanDict = cleanReport.toDictionary()
+        assertEqual(cleanDict["status"] as? String, "VERIFIED", "Report dictionary status matches")
+        assertEqual(cleanDict["validEventsCount"] as? Int, 3, "Report dictionary valid count matches")
+
+        // 2. Chronology anomaly detection
+        let retroEvent = AuditEvent(id: "ev4", timestamp: "2026-10-01T00:00:00Z", eventType: "face_verified", isSuccess: true)
+        let dRetro = try! encoder.encode(retroEvent)
+        let retroContent = cleanContent + String(data: dRetro, encoding: .utf8)! + "\n"
+        try! retroContent.write(to: auditLogURL, atomically: true, encoding: .utf8)
+
+        let retroReport = SecurityAuditLogger.shared.verifyAuditIntegrity(fileURL: auditLogURL)
+        assertEqual(retroReport.status, "WARNING_CHRONOLOGY", "Out-of-order timestamp triggers WARNING_CHRONOLOGY")
+        assert(retroReport.chronologyErrorsCount >= 1, "Chronology error detected (\(retroReport.chronologyErrorsCount))")
+
+        // 3. Corrupted lines detection and repair
+        let corruptedContent = cleanContent + "\n{malformed json record line}\n   \n"
+        try! corruptedContent.write(to: auditLogURL, atomically: true, encoding: .utf8)
+
+        let corruptReport = SecurityAuditLogger.shared.verifyAuditIntegrity(fileURL: auditLogURL)
+        assertEqual(corruptReport.status, "CORRUPTED_DETECTED", "Malformed JSON triggers CORRUPTED_DETECTED")
+        assertEqual(corruptReport.corruptedLinesCount, 1, "Corrupted lines count is 1")
+        assert(!corruptReport.corruptedLineIndices.isEmpty, "Corrupted line index recorded")
+
+        let repairResult = try! SecurityAuditLogger.shared.repairAuditLog(fileURL: auditLogURL)
+        assertEqual(repairResult.purgedCorruptedCount, 1, "Purged 1 corrupted record")
+        assertEqual(repairResult.remainingCount, 3, "Retained 3 valid records")
+        assert(FileManager.default.fileExists(atPath: repairResult.backupPath), "Backup file was created at \(repairResult.backupPath)")
+
+        let postRepairReport = SecurityAuditLogger.shared.verifyAuditIntegrity(fileURL: auditLogURL)
+        assertEqual(postRepairReport.status, "VERIFIED", "Repaired audit log is VERIFIED")
+        assertEqual(postRepairReport.corruptedLinesCount, 0, "Repaired log has 0 corrupted lines")
+        assertEqual(postRepairReport.validEventsCount, 3, "Repaired log retains 3 valid records")
+
+        // 4. Security Posture Penalty & Actionable Advice
+        let hardenedConfig = Config(
+            pin: "987654",
+            isEnabled: true,
+            telegramBotToken: "tok",
+            telegramChatId: "id",
+            telegramEnabled: true,
+            livenessDetectionEnabled: true,
+            walkAwayLockEnabled: true,
+            walkAwayIdleSeconds: 45.0,
+            lockOnWake: true,
+            maxFailedPinAttempts: 3,
+            pinLockoutSeconds: 5.0,
+            shoulderSurfingDefense: true,
+            batteryAwareScanning: true,
+            presentationModeSuppression: true
+        )
+        var dummyBase = Array(repeating: Float(0.5), count: 128)
+        dummyBase[0] = 1.0
+        let baseNorm = normalize(dummyBase)
+        let cohesiveVectors = (0..<5).map { idx in
+            var v = baseNorm
+            v[1] += Float(idx) * 0.001
+            return normalize(v)
+        }
+        let cleanIntegrity = CameraScanner.IncidentIntegrityReport(
+            totalFilesScanned: 0,
+            validCapturesCount: 0,
+            corruptedCount: 0,
+            zeroByteCount: 0,
+            nonImageCount: 0,
+            totalValidSizeBytes: 0,
+            totalCorruptedSizeBytes: 0,
+            directory: "/tmp",
+            corruptedFilenames: [],
+            status: "HEALTHY"
+        )
+
+        let postureWithAuditCorruption = Diagnostics.assessSecurityPosture(
+            config: hardenedConfig,
+            enrolledVectors: cohesiveVectors,
+            integrityReport: cleanIntegrity,
+            auditIntegrityReport: corruptReport
+        )
+        assertEqual(postureWithAuditCorruption.score, 95, "5-point penalty applied for corrupted audit log (100 -> 95)")
+        assert(postureWithAuditCorruption.recommendations.contains(where: { $0.contains("repair-audit") }), "Recommends repair-audit when audit corruption detected")
+
+        // 5. Diagnostics report integration
+        let diagReport = Diagnostics.collectReport()
+        let storageDict = diagReport["storage"] as? [String: Any]
+        assert(storageDict?["auditIntegrity"] != nil, "Diagnostics storage includes auditIntegrity dictionary")
+
+        // 6. CLI Argument Normalization for v1.2.1
+        assertEqual(AppDelegate.normalizeArguments(["--audit-integrity-json"]), ["--audit-integrity", "--json"], "Normalizes --audit-integrity-json")
+        assertEqual(AppDelegate.normalizeArguments(["--check-audit-json"]), ["--audit-integrity", "--json"], "Normalizes --check-audit-json")
+        assertEqual(AppDelegate.normalizeArguments(["--check-audit"]), ["--audit-integrity"], "Normalizes --check-audit")
+        assertEqual(AppDelegate.normalizeArguments(["--repair-audit-json"]), ["--repair-audit", "--json"], "Normalizes --repair-audit-json")
+        assertEqual(AppDelegate.normalizeArguments(["--clean-corrupted-audit-json"]), ["--repair-audit", "--json"], "Normalizes --clean-corrupted-audit-json")
+        assertEqual(AppDelegate.normalizeArguments(["--clean-corrupted-audit"]), ["--repair-audit"], "Normalizes --clean-corrupted-audit")
+        assertEqual(AppDelegate.normalizeArguments(["--audit-digest-json"]), ["--audit-digest", "--json"], "Normalizes --audit-digest-json")
+        assertEqual(AppDelegate.normalizeArguments(["--audit-checksum-json"]), ["--audit-digest", "--json"], "Normalizes --audit-checksum-json")
+        assertEqual(AppDelegate.normalizeArguments(["--audit-checksum"]), ["--audit-digest"], "Normalizes --audit-checksum")
+    }
+
+    // MARK: - Maintenance v1.2.2 Enhancements Test Suite
+    private func testMaintenanceV122Enhancements() {
+        print("\n▶ Test Suite: Physical Threat Intelligence & Configuration Integrity (v1.2.2)")
+
+        // 1. Clean Baseline Threat Intelligence
+        let cleanIntel = SecurityAuditLogger.shared.analyzeThreatIntelligence(events: [])
+        assertEqual(cleanIntel.riskScore, 0, "Clean baseline risk score is 0")
+        assertEqual(cleanIntel.riskLevel, "LOW", "Clean baseline risk level is LOW")
+        assertEqual(cleanIntel.totalThreatEvents, 0, "Clean baseline total threat events is 0")
+        assertEqual(cleanIntel.anomalies.isEmpty, true, "No threat anomalies on clean baseline")
+        assertEqual(cleanIntel.peakThreatHour == nil, true, "Peak threat hour is nil when no events")
+        assertEqual(cleanIntel.hourlyDistribution.count, 24, "Hourly distribution contains 24 hourly buckets")
+
+        // 2. Synthesized Threat Intelligence Scenario
+        let now = Date()
+        let isoFormatter = ISO8601DateFormatter()
+        let nowStr = isoFormatter.string(from: now)
+        let offHoursDate = Calendar.current.date(bySettingHour: 2, minute: 15, second: 0, of: now) ?? now
+        let offHoursStr = isoFormatter.string(from: offHoursDate)
+
+        let testEvents: [AuditEvent] = [
+            AuditEvent(id: "e1", timestamp: nowStr, eventType: "pin_bruteforce", appName: "Terminal", bundleId: "com.apple.Terminal", distance: nil, threshold: nil, intruderPhoto: nil, details: "3 failed attempts", isSuccess: false),
+            AuditEvent(id: "e2", timestamp: nowStr, eventType: "pin_bruteforce", appName: "Terminal", bundleId: "com.apple.Terminal", distance: nil, threshold: nil, intruderPhoto: nil, details: "Cooling lockout", isSuccess: false),
+            AuditEvent(id: "e3", timestamp: nowStr, eventType: "shoulder_surfing", appName: nil, bundleId: nil, distance: nil, threshold: nil, intruderPhoto: "bystander_1.jpg", details: "Secondary face detected", isSuccess: false),
+            AuditEvent(id: "e4", timestamp: nowStr, eventType: "shoulder_surfing", appName: nil, bundleId: nil, distance: nil, threshold: nil, intruderPhoto: "bystander_2.jpg", details: "Bystander snooping", isSuccess: false),
+            AuditEvent(id: "e5", timestamp: offHoursDate != now ? offHoursStr : nowStr, eventType: "intruder_detected", appName: "Keychain Access", bundleId: "com.apple.keychainaccess", distance: 0.42, threshold: 0.22, intruderPhoto: "intruder_1.jpg", details: nil, isSuccess: false),
+            AuditEvent(id: "e6", timestamp: nowStr, eventType: "intruder_detected", appName: "Safari", bundleId: "com.apple.Safari", distance: 0.38, threshold: 0.22, intruderPhoto: "intruder_2.jpg", details: nil, isSuccess: false),
+            AuditEvent(id: "e7", timestamp: nowStr, eventType: "intruder_detected", appName: "System Settings", bundleId: "com.apple.systempreferences", distance: 0.45, threshold: 0.22, intruderPhoto: "intruder_3.jpg", details: nil, isSuccess: false)
+        ]
+
+        let threatReport = SecurityAuditLogger.shared.analyzeThreatIntelligence(events: testEvents)
+        assertEqual(threatReport.pinBruteforceCount, 2, "Counts 2 PIN bruteforce events")
+        assertEqual(threatReport.shoulderSurfingCount, 2, "Counts 2 shoulder surfing events")
+        assertEqual(threatReport.intruderCaptureCount, 3, "Counts 3 intruder captures")
+        assertEqual(threatReport.totalThreatEvents, 7, "Total threat events is 7")
+        assert(threatReport.riskScore >= 70, "Risk score achieves CRITICAL status (>= 70: \(threatReport.riskScore))")
+        assertEqual(threatReport.riskLevel, "CRITICAL", "Threat level is CRITICAL")
+        assertEqual(threatReport.statusBadge, "CRITICAL 🔴", "Status badge is CRITICAL 🔴")
+
+        // 3. Anomaly Pattern Detection
+        assert(threatReport.anomalies.contains(where: { $0.code == "PIN_BRUTEFORCE_DETECTED" }), "Detects PIN_BRUTEFORCE_DETECTED anomaly")
+        assert(threatReport.anomalies.contains(where: { $0.code == "HIGH_VELOCITY_INTRUSIONS" }), "Detects HIGH_VELOCITY_INTRUSIONS anomaly")
+        assert(threatReport.anomalies.contains(where: { $0.code == "PERSISTENT_SHOULDER_SURFING" }), "Detects PERSISTENT_SHOULDER_SURFING anomaly")
+        assert(threatReport.anomalies.contains(where: { $0.code == "PRIVILEGED_TARGET_ACCESS" }), "Detects PRIVILEGED_TARGET_ACCESS anomaly")
+        assert(!threatReport.mitigations.isEmpty, "Synthesizes actionable threat mitigations (\(threatReport.mitigations.count))")
+
+        // 4. Targeted Applications & Risk Ranking
+        assert(!threatReport.targetedApps.isEmpty, "Targeted apps populated")
+        assert(threatReport.targetedApps.contains(where: { $0.appName == "Terminal" && $0.riskCategory == "CRITICAL" }), "Terminal categorized as CRITICAL risk")
+        assert(threatReport.targetedApps.contains(where: { $0.appName == "Keychain Access" && $0.riskCategory == "CRITICAL" }), "Keychain Access categorized as CRITICAL risk")
+        assert(threatReport.targetedApps.contains(where: { $0.appName == "Safari" && $0.riskCategory == "HIGH" }), "Safari categorized as HIGH risk")
+
+        // 5. Configuration Security Validation Suite
+        let validReport = Config.validateConfig()
+        assert(validReport.isValid, "Default configuration is valid and secure")
+        assertEqual(validReport.errorCount, 0, "No errors on valid configuration")
+        assert(validReport.toDictionary()["isValid"] as? Bool == true, "ConfigValidationReport dictionary reflects isValid")
+
+        // Bad PIN validation
+        let badPinConfig = Config()
+        badPinConfig.pin = "12"
+        let badPinReport = Config.validateConfig(badPinConfig)
+        assert(!badPinReport.isValid, "Rejects short PIN")
+        assert(badPinReport.issues.contains(where: { $0.key == "pin" && $0.severity == "ERROR" }), "Reports ERROR for short PIN")
+
+        // Trivial PIN warning
+        let trivialConfig = Config()
+        trivialConfig.pin = "0000"
+        let trivialReport = Config.validateConfig(trivialConfig)
+        assert(trivialReport.issues.contains(where: { $0.key == "pin" && $0.severity == "WARNING" }), "Warns on default PIN '0000'")
+
+        // Threshold & timer validation
+        let badThresholdConfig = Config()
+        badThresholdConfig.similarityThreshold = 0.99
+        let badThresholdReport = Config.validateConfig(badThresholdConfig)
+        assert(!badThresholdReport.isValid, "Rejects similarity threshold out of bounds")
+
+        // Bundle identifier validation
+        let badAppConfig = Config()
+        badAppConfig.protectedBundleIdentifiers = ["--json", "valid.app.bundle"]
+        let badAppReport = Config.validateConfig(badAppConfig)
+        assert(!badAppReport.isValid, "Rejects invalid bundle identifier in protected list")
+
+        let dupAppConfig = Config()
+        dupAppConfig.protectedBundleIdentifiers = ["com.apple.Safari", "com.apple.Safari"]
+        let dupAppReport = Config.validateConfig(dupAppConfig)
+        assert(dupAppReport.issues.contains(where: { $0.severity == "WARNING" && $0.message.contains("Duplicate") }), "Warns on duplicate bundle identifiers")
+
+        // Telegram validation
+        let badTgConfig = Config()
+        badTgConfig.telegramEnabled = true
+        badTgConfig.telegramBotToken = ""
+        badTgConfig.telegramChatId = "12345"
+        let badTgReport = Config.validateConfig(badTgConfig)
+        assert(!badTgReport.isValid, "Rejects telegram enabled without bot token")
+
+        // 6. Diagnostics Report Integration
+        let diagReport = Diagnostics.collectReport()
+        assert(diagReport["threatIntelligence"] != nil, "Diagnostics includes threatIntelligence dictionary")
+        assert(diagReport["configValidation"] != nil, "Diagnostics includes configValidation dictionary")
+
+        // 7. CLI Argument Normalization for v1.2.2
+        assertEqual(AppDelegate.normalizeArguments(["--threat-intel-json"]), ["--threat-intel", "--json"], "Normalizes --threat-intel-json")
+        assertEqual(AppDelegate.normalizeArguments(["--threat-intelligence-json"]), ["--threat-intel", "--json"], "Normalizes --threat-intelligence-json")
+        assertEqual(AppDelegate.normalizeArguments(["--risk-level-json"]), ["--threat-intel", "--json"], "Normalizes --risk-level-json")
+        assertEqual(AppDelegate.normalizeArguments(["--threat-intelligence"]), ["--threat-intel"], "Normalizes --threat-intelligence")
+        assertEqual(AppDelegate.normalizeArguments(["--risk-level"]), ["--threat-intel"], "Normalizes --risk-level")
+        assertEqual(AppDelegate.normalizeArguments(["--validate-config-json"]), ["--validate-config", "--json"], "Normalizes --validate-config-json")
+        assertEqual(AppDelegate.normalizeArguments(["--check-config-json"]), ["--validate-config", "--json"], "Normalizes --check-config-json")
+        assertEqual(AppDelegate.normalizeArguments(["--check-config"]), ["--validate-config"], "Normalizes --check-config")
+    }
+
+    // MARK: - Maintenance v1.2.3 Enhancements Test Suite (Duress Defense & Storage Quota)
+    private func testMaintenanceV123Enhancements() {
+        print("\n▶ Test Suite: Duress Defense Suite & Intruder Storage Quota (v1.2.3)")
+
+        // 1. Duress PIN Validation
+        let val1 = Config.isValidDuressPin("9999", masterPin: "1234")
+        assert(val1.isValid, "Valid 4-digit duress PIN accepted")
+
+        let valSame = Config.isValidDuressPin("1234", masterPin: "1234")
+        assert(!valSame.isValid, "Rejects duress PIN matching master PIN")
+
+        let valShort = Config.isValidDuressPin("123", masterPin: "1234")
+        assert(!valShort.isValid, "Rejects short duress PIN (<4 digits)")
+
+        let valLong = Config.isValidDuressPin("123456789", masterPin: "1234")
+        assert(!valLong.isValid, "Rejects long duress PIN (>8 digits)")
+
+        let valAlpha = Config.isValidDuressPin("12ab", masterPin: "1234")
+        assert(!valAlpha.isValid, "Rejects non-numeric duress PIN")
+
+        let valEmpty = Config.isValidDuressPin("", masterPin: "1234")
+        assert(valEmpty.isValid, "Empty duress PIN is valid (disabled state)")
+
+        // 2. Duress Configuration State
+        let cfg = Config()
+        cfg.pin = "1234"
+        cfg.duressPin = ""
+        assertEqual(cfg.isDuressPinEnabled, false, "Duress is disabled when duressPin is empty")
+
+        let setResult = cfg.setDuressPin("8888")
+        assert(setResult.success, "setDuressPin succeeds with valid 8888")
+        assertEqual(cfg.isDuressPinEnabled, true, "Duress is enabled after setting valid PIN")
+        assertEqual(cfg.duressPin, "8888", "duressPin stores value")
+
+        cfg.clearDuressPin()
+        assertEqual(cfg.isDuressPinEnabled, false, "clearDuressPin disables duress")
+        assertEqual(cfg.duressPin, "", "clearDuressPin resets to empty string")
+
+        // 3. Security Audit Logging & Summary
+        let t = ISO8601DateFormatter().string(from: Date())
+        let testEvents: [AuditEvent] = [
+            AuditEvent(id: "d1", timestamp: t, eventType: "duress_pin_unlocked", appName: "Terminal", bundleId: "com.apple.Terminal", details: "Coerced unlock", isSuccess: true),
+            AuditEvent(id: "d2", timestamp: t, eventType: "face_verified", appName: "Safari", bundleId: "com.apple.Safari", details: "Verified", isSuccess: true)
+        ]
+        let summary = SecurityAuditLogger.shared.getAuditSummary(events: testEvents)
+        assertEqual(summary.duressPinUnlocks, 1, "AuditSummary correctly counts duressPinUnlocks")
+        let sumDict = summary.toDictionary()
+        assertEqual(sumDict["duressPinUnlocks"] as? Int, 1, "AuditSummary dictionary contains duressPinUnlocks")
+
+        // 4. Telegram Duress Alert Formatting
+        let caption = TelegramNotifier.formatDuressAlertCaption(appName: "1Password & Secrets")
+        assert(caption.contains("ВНИМАНИЕ! Введён код принуждения"), "Duress alert caption contains warning banner")
+        assert(caption.contains("1Password &amp; Secrets"), "Duress alert caption safely escapes HTML")
+
+        // 5. Camera Storage Quota Pruning
+        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("facelock_quota_test_\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let dummyBytes = Data(repeating: 0xFF, count: 512 * 1024)
+        for i in 1...3 {
+            let u = tempDir.appendingPathComponent("intruder_test_\(i).jpg")
+            try? dummyBytes.write(to: u)
+        }
+
+        let pruneRes = CameraScanner.shared.pruneIncidentsByDiskQuota(maxBytes: 1024 * 1024, directoryURL: tempDir)
+        assert(pruneRes.removedCount >= 1, "pruneIncidentsByDiskQuota prunes files when exceeding maxBytes")
+        assert(pruneRes.remainingCount <= 2, "pruneIncidentsByDiskQuota keeps files within budget")
+
+        // 6. Security Posture Breakdown Integration
+        let posture = Diagnostics.assessSecurityPosture(config: cfg, enrolledVectors: [])
+        let postureDict = posture.toDictionary()
+        let breakdown = postureDict["breakdown"] as? [String: Any]
+        assert(breakdown?["duressDefense"] != nil, "Posture breakdown contains duressDefense dictionary")
+
+        // 7. Custom Meeting Applications Whitelist
+        Config.shared.resetMeetingApps()
+        assertEqual(Config.shared.customPresentationBundleIdentifiers.count, 0, "Custom meeting apps empty after reset")
+        assert(Config.shared.addMeetingApp("com.corp.custommeeting"), "Valid bundle identifier added to custom meeting apps")
+        assert(!Config.shared.addMeetingApp("com.corp.custommeeting"), "Duplicate bundle identifier rejected")
+        assert(!Config.shared.addMeetingApp("--json"), "Invalid bundle identifier rejected")
+        assertEqual(Config.shared.customPresentationBundleIdentifiers.contains("com.corp.custommeeting"), true, "Custom meeting list contains added bundle ID")
+        assert(WalkAwayMonitor.isPresentationActive(bundleId: "com.corp.custommeeting"), "WalkAwayMonitor recognizes custom meeting app for lock suppression")
+        assert(Config.shared.removeMeetingApp("com.corp.custommeeting"), "Removes custom meeting app")
+        assert(!Config.shared.removeMeetingApp("com.corp.custommeeting"), "Cannot remove already-removed meeting app")
+        assertEqual(Config.shared.customPresentationBundleIdentifiers.count, 0, "Custom meeting apps list is empty after removal")
+
+        // 8. CLI Argument Normalization for v1.2.3 & Custom Meeting Apps
+        assertEqual(AppDelegate.normalizeArguments(["--set-duress-pin-json"]), ["--set-duress-pin", "--json"], "Normalizes --set-duress-pin-json")
+        assertEqual(AppDelegate.normalizeArguments(["--clear-duress-pin-json"]), ["--clear-duress-pin", "--json"], "Normalizes --clear-duress-pin-json")
+        assertEqual(AppDelegate.normalizeArguments(["--duress-status-json"]), ["--duress-status", "--json"], "Normalizes --duress-status-json")
+        assertEqual(AppDelegate.normalizeArguments(["--prune-incidents-quota-json"]), ["--prune-incidents-size", "--json"], "Normalizes --prune-incidents-quota-json")
+        assertEqual(AppDelegate.normalizeArguments(["--prune-incidents-quota"]), ["--prune-incidents-size"], "Normalizes --prune-incidents-quota")
+        assertEqual(AppDelegate.normalizeArguments(["--add-meeting-app-json"]), ["--add-meeting-app", "--json"], "Normalizes --add-meeting-app-json")
+        assertEqual(AppDelegate.normalizeArguments(["--add-presentation-app-json"]), ["--add-meeting-app", "--json"], "Normalizes --add-presentation-app-json")
+        assertEqual(AppDelegate.normalizeArguments(["--add-presentation-app"]), ["--add-meeting-app"], "Normalizes --add-presentation-app")
+        assertEqual(AppDelegate.normalizeArguments(["--remove-meeting-app-json"]), ["--remove-meeting-app", "--json"], "Normalizes --remove-meeting-app-json")
+        assertEqual(AppDelegate.normalizeArguments(["--remove-presentation-app-json"]), ["--remove-meeting-app", "--json"], "Normalizes --remove-presentation-app-json")
+        assertEqual(AppDelegate.normalizeArguments(["--remove-presentation-app"]), ["--remove-meeting-app"], "Normalizes --remove-presentation-app")
+        assertEqual(AppDelegate.normalizeArguments(["--reset-meeting-apps-json"]), ["--reset-meeting-apps", "--json"], "Normalizes --reset-meeting-apps-json")
+        assertEqual(AppDelegate.normalizeArguments(["--reset-presentation-apps-json"]), ["--reset-meeting-apps", "--json"], "Normalizes --reset-presentation-apps-json")
+        assertEqual(AppDelegate.normalizeArguments(["--reset-presentation-apps"]), ["--reset-meeting-apps"], "Normalizes --reset-presentation-apps")
+        assertEqual(AppDelegate.normalizeArguments(["--custom-meeting-apps-json"]), ["--custom-meeting-apps", "--json"], "Normalizes --custom-meeting-apps-json")
+        assertEqual(AppDelegate.normalizeArguments(["--custom-presentation-apps-json"]), ["--custom-meeting-apps", "--json"], "Normalizes --custom-presentation-apps-json")
+        assertEqual(AppDelegate.normalizeArguments(["--custom-presentation-apps"]), ["--custom-meeting-apps"], "Normalizes --custom-presentation-apps")
+
+        // 9. Forensic Incident Archive with SHA-256 Checksums
+        let archiveTempDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("facelock_archive_test_\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: archiveTempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: archiveTempDir) }
+
+        let archiveResult = try! CameraScanner.shared.archiveIncidents(to: archiveTempDir.path)
+        let manifestPath = archiveResult["manifestPath"] as? String ?? ""
+        assert(FileManager.default.fileExists(atPath: manifestPath), "Forensic manifest generated at \(manifestPath)")
+        let rootChecksum = archiveResult["forensicChecksum"] as? String ?? ""
+        assertEqual(rootChecksum.count, 64, "Forensic root checksum is 64 hex characters")
+
+        assertEqual(AppDelegate.normalizeArguments(["--archive-incidents-json"]), ["--archive-incidents", "--json"], "Normalizes --archive-incidents-json")
+        assertEqual(AppDelegate.normalizeArguments(["--threat-intel-json"]), ["--threat-intel", "--json"], "Normalizes --threat-intel-json")
+        assertEqual(AppDelegate.normalizeArguments(["--threat-level-json"]), ["--threat-intel", "--json"], "Normalizes --threat-level-json")
+        assertEqual(AppDelegate.normalizeArguments(["--threat-summary-json"]), ["--threat-intel", "--json"], "Normalizes --threat-summary-json")
+        assertEqual(AppDelegate.normalizeArguments(["--threat-level"]), ["--threat-intel"], "Normalizes --threat-level")
+        assertEqual(AppDelegate.normalizeArguments(["--threat-summary"]), ["--threat-intel"], "Normalizes --threat-summary")
+        assertEqual(AppDelegate.normalizeArguments(["--threat"]), ["--threat-intel"], "Normalizes --threat")
     }
 
     // MARK: - 10. Performance Benchmark

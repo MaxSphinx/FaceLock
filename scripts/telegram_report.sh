@@ -184,12 +184,81 @@ if os.path.exists(p):
             feats.append('Audible 🔔')
         if c.get('presentationModeSuppression', True):
             feats.append('Meeting-Safe 🎯')
+        dp = c.get('duressPin', '')
+        if dp and dp != c.get('pin', '') and len(dp) >= 4:
+            feats.append('Duress-Safe 🔏')
         print(', '.join(feats) if feats else 'Базовые')
     except:
         print('N/A')
 else:
     print('N/A')
 " 2>/dev/null || echo "N/A")
+
+BIN_CANDIDATE=""
+if [[ -x "$REPO_DIR/build/FaceLock.app/Contents/MacOS/FaceLock" ]]; then
+    BIN_CANDIDATE="$REPO_DIR/build/FaceLock.app/Contents/MacOS/FaceLock"
+elif [[ -x "/Applications/FaceLock.app/Contents/MacOS/FaceLock" ]]; then
+    BIN_CANDIDATE="/Applications/FaceLock.app/Contents/MacOS/FaceLock"
+elif command -v facelock >/dev/null 2>&1; then
+    BIN_CANDIDATE="facelock"
+fi
+
+if [[ -n "$BIN_CANDIDATE" ]]; then
+    POSTURE_REPORT=$("$BIN_CANDIDATE" --security-score-json 2>/dev/null || echo "{}")
+    THREAT_REPORT=$("$BIN_CANDIDATE" --threat-intel --json 2>/dev/null || echo "{}")
+else
+    POSTURE_REPORT="{}"
+    THREAT_REPORT="{}"
+fi
+POSTURE_SCORE=$(echo "$POSTURE_REPORT" | python3 -c "import sys, json
+try:
+    content = sys.stdin.read()
+    idx = content.find('{')
+    if idx != -1:
+        content = content[idx:]
+    d = json.loads(content)
+    s = d.get('score', None)
+    g = d.get('grade', '')
+    st = d.get('status', '')
+    if s is not None:
+        print(f'{s}/100 ({g} {st})')
+    else:
+        print('N/A')
+except:
+    print('N/A')
+" 2>/dev/null || echo "N/A")
+
+DURESS_STATUS=$(python3 -c "import json, os
+p = os.path.expanduser('~/.facelock/config.json')
+if os.path.exists(p):
+    try:
+        c = json.load(open(p))
+        dp = c.get('duressPin', '')
+        mp = c.get('pin', '')
+        if dp and dp != mp and len(dp) >= 4:
+            print('АКТИВЕН 🔏')
+        else:
+            print('НЕ НАСТРОЕН ⚪')
+    except:
+        print('N/A')
+else:
+    print('N/A')
+" 2>/dev/null || echo "N/A")
+
+THREAT_STATUS=$(echo "$THREAT_REPORT" | python3 -c "import sys, json
+try:
+    content = sys.stdin.read()
+    idx = content.find('{')
+    if idx != -1:
+        content = content[idx:]
+    d = json.loads(content)
+    lvl = d.get('riskLevel', 'LOW')
+    badge = d.get('statusBadge', '🟢')
+    score = d.get('riskScore', 0)
+    print(f'{lvl} {badge} ({score}/100)')
+except:
+    print('LOW 🟢 (0/100)')
+" 2>/dev/null || echo "LOW 🟢")
 
 # Latest commit info
 if [[ -d "$REPO_DIR/.git" ]]; then
@@ -222,6 +291,9 @@ MESSAGE="🛡️ <b>FaceLock Status Report</b>
 • Демон: <b>$DAEMON_STATUS</b>
 • Защита: <b>$SHIELD_STATUS</b>
 • Профиль: <b>$ACTIVE_PROFILE</b>
+• Рейтинг безопасности: <b>$POSTURE_SCORE</b>
+• Уровень угрозы: <b>$THREAT_STATUS</b>
+• Duress PIN (тихая тревога): <b>$DURESS_STATUS</b>
 • Активные модули: <b>$DEFENSE_FEATURES</b>
 • Слепки лица: <b>$ENROLLED_COUNT</b>
 • Нарушители: <b>$INTRUDER_COUNT</b>

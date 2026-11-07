@@ -3,6 +3,7 @@ import AVFoundation
 import Vision
 import CoreImage
 import AppKit
+import CryptoKit
 
 public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     public static let shared = CameraScanner()
@@ -48,11 +49,13 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
     public private(set) var latestSavedIntruderURL: URL?
     public var autoSaveIntruders: Bool = true
     private var lastShoulderAlertTime: Date = .distantPast
+    private var currentScanPrefix: String = "intruder"
 
     public func clearCandidateFaceprint() {
         self.lastCandidateVector = nil
         self.latestBestDistance = nil
         self.latestSavedIntruderURL = nil
+        self.currentScanPrefix = "intruder"
     }
 
     // Enrollment support
@@ -138,7 +141,7 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         }
     }
 
-    public func scanFace(timeout: Double = 1.3, completion: @escaping (Bool, Float?, NSImage?) -> Void) {
+    public func scanFace(timeout: Double = 1.3, incidentPrefix: String = "intruder", completion: @escaping (Bool, Float?, NSImage?) -> Void) {
         cameraQueue.async { [weak self] in
             guard let self = self else { return }
             self.configureSessionIfNeeded()
@@ -158,6 +161,7 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
 
             self.isScanning = true
             self.scanCompletion = completion
+            self.currentScanPrefix = incidentPrefix
             self.latestIntruderPhoto = nil
             self.lastFrameSnapshot = nil
             self.latestBestDistance = nil
@@ -196,10 +200,11 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
             intruderImage = self.lastFrameSnapshot
         }
         if let photo = intruderImage, autoSaveIntruders {
-            self.latestSavedIntruderURL = self.saveIntruderPhoto(photo)
+            self.latestSavedIntruderURL = self.saveIntruderPhoto(photo, prefix: self.currentScanPrefix)
         } else {
             self.latestSavedIntruderURL = nil
         }
+        self.currentScanPrefix = "intruder"
 
         let bestDist = self.latestBestDistance
         let comp = scanCompletion
@@ -214,6 +219,7 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         isScanning = false
         scanTimer?.cancel()
         scanTimer = nil
+        currentScanPrefix = "intruder"
         latestIntruderPhoto = nil
         lastFrameSnapshot = nil
         latestBestDistance = nil
@@ -885,6 +891,179 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
         return (removedCount, remainingCount, freedBytes)
     }
 
+    public static func isValidStorageBudgetMB(_ mb: Double) -> Bool {
+        return mb >= 1.0 && mb <= 10240.0 && !mb.isNaN && !mb.isInfinite
+    }
+
+    public static func formatBytes(_ bytes: UInt64) -> String {
+        if bytes >= 1024 * 1024 * 1024 {
+            return String(format: "%.2f GB", Double(bytes) / (1024.0 * 1024.0 * 1024.0))
+        } else if bytes >= 1024 * 1024 {
+            return String(format: "%.2f MB", Double(bytes) / (1024.0 * 1024.0))
+        } else if bytes >= 1024 {
+            return String(format: "%.1f KB", Double(bytes) / 1024.0)
+        } else {
+            return "\(bytes) B"
+        }
+    }
+
+    @discardableResult
+    public func pruneIncidentsExceedingSize(maxMegabytes: Double, directoryURL: URL? = nil) -> (removedCount: Int, remainingCount: Int, freedBytes: UInt64, finalSizeBytes: UInt64) {
+        guard CameraScanner.isValidStorageBudgetMB(maxMegabytes) else {
+            return (0, 0, 0, 0)
+        }
+        let maxBytes = UInt64(maxMegabytes * 1024.0 * 1024.0)
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let dir = directoryURL ?? home.appendingPathComponent(".facelock/intruders", isDirectory: true)
+        guard let files = try? FileManager.default.contentsOfDirectory(atPath: dir.path) else {
+            return (0, 0, 0, 0)
+        }
+        let jpegs = files.filter { $0.hasSuffix(".jpg") || $0.hasSuffix(".jpeg") || $0.hasSuffix(".png") }
+
+        var fileInfos: [(url: URL, size: UInt64, date: Date)] = []
+        var currentTotalSize: UInt64 = 0
+        for f in jpegs {
+            let u = dir.appendingPathComponent(f)
+            if let attrs = try? FileManager.default.attributesOfItem(atPath: u.path) {
+                let sz = (attrs[.size] as? UInt64) ?? 0
+                let dt = (attrs[.modificationDate] as? Date) ?? Date.distantPast
+                fileInfos.append((url: u, size: sz, date: dt))
+                currentTotalSize += sz
+            }
+        }
+
+        // Sort ascending by modification date (oldest captures pruned first)
+        fileInfos.sort { $0.date < $1.date }
+
+        var removedCount = 0
+        var freedBytes: UInt64 = 0
+        var remainingFiles = fileInfos
+
+        while currentTotalSize > maxBytes && !remainingFiles.isEmpty {
+            let candidate = remainingFiles.removeFirst()
+            if (try? FileManager.default.removeItem(at: candidate.url)) != nil {
+                removedCount += 1
+                freedBytes += candidate.size
+                currentTotalSize = currentTotalSize >= candidate.size ? (currentTotalSize - candidate.size) : 0
+            }
+        }
+
+        if removedCount > 0 {
+            SecurityAuditLogger.shared.logIncidentsAction(
+                action: "Pruned \(removedCount) incident capture(s) exceeding \(String(format: "%.1f", maxMegabytes))MB budget",
+                count: removedCount
+            )
+        }
+
+        return (removedCount, remainingFiles.count, freedBytes, currentTotalSize)
+    }
+
+    @discardableResult
+    public func pruneIncidentsByDiskQuota(maxBytes: UInt64, directoryURL: URL? = nil) -> (removedCount: Int, remainingCount: Int, freedBytes: UInt64) {
+        let maxMB = Double(maxBytes) / (1024.0 * 1024.0)
+        let res = pruneIncidentsExceedingSize(maxMegabytes: maxMB, directoryURL: directoryURL)
+        return (res.removedCount, res.remainingCount, res.freedBytes)
+    }
+
+    @discardableResult
+    public func pruneIncidentsByMegaBytes(maxMB: Int, directoryURL: URL? = nil) -> (removedCount: Int, remainingCount: Int, freedBytes: UInt64) {
+        let res = pruneIncidentsExceedingSize(maxMegabytes: Double(maxMB), directoryURL: directoryURL)
+        return (res.removedCount, res.remainingCount, res.freedBytes)
+    }
+
+    public func getStorageSummary(baseDirectoryURL: URL? = nil) -> [String: Any] {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let baseDir = baseDirectoryURL ?? home.appendingPathComponent(".facelock", isDirectory: true)
+        let intrudersDir = baseDir.appendingPathComponent("intruders", isDirectory: true)
+        let auditLogFile = baseDir.appendingPathComponent("audit_log.jsonl")
+        let vectorsFile = baseDir.appendingPathComponent("owner_face_vectors.json")
+        let configFile = baseDir.appendingPathComponent("config.json")
+
+        // 1. Incidents
+        var validPhotoCount = 0
+        var intruderBytes: UInt64 = 0
+        var recent24h = 0
+        var recent7d = 0
+        let oneDayAgo = Date().addingTimeInterval(-86400)
+        let sevenDaysAgo = Date().addingTimeInterval(-7 * 86400)
+
+        if let files = try? FileManager.default.contentsOfDirectory(atPath: intrudersDir.path) {
+            let imageFiles = files.filter { $0.hasSuffix(".jpg") || $0.hasSuffix(".jpeg") || $0.hasSuffix(".png") }
+            validPhotoCount = imageFiles.count
+            for f in imageFiles {
+                let p = intrudersDir.appendingPathComponent(f).path
+                if let attrs = try? FileManager.default.attributesOfItem(atPath: p) {
+                    let sz = (attrs[.size] as? UInt64) ?? 0
+                    intruderBytes += sz
+                    if let modDate = attrs[.modificationDate] as? Date {
+                        if modDate >= oneDayAgo {
+                            recent24h += 1
+                        }
+                        if modDate >= sevenDaysAgo {
+                            recent7d += 1
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Audit Log
+        var auditBytes: UInt64 = 0
+        var auditEventsCount = 0
+        if let attrs = try? FileManager.default.attributesOfItem(atPath: auditLogFile.path) {
+            auditBytes = (attrs[.size] as? UInt64) ?? 0
+            if let content = try? String(contentsOf: auditLogFile, encoding: .utf8) {
+                auditEventsCount = content.split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count
+            }
+        }
+
+        // 3. Face Vectors
+        var vectorBytes: UInt64 = 0
+        var templateCount = 0
+        if let attrs = try? FileManager.default.attributesOfItem(atPath: vectorsFile.path) {
+            vectorBytes = (attrs[.size] as? UInt64) ?? 0
+            if let data = try? Data(contentsOf: vectorsFile),
+               let arr = try? JSONSerialization.jsonObject(with: data) as? [[Float]] {
+                templateCount = arr.count
+            }
+        }
+
+        // 4. Config
+        var configBytes: UInt64 = 0
+        if let attrs = try? FileManager.default.attributesOfItem(atPath: configFile.path) {
+            configBytes = (attrs[.size] as? UInt64) ?? 0
+        }
+
+        let totalBytes = intruderBytes + auditBytes + vectorBytes + configBytes
+
+        return [
+            "directory": baseDir.path,
+            "totalSizeBytes": totalBytes,
+            "totalFormatted": CameraScanner.formatBytes(totalBytes),
+            "incidents": [
+                "count": validPhotoCount,
+                "sizeBytes": intruderBytes,
+                "sizeFormatted": CameraScanner.formatBytes(intruderBytes),
+                "past24HoursCount": recent24h,
+                "past7DaysCount": recent7d
+            ],
+            "auditLogs": [
+                "totalEvents": auditEventsCount,
+                "sizeBytes": auditBytes,
+                "sizeFormatted": CameraScanner.formatBytes(auditBytes)
+            ],
+            "vectors": [
+                "templateCount": templateCount,
+                "sizeBytes": vectorBytes,
+                "sizeFormatted": CameraScanner.formatBytes(vectorBytes)
+            ],
+            "config": [
+                "sizeBytes": configBytes,
+                "sizeFormatted": CameraScanner.formatBytes(configBytes)
+            ]
+        ]
+    }
+
     public struct IncidentIntegrityReport {
         public let totalFilesScanned: Int
         public let validCapturesCount: Int
@@ -1121,6 +1300,122 @@ public final class CameraScanner: NSObject, AVCaptureVideoDataOutputSampleBuffer
             "typeBreakdown": typeBreakdown,
             "destination": destURL.path,
             "manifestPath": manifestURL.path
+        ]
+    }
+
+    public func archiveIncidents(to destinationPath: String, filterType: String? = nil) throws -> [String: Any] {
+        let expanded = NSString(string: destinationPath).expandingTildeInPath
+        let destURL = URL(fileURLWithPath: expanded)
+
+        let fileManager = FileManager.default
+        if !fileManager.fileExists(atPath: destURL.path) {
+            try fileManager.createDirectory(at: destURL, withIntermediateDirectories: true)
+        }
+
+        let home = fileManager.homeDirectoryForCurrentUser
+        let sourceDir = home.appendingPathComponent(".facelock/intruders", isDirectory: true)
+
+        let normalizedFilter: String?
+        if let f = filterType?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), !f.isEmpty && f != "all" {
+            if f == "shoulder" || f == "shoulder_surfing" {
+                normalizedFilter = "bystander"
+            } else {
+                normalizedFilter = f
+            }
+        } else {
+            normalizedFilter = nil
+        }
+
+        guard let files = try? fileManager.contentsOfDirectory(atPath: sourceDir.path) else {
+            return [
+                "count": 0,
+                "totalBytes": UInt64(0),
+                "filter": normalizedFilter ?? "all",
+                "typeBreakdown": [String: Int](),
+                "destination": destURL.path,
+                "manifestPath": "",
+                "forensicChecksum": ""
+            ]
+        }
+
+        var jpegFiles = files.filter { $0.hasSuffix(".jpg") || $0.hasSuffix(".jpeg") }.sorted()
+        if let filter = normalizedFilter {
+            jpegFiles = jpegFiles.filter { CameraScanner.incidentType(for: $0) == filter }
+        }
+
+        var manifestEntries: [[String: Any]] = []
+        var totalBytes: UInt64 = 0
+        var exportedCount = 0
+        var typeBreakdown: [String: Int] = [:]
+        var concatenatedHashes = ""
+
+        for file in jpegFiles {
+            let srcFile = sourceDir.appendingPathComponent(file)
+            let dstFile = destURL.appendingPathComponent(file)
+
+            if fileManager.fileExists(atPath: dstFile.path) {
+                try? fileManager.removeItem(at: dstFile)
+            }
+
+            try fileManager.copyItem(at: srcFile, to: dstFile)
+            exportedCount += 1
+
+            let incType = CameraScanner.incidentType(for: file)
+            typeBreakdown[incType, default: 0] += 1
+
+            var size: UInt64 = 0
+            var modDate = ""
+            var sha256Hex = ""
+
+            if let fileData = try? Data(contentsOf: dstFile) {
+                let digest = SHA256.hash(data: fileData)
+                sha256Hex = digest.map { String(format: "%02x", $0) }.joined()
+                concatenatedHashes += sha256Hex
+            }
+
+            if let attrs = try? fileManager.attributesOfItem(atPath: dstFile.path) {
+                size = attrs[.size] as? UInt64 ?? 0
+                totalBytes += size
+                if let date = attrs[.modificationDate] as? Date {
+                    modDate = ISO8601DateFormatter().string(from: date)
+                }
+            }
+
+            manifestEntries.append([
+                "filename": file,
+                "type": incType,
+                "sizeBytes": size,
+                "modified": modDate,
+                "sha256": sha256Hex
+            ])
+        }
+
+        let rootDigest = SHA256.hash(data: concatenatedHashes.data(using: .utf8) ?? Data())
+        let forensicChecksum = rootDigest.map { String(format: "%02x", $0) }.joined()
+
+        let manifestURL = destURL.appendingPathComponent("forensic_manifest.json")
+        let manifestData: [String: Any] = [
+            "archiveDate": ISO8601DateFormatter().string(from: Date()),
+            "totalCount": exportedCount,
+            "totalBytes": totalBytes,
+            "filter": normalizedFilter ?? "all",
+            "typeBreakdown": typeBreakdown,
+            "forensicChecksum": forensicChecksum,
+            "incidents": manifestEntries
+        ]
+        let jsonData = try JSONSerialization.data(withJSONObject: manifestData, options: [.prettyPrinted, .sortedKeys])
+        try jsonData.write(to: manifestURL, options: .atomic)
+
+        SecurityAuditLogger.shared.logIncidentsAction(action: "Archived \(exportedCount) incident captures with SHA-256 manifest to \(destURL.lastPathComponent)", count: exportedCount)
+
+        return [
+            "count": exportedCount,
+            "totalBytes": totalBytes,
+            "filter": normalizedFilter ?? "all",
+            "typeBreakdown": typeBreakdown,
+            "destination": destURL.path,
+            "manifestPath": manifestURL.path,
+            "forensicChecksum": forensicChecksum
         ]
     }
 

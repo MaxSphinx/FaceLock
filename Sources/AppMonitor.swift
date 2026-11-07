@@ -157,7 +157,7 @@ public final class AppMonitor {
         print("[AppMonitor] System/screen wake event detected with lockOnWake active. Verifying owner...")
         HUDController.shared.showScanning(appName: "Wake Verification")
 
-        CameraScanner.shared.scanFace(timeout: Config.shared.verificationTimeout) { [weak self] (success, distance, intruderImage) in
+        CameraScanner.shared.scanFace(timeout: Config.shared.verificationTimeout, incidentPrefix: "wake") { [weak self] (success, distance, intruderImage) in
             DispatchQueue.main.async {
                 guard let self = self else { return }
                 self.isVerifying = false
@@ -232,7 +232,7 @@ public final class AppMonitor {
         let appName = app.localizedName ?? bundleId
         HUDController.shared.showScanning(appName: appName)
 
-        CameraScanner.shared.scanFace(timeout: Config.shared.verificationTimeout) { [weak self] (success, distance, intruderImage) in
+        CameraScanner.shared.scanFace(timeout: Config.shared.verificationTimeout, incidentPrefix: "intruder") { [weak self] (success, distance, intruderImage) in
             DispatchQueue.main.async {
                 guard let self = self else { return }
                 self.isVerifying = false

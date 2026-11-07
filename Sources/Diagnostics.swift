@@ -44,6 +44,53 @@ public struct SecurityPostureReport {
     }
 }
 
+public struct HardeningResult {
+    public let previousScore: Int
+    public let newScore: Int
+    public let scoreDelta: Int
+    public let previousGrade: String
+    public let newGrade: String
+    public let previousStatus: String
+    public let newStatus: String
+    public let appliedFixes: [String]
+    public let remainingRecommendations: [String]
+
+    public init(
+        previousScore: Int,
+        newScore: Int,
+        previousGrade: String,
+        newGrade: String,
+        previousStatus: String,
+        newStatus: String,
+        appliedFixes: [String],
+        remainingRecommendations: [String]
+    ) {
+        self.previousScore = previousScore
+        self.newScore = newScore
+        self.scoreDelta = newScore - previousScore
+        self.previousGrade = previousGrade
+        self.newGrade = newGrade
+        self.previousStatus = previousStatus
+        self.newStatus = newStatus
+        self.appliedFixes = appliedFixes
+        self.remainingRecommendations = remainingRecommendations
+    }
+
+    public func toDictionary() -> [String: Any] {
+        return [
+            "previousScore": previousScore,
+            "newScore": newScore,
+            "scoreDelta": scoreDelta,
+            "previousGrade": previousGrade,
+            "newGrade": newGrade,
+            "previousStatus": previousStatus,
+            "newStatus": newStatus,
+            "appliedFixes": appliedFixes,
+            "remainingRecommendations": remainingRecommendations
+        ]
+    }
+}
+
 public struct Diagnostics {
     public static func collectReport() -> [String: Any] {
         // 1. System & Architecture
@@ -224,9 +271,13 @@ public struct Diagnostics {
                 "auditStats": auditStats.toDictionary(),
                 "incidentStats": incidentStats.toDictionary(),
                 "templateConsistency": config.analyzeTemplateConsistency(),
-                "incidentsIntegrity": CameraScanner.shared.verifyIncidentsIntegrity().toDictionary()
+                "incidentsIntegrity": CameraScanner.shared.verifyIncidentsIntegrity().toDictionary(),
+                "auditIntegrity": SecurityAuditLogger.shared.verifyAuditIntegrity().toDictionary(),
+                "storageSummary": CameraScanner.shared.getStorageSummary()
             ],
             "securityPosture": posture.toDictionary(),
+            "threatIntelligence": SecurityAuditLogger.shared.analyzeThreatIntelligence().toDictionary(),
+            "configValidation": Config.validateConfig().toDictionary(),
             "integrations": [
                 "telegramConfigured": tgConfigured,
                 "telegramEnabled": config.telegramEnabled,
@@ -239,7 +290,8 @@ public struct Diagnostics {
     public static func assessSecurityPosture(
         config: Config = .shared,
         enrolledVectors: [[Float]]? = nil,
-        integrityReport: CameraScanner.IncidentIntegrityReport? = nil
+        integrityReport: CameraScanner.IncidentIntegrityReport? = nil,
+        auditIntegrityReport: AuditIntegrityReport? = nil
     ) -> SecurityPostureReport {
         var score = 0
         var breakdown: [String: Any] = [:]
@@ -432,6 +484,28 @@ public struct Diagnostics {
             "status": integrity.status
         ]
 
+        // 12. Security Audit Log Integrity Check (-5 pts penalty if corrupted records detected)
+        let auditReport = auditIntegrityReport ?? SecurityAuditLogger.shared.verifyAuditIntegrity()
+        var auditPenalty = 0
+        if auditReport.corruptedLinesCount > 0 {
+            auditPenalty = 5
+            score = max(0, score - auditPenalty)
+            recommendations.append("Corrupted audit log records detected (\(auditReport.corruptedLinesCount)). Run 'facelock --repair-audit'.")
+        }
+        breakdown["auditIntegrity"] = [
+            "corruptedLinesCount": auditReport.corruptedLinesCount,
+            "penalty": auditPenalty,
+            "status": auditReport.status,
+            "sha256Digest": auditReport.sha256Digest
+        ]
+
+        // 13. Duress Emergency Distress Signal
+        let duressActive = config.isDuressPinEnabled
+        breakdown["duressDefense"] = [
+            "enabled": duressActive,
+            "configured": !config.duressPin.isEmpty
+        ]
+
         let finalScore = min(100, max(0, score))
         let percentage = Double(finalScore)
 
@@ -463,6 +537,102 @@ public struct Diagnostics {
             percentage: percentage,
             breakdown: breakdown,
             recommendations: recommendations
+        )
+    }
+
+    public static func autoHardenSecurity(
+        config: Config = .shared,
+        enrolledVectors: [[Float]]? = nil,
+        integrityReport: CameraScanner.IncidentIntegrityReport? = nil,
+        save: Bool = true
+    ) -> HardeningResult {
+        let before = assessSecurityPosture(config: config, enrolledVectors: enrolledVectors, integrityReport: integrityReport)
+        var fixes: [String] = []
+
+        if !config.isEnabled {
+            config.isEnabled = true
+            fixes.append("Re-engaged biometric shield protection (shieldState: active)")
+        }
+        if !config.shoulderSurfingDefense {
+            config.shoulderSurfingDefense = true
+            fixes.append("Enabled shoulder-surfing bystander detection")
+        }
+        if !config.lockOnWake {
+            config.lockOnWake = true
+            fixes.append("Enabled lock-on-wake for Mac screen wake")
+        }
+        if !config.batteryAwareScanning {
+            config.batteryAwareScanning = true
+            fixes.append("Enabled battery-aware adaptive idle polling")
+        }
+        if !config.presentationModeSuppression {
+            config.presentationModeSuppression = true
+            fixes.append("Enabled meeting and presentation mode auto-suppression")
+        }
+        if !config.livenessDetectionEnabled {
+            config.livenessDetectionEnabled = true
+            fixes.append("Enabled deep neural anti-spoofing liveness verification")
+        }
+        if !config.walkAwayLockEnabled {
+            config.walkAwayLockEnabled = true
+            fixes.append("Enabled walk-away autonomous screen lock")
+        }
+        if config.walkAwayIdleSeconds > 45 {
+            config.walkAwayIdleSeconds = 45
+            fixes.append("Hardened walk-away timeout to 45 seconds")
+        }
+        if config.maxFailedPinAttempts > 3 {
+            config.maxFailedPinAttempts = 3
+            fixes.append("Hardened PIN attempt limit to 3 maximum failed attempts")
+        }
+        if config.pinLockoutSeconds < 5 {
+            config.pinLockoutSeconds = 5
+            fixes.append("Hardened PIN lockout exponential cooldown to 5 seconds")
+        }
+
+        // Purge corrupted captures if any exist
+        var updatedIntegrity = integrityReport
+        if save {
+            let integrity = integrityReport ?? CameraScanner.shared.verifyIncidentsIntegrity()
+            if integrity.corruptedCount > 0 {
+                let rep = CameraScanner.shared.repairCorruptedIncidents()
+                if rep.repairedCount > 0 {
+                    fixes.append("Purged \(rep.repairedCount) corrupted intruder capture files")
+                    updatedIntegrity = CameraScanner.shared.verifyIncidentsIntegrity()
+                }
+            }
+
+            // Optimize vectors if cluster has outliers
+            let curVectors = enrolledVectors ?? config.loadEnrolledVectors()
+            if curVectors.count >= 4 {
+                let opt = config.optimizeVectors()
+                let pruned = (opt["prunedOutliers"] as? Int ?? 0) + (opt["prunedRedundant"] as? Int ?? 0)
+                if pruned > 0 {
+                    fixes.append("Pruned \(pruned) outlier/redundant vectors to improve cluster cohesion")
+                }
+            }
+
+            config.save()
+            SecurityAuditLogger.shared.log(
+                eventType: "config_change",
+                appName: "FaceLock Hardening",
+                bundleId: "io.github.facelock",
+                details: "Autonomous security hardening: applied \(fixes.count) policies",
+                isSuccess: true
+            )
+        }
+
+        let after = assessSecurityPosture(config: config, enrolledVectors: enrolledVectors, integrityReport: updatedIntegrity)
+
+        return HardeningResult(
+            previousScore: before.score,
+            newScore: after.score,
+            previousGrade: before.grade,
+            newGrade: after.grade,
+            previousStatus: before.status,
+            newStatus: after.status,
+            appliedFixes: fixes,
+            remainingRecommendations: after.recommendations
         )
     }
 
@@ -635,7 +805,15 @@ public struct Diagnostics {
         let auditMB = Double(auditBytes) / (1024.0 * 1024.0)
         let auditToday = (storage["auditStats"] as? [String: Any])?["todayCount"] as? Int ?? 0
         let todayText = auditToday > 0 ? " (\(auditToday) today)" : ""
-        print("  • Security Audit Log: \(auditEvents) events\(todayText) (\(String(format: "%.2f", auditMB)) MB), last: \(auditLast)")
+        let auditInteg = storage["auditIntegrity"] as? [String: Any]
+        let auditStatus = auditInteg?["status"] as? String ?? "VERIFIED"
+        let auditDigest = (auditInteg?["sha256Digest"] as? String)?.prefix(12) ?? ""
+        let digestSuffix = auditDigest.isEmpty ? "" : " [\(auditStatus) - SHA-256: \(auditDigest)...]"
+        print("  • Security Audit Log: \(auditEvents) events\(todayText) (\(String(format: "%.2f", auditMB)) MB), last: \(auditLast)\(digestSuffix)")
+        let storageSummary = storage["storageSummary"] as? [String: Any]
+        let totalFormatted = storageSummary?["totalFormatted"] as? String ?? "\(String(format: "%.2f", sizeMB + auditMB)) MB"
+        let facelockDirPath = (storageSummary?["directory"] as? String) ?? (URL(fileURLWithPath: configPath).deletingLastPathComponent().path)
+        print("  • Total FaceLock Footprint: \(totalFormatted) in \(facelockDirPath)")
 
         print("\n[7] Integrations & Cloud Connectivity:")
         if tgConfigured {
@@ -663,6 +841,42 @@ public struct Diagnostics {
             print("  • Recommendations (\(posture.recommendations.count)):")
             for rec in posture.recommendations {
                 print("    - \(rec)")
+            }
+        }
+
+        print("\n[9] Physical Threat Intelligence & Intrusion Risk:")
+        let threat = SecurityAuditLogger.shared.analyzeThreatIntelligence()
+        print("  • Physical Threat Risk: \(threat.statusBadge) (Score: \(threat.riskScore)/100)")
+        print("  • Total Threat Events: \(threat.totalThreatEvents) (\(threat.past24HoursCount) in past 24h, \(threat.past7DaysCount) in past 7d)")
+        print("  • PIN Bruteforce Lockouts: \(threat.pinBruteforceCount)")
+        print("  • Shoulder-Surfing Incidents: \(threat.shoulderSurfingCount)")
+        if let peak = threat.peakThreatHour {
+            print("  • Peak Intrusion Hour: \(String(format: "%02d:00", peak))")
+        }
+        if threat.anomalies.isEmpty {
+            print("  • Detected Threat Anomalies: None (Clean environment) ✅")
+        } else {
+            print("  • Detected Threat Anomalies (\(threat.anomalies.count)):")
+            for a in threat.anomalies {
+                print("    - [\(a.severity)] \(a.description)")
+            }
+        }
+        if !threat.targetedApps.isEmpty {
+            print("  • Targeted Applications:")
+            for app in threat.targetedApps.prefix(3) {
+                print("    - \(app.appName): \(app.attemptCount) attempt(s) [\(app.riskCategory) Risk]")
+            }
+        }
+
+        print("\n[10] Configuration Integrity & Security Validation:")
+        let val = Config.validateConfig()
+        print("  • Configuration Status: \(val.isValid ? "VALID & SECURE ✅" : "CONFIGURATION ERRORS FOUND ❌")")
+        print("  • Issues: \(val.errorCount) error(s), \(val.warningCount) warning(s)")
+        if val.issues.isEmpty {
+            print("  • All settings conform to Apple reverse-DNS and security hardening standards.")
+        } else {
+            for issue in val.issues {
+                print("    - [\(issue.severity)] \(issue.key): \(issue.message)")
             }
         }
 

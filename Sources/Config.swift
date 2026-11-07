@@ -4,7 +4,8 @@ import AppKit
 import UniformTypeIdentifiers
 
 public final class Config: Codable {
-    // Last maintenance check: 2026-11-05
+    // Last maintenance check: 2026-11-07
+    public static let currentVersion = "1.2.3"
     public static let shared = Config.load()
 
     public static let defaultProtectedBundleIdentifiers: [String] = [
@@ -96,6 +97,8 @@ public final class Config: Codable {
     public var batteryAwareScanning: Bool
     public var audibleAlerts: Bool
     public var presentationModeSuppression: Bool
+    public var duressPin: String
+    public var customPresentationBundleIdentifiers: [String]
 
     public init(
         pin: String = "0000",
@@ -123,7 +126,9 @@ public final class Config: Codable {
         shoulderSurfingDefense: Bool = false,
         batteryAwareScanning: Bool = true,
         audibleAlerts: Bool = false,
-        presentationModeSuppression: Bool = true
+        presentationModeSuppression: Bool = true,
+        duressPin: String = "",
+        customPresentationBundleIdentifiers: [String] = []
     ) {
         self.pin = pin
         self.similarityThreshold = similarityThreshold
@@ -151,6 +156,8 @@ public final class Config: Codable {
         self.batteryAwareScanning = batteryAwareScanning
         self.audibleAlerts = audibleAlerts
         self.presentationModeSuppression = presentationModeSuppression
+        self.duressPin = duressPin
+        self.customPresentationBundleIdentifiers = customPresentationBundleIdentifiers
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -180,6 +187,8 @@ public final class Config: Codable {
         case batteryAwareScanning
         case audibleAlerts
         case presentationModeSuppression
+        case duressPin
+        case customPresentationBundleIdentifiers
     }
 
     public required init(from decoder: Decoder) throws {
@@ -210,6 +219,8 @@ public final class Config: Codable {
         self.batteryAwareScanning = try container.decodeIfPresent(Bool.self, forKey: .batteryAwareScanning) ?? true
         self.audibleAlerts = try container.decodeIfPresent(Bool.self, forKey: .audibleAlerts) ?? false
         self.presentationModeSuppression = try container.decodeIfPresent(Bool.self, forKey: .presentationModeSuppression) ?? true
+        self.duressPin = try container.decodeIfPresent(String.self, forKey: .duressPin) ?? ""
+        self.customPresentationBundleIdentifiers = try container.decodeIfPresent([String].self, forKey: .customPresentationBundleIdentifiers) ?? []
     }
 
     public static func profile(named profileName: String) -> SecurityProfile? {
@@ -269,6 +280,45 @@ public final class Config: Codable {
             return first.isLetter || first.isNumber || first == "_"
         }) else { return false }
         return true
+    }
+
+    public static func isValidDuressPin(_ candidate: String, masterPin: String) -> (isValid: Bool, error: String?) {
+        let trimmed = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return (true, nil)
+        }
+        guard trimmed.count >= 4 && trimmed.count <= 8 else {
+            return (false, "Код принуждения должен содержать от 4 до 8 цифр.")
+        }
+        guard trimmed.allSatisfy({ $0.isNumber }) else {
+            return (false, "Код принуждения должен состоять только из цифр.")
+        }
+        let cleanMaster = masterPin.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed != cleanMaster else {
+            return (false, "Код принуждения не должен совпадать с основным мастер-PIN.")
+        }
+        return (true, nil)
+    }
+
+    public var isDuressPinEnabled: Bool {
+        let trimmed = duressPin.trimmingCharacters(in: .whitespacesAndNewlines)
+        let master = pin.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !trimmed.isEmpty && trimmed != master && trimmed.count >= 4 && trimmed.count <= 8 && trimmed.allSatisfy { $0.isNumber }
+    }
+
+    public func setDuressPin(_ newPin: String) -> (success: Bool, message: String) {
+        let validation = Config.isValidDuressPin(newPin, masterPin: self.pin)
+        if !validation.isValid {
+            return (false, validation.error ?? "Недопустимый код принуждения.")
+        }
+        self.duressPin = newPin.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.save()
+        return (true, "Код принуждения успешно установлен")
+    }
+
+    public func clearDuressPin() {
+        self.duressPin = ""
+        self.save()
     }
 
     public static var allProfileNames: [String] {
@@ -437,6 +487,8 @@ public final class Config: Codable {
             self.batteryAwareScanning = fresh.batteryAwareScanning
             self.audibleAlerts = fresh.audibleAlerts
             self.presentationModeSuppression = fresh.presentationModeSuppression
+            self.duressPin = fresh.duressPin
+            self.customPresentationBundleIdentifiers = fresh.customPresentationBundleIdentifiers
         }
     }
 
@@ -489,6 +541,8 @@ public final class Config: Codable {
         self.batteryAwareScanning = imported.batteryAwareScanning
         self.audibleAlerts = imported.audibleAlerts
         self.presentationModeSuppression = imported.presentationModeSuppression
+        self.duressPin = imported.duressPin
+        self.customPresentationBundleIdentifiers = imported.customPresentationBundleIdentifiers
         self.save()
     }
 
@@ -528,9 +582,13 @@ public final class Config: Codable {
             "batteryAwareScanning": batteryAwareScanning,
             "audibleAlerts": audibleAlerts,
             "presentationModeSuppression": presentationModeSuppression,
+            "duressPin": duressPin.isEmpty ? "" : "••••••••",
+            "isDuressPinEnabled": isDuressPinEnabled,
             "hasEnrolledFace": hasEnrolledFace,
             "protectedAppsCount": protectedBundleIdentifiers.count,
             "ignoredAppsCount": ignoredBundleIdentifiers.count,
+            "customPresentationBundleIdentifiers": customPresentationBundleIdentifiers,
+            "customMeetingAppsCount": customPresentationBundleIdentifiers.count,
             "enrolledVectorsCount": loadEnrolledVectors().count
         ]
     }
@@ -639,6 +697,33 @@ public final class Config: Codable {
     public func resetAllAppLists() {
         self.protectedBundleIdentifiers = Config.defaultProtectedBundleIdentifiers
         self.ignoredBundleIdentifiers = Config.defaultIgnoredBundleIdentifiers
+        save()
+    }
+
+    public func addMeetingApp(_ bundleId: String) -> Bool {
+        let trimmed = bundleId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard Config.isValidBundleIdentifier(trimmed) else { return false }
+        if !customPresentationBundleIdentifiers.contains(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame }) {
+            customPresentationBundleIdentifiers.append(trimmed)
+            save()
+            return true
+        }
+        return false
+    }
+
+    public func removeMeetingApp(_ bundleId: String) -> Bool {
+        let trimmed = bundleId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard Config.isValidBundleIdentifier(trimmed) else { return false }
+        if let idx = customPresentationBundleIdentifiers.firstIndex(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame }) {
+            customPresentationBundleIdentifiers.remove(at: idx)
+            save()
+            return true
+        }
+        return false
+    }
+
+    public func resetMeetingApps() {
+        self.customPresentationBundleIdentifiers = []
         save()
     }
 
@@ -1037,5 +1122,367 @@ public final class Config: Codable {
             "avgDistanceToCentroid": Double(avgDistToCentroid),
             "recommendation": rec
         ]
+    }
+
+    @discardableResult
+    public func autoHardenSecurity() -> [String: Any] {
+        let initialReport = Diagnostics.assessSecurityPosture(config: self)
+        var changesApplied: [String] = []
+
+        if !self.isEnabled {
+            self.isEnabled = true
+            changesApplied.append("Enabled FaceLock shield protection")
+        }
+
+        if !self.walkAwayLockEnabled {
+            self.walkAwayLockEnabled = true
+            changesApplied.append("Enabled walk-away auto-lock detection")
+        }
+
+        if self.walkAwayIdleSeconds > 45.0 {
+            let oldSec = Int(self.walkAwayIdleSeconds)
+            self.walkAwayIdleSeconds = 45.0
+            changesApplied.append("Tightened walk-away timeout from \(oldSec)s to 45s")
+        }
+
+        if !self.shoulderSurfingDefense {
+            self.shoulderSurfingDefense = true
+            changesApplied.append("Enabled Shoulder-Surfing bystander defense")
+        }
+
+        if !self.livenessDetectionEnabled {
+            self.livenessDetectionEnabled = true
+            changesApplied.append("Enabled neural anti-spoofing liveness detection")
+        }
+
+        if !self.lockOnWake {
+            self.lockOnWake = true
+            changesApplied.append("Enabled instant biometric lock upon display/clamshell wake")
+        }
+
+        if !self.batteryAwareScanning {
+            self.batteryAwareScanning = true
+            changesApplied.append("Enabled battery-aware adaptive camera sweep throttling")
+        }
+
+        if !self.presentationModeSuppression {
+            self.presentationModeSuppression = true
+            changesApplied.append("Enabled presentation and video call lock auto-suppression")
+        }
+
+        if self.maxFailedPinAttempts > 5 {
+            let old = self.maxFailedPinAttempts
+            self.maxFailedPinAttempts = 5
+            changesApplied.append("Hardened PIN brute-force threshold from \(old) to 5 attempts")
+        }
+
+        if self.pinLockoutSeconds < 5.0 {
+            self.pinLockoutSeconds = 5.0
+            changesApplied.append("Set PIN cooling lockout delay to at least 5.0s")
+        }
+
+        let repairResult = CameraScanner.shared.repairCorruptedIncidents()
+        if repairResult.repairedCount > 0 {
+            changesApplied.append("Repaired \(repairResult.repairedCount) corrupted intruder capture file(s)")
+        }
+
+        if !changesApplied.isEmpty {
+            self.save()
+            SecurityAuditLogger.shared.logConfigChanged(
+                setting: "securityPostureHardening",
+                value: "applied",
+                details: "\(changesApplied.count) security control(s) hardened via autoHardenSecurity"
+            )
+        }
+
+        let hardenedReport = Diagnostics.assessSecurityPosture(config: self)
+        let scoreDelta = hardenedReport.score - initialReport.score
+
+        return [
+            "success": true,
+            "initialScore": initialReport.score,
+            "initialGrade": initialReport.grade,
+            "hardenedScore": hardenedReport.score,
+            "hardenedGrade": hardenedReport.grade,
+            "scoreDelta": scoreDelta,
+            "status": hardenedReport.status,
+            "changesApplied": changesApplied,
+            "recommendations": hardenedReport.recommendations
+        ]
+    }
+
+    public struct ConfigValidationIssue: Codable {
+        public let key: String
+        public let severity: String
+        public let message: String
+        public let remediation: String
+
+        public init(key: String, severity: String, message: String, remediation: String) {
+            self.key = key
+            self.severity = severity
+            self.message = message
+            self.remediation = remediation
+        }
+
+        public func toDictionary() -> [String: String] {
+            return [
+                "key": key,
+                "severity": severity,
+                "message": message,
+                "remediation": remediation
+            ]
+        }
+    }
+
+    public struct ConfigValidationReport {
+        public let isValid: Bool
+        public let errorCount: Int
+        public let warningCount: Int
+        public let infoCount: Int
+        public let issues: [ConfigValidationIssue]
+        public let suggestions: [String]
+
+        public init(
+            isValid: Bool,
+            errorCount: Int,
+            warningCount: Int,
+            infoCount: Int,
+            issues: [ConfigValidationIssue],
+            suggestions: [String]
+        ) {
+            self.isValid = isValid
+            self.errorCount = errorCount
+            self.warningCount = warningCount
+            self.infoCount = infoCount
+            self.issues = issues
+            self.suggestions = suggestions
+        }
+
+        public func toDictionary() -> [String: Any] {
+            return [
+                "isValid": isValid,
+                "errorCount": errorCount,
+                "warningCount": warningCount,
+                "infoCount": infoCount,
+                "issues": issues.map { $0.toDictionary() },
+                "suggestions": suggestions
+            ]
+        }
+    }
+
+    public static func validateConfig(_ targetConfig: Config? = nil) -> ConfigValidationReport {
+        let config = targetConfig ?? Config.shared
+        var issues: [ConfigValidationIssue] = []
+        var suggestions: [String] = []
+
+        // 1. PIN Validation
+        if !Config.isValidPin(config.pin) {
+            issues.append(ConfigValidationIssue(
+                key: "pin",
+                severity: "ERROR",
+                message: "PIN must consist of 4 to 8 decimal digits (current: '\(config.pin)').",
+                remediation: "facelock --set-pin <4-8 digits>"
+            ))
+        } else if config.pin == "0000" || config.pin == "1234" {
+            issues.append(ConfigValidationIssue(
+                key: "pin",
+                severity: "WARNING",
+                message: "Using default or trivial PIN '\(config.pin)' reduces unlock security.",
+                remediation: "facelock --set-pin <unique-pin>"
+            ))
+        }
+        if config.pin.count < 6 {
+            suggestions.append("Upgrade PIN to 6 or 8 digits to defend against shoulder-surfing and brute-force.")
+        }
+
+        // 2. Thresholds and Timers
+        if !Config.isValidThreshold(config.similarityThreshold) {
+            issues.append(ConfigValidationIssue(
+                key: "similarityThreshold",
+                severity: "ERROR",
+                message: "Similarity threshold must be between 0.05 and 0.50 (current: \(config.similarityThreshold)).",
+                remediation: "facelock --set-threshold 0.22"
+            ))
+        } else if config.similarityThreshold > 0.30 {
+            issues.append(ConfigValidationIssue(
+                key: "similarityThreshold",
+                severity: "WARNING",
+                message: "High similarity threshold (\(config.similarityThreshold)) increases risk of false positive biometric acceptance.",
+                remediation: "facelock --set-threshold 0.22"
+            ))
+        }
+
+        if !Config.isValidTimeout(config.verificationTimeout) {
+            issues.append(ConfigValidationIssue(
+                key: "verificationTimeout",
+                severity: "ERROR",
+                message: "Verification timeout must be between 0.5s and 10.0s (current: \(config.verificationTimeout)s).",
+                remediation: "facelock --set-timeout 2.0"
+            ))
+        }
+
+        if !Config.isValidDebounce(config.debounceSeconds) {
+            issues.append(ConfigValidationIssue(
+                key: "debounceSeconds",
+                severity: "ERROR",
+                message: "Debounce interval must be between 0.5s and 30.0s (current: \(config.debounceSeconds)s).",
+                remediation: "facelock --set-debounce 2.0"
+            ))
+        }
+
+        if !Config.isValidWalkAwayTimeout(config.walkAwayIdleSeconds) {
+            issues.append(ConfigValidationIssue(
+                key: "walkAwayIdleSeconds",
+                severity: "ERROR",
+                message: "Walk-away idle timeout must be between 5s and 600s (current: \(config.walkAwayIdleSeconds)s).",
+                remediation: "facelock --set-walkaway 45"
+            ))
+        }
+
+        if !Config.isValidPinAttempts(config.maxFailedPinAttempts) {
+            issues.append(ConfigValidationIssue(
+                key: "maxFailedPinAttempts",
+                severity: "ERROR",
+                message: "Max failed PIN attempts must be between 1 and 10 (current: \(config.maxFailedPinAttempts)).",
+                remediation: "facelock --set-pin-attempts 3"
+            ))
+        }
+
+        if !Config.isValidPinLockout(config.pinLockoutSeconds) {
+            issues.append(ConfigValidationIssue(
+                key: "pinLockoutSeconds",
+                severity: "ERROR",
+                message: "PIN lockout cooling period must be between 1.0s and 60.0s (current: \(config.pinLockoutSeconds)s).",
+                remediation: "facelock --set-pin-lockout 5"
+            ))
+        }
+
+        // 3. Security Profile
+        if !Config.isValidProfile(config.activeProfile) {
+            issues.append(ConfigValidationIssue(
+                key: "activeProfile",
+                severity: "ERROR",
+                message: "Unknown security profile '\(config.activeProfile)'. Valid: normal, cafe, work, home, presentation, lockdown.",
+                remediation: "facelock --profile normal"
+            ))
+        }
+
+        // 4. Protection Mode
+        if !Config.isValidProtectionMode(config.protectionMode) {
+            issues.append(ConfigValidationIssue(
+                key: "protectionMode",
+                severity: "ERROR",
+                message: "Invalid protection mode '\(config.protectionMode)'. Valid modes: all, selective.",
+                remediation: "facelock --set-mode all"
+            ))
+        }
+
+        // 5. Application Bundle Identifiers
+        var seenProtected: Set<String> = []
+        for bundle in config.protectedBundleIdentifiers {
+            if !Config.isValidBundleIdentifier(bundle) {
+                issues.append(ConfigValidationIssue(
+                    key: "protectedBundleIdentifiers",
+                    severity: "ERROR",
+                    message: "Invalid bundle identifier format '\(bundle)' in protected list.",
+                    remediation: "facelock --unprotect-app \(bundle)"
+                ))
+            } else if seenProtected.contains(bundle.lowercased()) {
+                issues.append(ConfigValidationIssue(
+                    key: "protectedBundleIdentifiers",
+                    severity: "WARNING",
+                    message: "Duplicate bundle identifier '\(bundle)' in protected list.",
+                    remediation: "facelock --unprotect-app \(bundle)"
+                ))
+            } else {
+                seenProtected.insert(bundle.lowercased())
+            }
+        }
+
+        var seenIgnored: Set<String> = []
+        for bundle in config.ignoredBundleIdentifiers {
+            if !Config.isValidBundleIdentifier(bundle) {
+                issues.append(ConfigValidationIssue(
+                    key: "ignoredBundleIdentifiers",
+                    severity: "ERROR",
+                    message: "Invalid bundle identifier format '\(bundle)' in ignored list.",
+                    remediation: "facelock --unignore-app \(bundle)"
+                ))
+            } else if seenIgnored.contains(bundle.lowercased()) {
+                issues.append(ConfigValidationIssue(
+                    key: "ignoredBundleIdentifiers",
+                    severity: "WARNING",
+                    message: "Duplicate bundle identifier '\(bundle)' in ignored list.",
+                    remediation: "facelock --unignore-app \(bundle)"
+                ))
+            } else {
+                seenIgnored.insert(bundle.lowercased())
+            }
+
+            if seenProtected.contains(bundle.lowercased()) {
+                issues.append(ConfigValidationIssue(
+                    key: "ignoredBundleIdentifiers",
+                    severity: "WARNING",
+                    message: "Bundle identifier '\(bundle)' is present in both protected and ignored lists (ignored takes precedence).",
+                    remediation: "facelock --unprotect-app \(bundle) or facelock --unignore-app \(bundle)"
+                ))
+            }
+        }
+
+        // 6. Telegram Configuration
+        if config.telegramEnabled {
+            let token = config.telegramBotToken.trimmingCharacters(in: .whitespacesAndNewlines)
+            let chatId = config.telegramChatId.trimmingCharacters(in: .whitespacesAndNewlines)
+            if token.isEmpty {
+                issues.append(ConfigValidationIssue(
+                    key: "telegramBotToken",
+                    severity: "ERROR",
+                    message: "Telegram alerts are enabled but bot token is empty.",
+                    remediation: "facelock --set-telegram <token> <chatId>"
+                ))
+            } else if !token.contains(":") {
+                issues.append(ConfigValidationIssue(
+                    key: "telegramBotToken",
+                    severity: "WARNING",
+                    message: "Telegram bot token does not contain standard format '<botId>:<hash>'.",
+                    remediation: "facelock --set-telegram <validToken> <chatId>"
+                ))
+            }
+            if chatId.isEmpty {
+                issues.append(ConfigValidationIssue(
+                    key: "telegramChatId",
+                    severity: "ERROR",
+                    message: "Telegram alerts are enabled but chat ID is empty.",
+                    remediation: "facelock --set-telegram <token> <chatId>"
+                ))
+            }
+        }
+
+        // 7. Defense Suggestions
+        if !config.lockOnWake {
+            suggestions.append("Enable screen wake verification (--toggle-wake) to shield Mac upon lid open.")
+        }
+        if !config.shoulderSurfingDefense {
+            suggestions.append("Enable shoulder-surfing defense (--toggle-shoulder) for bystander detection in public spaces.")
+        }
+        if !config.batteryAwareScanning {
+            suggestions.append("Enable battery-aware scanning (--toggle-battery-aware) to preserve battery life.")
+        }
+        if !config.presentationModeSuppression {
+            suggestions.append("Enable presentation mode auto-suppression (--toggle-presentation) to prevent locks during calls.")
+        }
+
+        let errs = issues.filter { $0.severity == "ERROR" }.count
+        let warns = issues.filter { $0.severity == "WARNING" }.count
+        let infos = issues.filter { $0.severity == "INFO" }.count
+
+        return ConfigValidationReport(
+            isValid: errs == 0,
+            errorCount: errs,
+            warningCount: warns,
+            infoCount: infos,
+            issues: issues,
+            suggestions: suggestions
+        )
     }
 }

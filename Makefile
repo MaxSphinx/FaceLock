@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app protect-app-json unprotect-app unprotect-app-json ignore-app ignore-app-json unignore-app unignore-app-json reset-apps diagnostics diagnostics-gui health health-json toggle toggle-json pause pause-json resume resume-json toggle-wake toggle-wake-json wake reload reload-json reset-session reset-session-json check-app check-app-json vectors vectors-json optimize-vectors optimize-vectors-json vector-consistency vector-consistency-json clear-vectors clear-vectors-json reset-vectors reset-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents clear-incidents-json clear-incidents-type clear-incidents-type-json prune-incidents prune-incidents-days prune-incidents-days-json export-incidents export-incidents-json test-telegram test-telegram-json incidents incidents-summary incidents-summary-json incidents-search incidents-search-json incidents-integrity incidents-integrity-json check-incidents check-incidents-json repair-incidents repair-incidents-json latest-incident latest-incident-json export-latest-incident export-latest-incident-json incident incident-json delete-incident delete-incident-json verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-stats-json log-stats log-stats-json audit-summary audit-summary-json audit-gui audit-search audit-search-json prune-audit prune-audit-days prune-audit-days-json prune-logs-days prune-logs-days-json clear-audit clear-audit-json export-audit export-audit-json export-audit-csv export-audit-csv-json export-logs export-logs-json set-threshold set-threshold-json set-timeout set-timeout-json set-debounce set-debounce-json set-mode set-mode-json set-walkaway set-walkaway-json pin-attempts pin-attempts-json pin-lockout pin-lockout-json set-pin set-pin-json cameras cameras-json set-camera reset-camera backup-config backup-config-json export-config export-config-json restore-config restore-config-json import-config import-config-json export-vectors export-vectors-json backup-vectors backup-vectors-json import-vectors import-vectors-json restore-vectors restore-vectors-json test profiles profiles-json profile profile-json toggle-shoulder toggle-shoulder-json toggle-audible toggle-audible-json toggle-battery toggle-battery-json toggle-presentation toggle-presentation-json toggle-liveness toggle-liveness-json toggle-touchid toggle-touchid-json toggle-walkaway toggle-walkaway-json battery-status battery-status-json security-score security-score-json posture posture-json presentation-apps presentation-apps-json meeting-apps meeting-apps-json check-presentation check-presentation-json
+.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app protect-app-json unprotect-app unprotect-app-json ignore-app ignore-app-json unignore-app unignore-app-json reset-apps diagnostics diagnostics-gui health health-json toggle toggle-json pause pause-json resume resume-json toggle-wake toggle-wake-json wake reload reload-json reset-session reset-session-json check-app check-app-json vectors vectors-json optimize-vectors optimize-vectors-json vector-consistency vector-consistency-json clear-vectors clear-vectors-json reset-vectors reset-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents clear-incidents-json clear-incidents-type clear-incidents-type-json prune-incidents prune-incidents-days prune-incidents-days-json export-incidents export-incidents-json test-telegram test-telegram-json incidents incidents-summary incidents-summary-json incidents-search incidents-search-json incidents-integrity incidents-integrity-json check-incidents check-incidents-json repair-incidents repair-incidents-json latest-incident latest-incident-json export-latest-incident export-latest-incident-json incident incident-json delete-incident delete-incident-json verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-stats-json log-stats log-stats-json audit-summary audit-summary-json audit-gui audit-search audit-search-json prune-audit prune-audit-days prune-audit-days-json prune-logs-days prune-logs-days-json clear-audit clear-audit-json export-audit export-audit-json export-audit-csv export-audit-csv-json export-logs export-logs-json set-threshold set-threshold-json set-timeout set-timeout-json set-debounce set-debounce-json set-mode set-mode-json set-walkaway set-walkaway-json pin-attempts pin-attempts-json pin-lockout pin-lockout-json set-pin set-pin-json cameras cameras-json set-camera reset-camera backup-config backup-config-json export-config export-config-json restore-config restore-config-json import-config import-config-json export-vectors export-vectors-json backup-vectors backup-vectors-json import-vectors import-vectors-json restore-vectors restore-vectors-json test profiles profiles-json profile profile-json toggle-shoulder toggle-shoulder-json toggle-audible toggle-audible-json toggle-battery toggle-battery-json toggle-presentation toggle-presentation-json toggle-liveness toggle-liveness-json toggle-touchid toggle-touchid-json toggle-walkaway toggle-walkaway-json battery-status battery-status-json security-score security-score-json posture posture-json presentation-apps presentation-apps-json meeting-apps meeting-apps-json check-presentation check-presentation-json threat-intel threat-intel-json risk-level risk-level-json validate-config validate-config-json check-config check-config-json harden harden-json auto-harden auto-harden-json storage-summary storage-summary-json storage-stats storage-stats-json prune-incidents-size prune-incidents-size-json prune-incidents-mb prune-incidents-mb-json audit-integrity audit-integrity-json check-audit check-audit-json repair-audit repair-audit-json audit-digest audit-digest-json set-duress-pin set-duress-pin-json clear-duress-pin clear-duress-pin-json duress-status duress-status-json prune-incidents-quota prune-incidents-quota-json add-meeting-app add-meeting-app-json remove-meeting-app remove-meeting-app-json reset-meeting-apps reset-meeting-apps-json custom-meeting-apps custom-meeting-apps-json add-presentation-app add-presentation-app-json remove-presentation-app remove-presentation-app-json reset-presentation-apps custom-presentation-apps archive-incidents archive-incidents-json
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -73,6 +73,9 @@ help:
 	@echo "  make clear-audit    - Purge security audit event log"
 	@echo "  make export-audit FILE= - Export security audit log events to JSONL file"
 	@echo "  make export-audit-csv FILE= - Export security audit log events to RFC-4180 CSV file"
+	@echo "  make audit-integrity - Verify cryptographic integrity and detect corrupted audit logs"
+	@echo "  make repair-audit   - Repair corrupted security audit log records and create backup"
+	@echo "  make audit-digest   - Print SHA-256 fingerprint & summary of audit log"
 	@echo "  make incidents      - List logged intruder incident captures"
 	@echo "  make incidents-summary - Intruder telemetry (total, 24h, 7d, timestamps)"
 	@echo "  make export-incidents DIR= - Export all intruder incident photos & manifest"
@@ -83,6 +86,12 @@ help:
 	@echo "  make verify-face    - One-shot biometric face verification via camera"
 	@echo "  make set-pin PIN=   - Update lock screen unlock PIN (4-8 numeric digits)"
 	@echo "  make set-pin-json PIN= - Update lock screen unlock PIN (JSON output)"
+	@echo "  make set-duress-pin PIN= - Configure silent duress distress PIN (4-8 numeric digits)"
+	@echo "  make set-duress-pin-json PIN= - Configure duress PIN with JSON output"
+	@echo "  make clear-duress-pin - Clear duress PIN and disable coerced unlock detection"
+	@echo "  make clear-duress-pin-json - Clear duress PIN with JSON output"
+	@echo "  make duress-status  - Inspect duress emergency protection status"
+	@echo "  make duress-status-json - Inspect duress protection status in JSON format"
 	@echo "  make pin-attempts ATTEMPTS= - Set max failed PIN attempts before lockout"
 	@echo "  make pin-attempts-json ATTEMPTS= - Set max failed PIN attempts (JSON output)"
 	@echo "  make pin-lockout SECONDS= - Set cooling lockout delay after failed PINs"
@@ -91,10 +100,29 @@ help:
 	@echo "  make security-score-json - Output security posture assessment in JSON format"
 	@echo "  make posture        - Alias for security-score"
 	@echo "  make posture-json   - Output posture score in JSON format"
+	@echo "  make harden         - Automatically harden security posture & remediate vulnerabilities"
+	@echo "  make harden-json    - Auto-harden security posture with JSON output"
+	@echo "  make storage-summary - Display ~/.facelock/ storage footprint and quotas"
+	@echo "  make storage-summary-json - Display storage summary in JSON format"
+	@echo "  make prune-incidents-size MB= - Prune oldest captures exceeding MB disk budget"
+	@echo "  make prune-incidents-size-json MB= - Prune captures exceeding disk budget (JSON)"
+	@echo "  make prune-incidents-quota MB= - Alias for prune-incidents-size"
+	@echo "  make prune-incidents-quota-json MB= - Alias for prune-incidents-size-json"
 	@echo "  make presentation-apps - List recognized meeting & presentation apps"
 	@echo "  make presentation-apps-json - List meeting apps in JSON format"
 	@echo "  make check-presentation APP= - Check if bundle ID triggers meeting lock suppression"
 	@echo "  make check-presentation-json APP= - Check meeting suppression in JSON format"
+	@echo "  make add-meeting-app APP= - Add application to custom meeting lock suppression whitelist"
+	@echo "  make add-meeting-app-json APP= - Add application to meeting suppression whitelist (JSON)"
+	@echo "  make remove-meeting-app APP= - Remove application from meeting suppression whitelist"
+	@echo "  make remove-meeting-app-json APP= - Remove application from meeting suppression whitelist (JSON)"
+	@echo "  make reset-meeting-apps - Clear custom meeting suppression whitelist"
+	@echo "  make custom-meeting-apps - List user-configured custom meeting applications"
+	@echo "  make custom-meeting-apps-json - List custom meeting applications in JSON format"
+	@echo "  make threat-intel   - Physical security threat intelligence & intrusion risk analysis"
+	@echo "  make threat-intel-json - Physical threat intelligence report in JSON format"
+	@echo "  make validate-config - Validate configuration integrity, security rules & syntax"
+	@echo "  make validate-config-json - Configuration security validation report in JSON format"
 	@echo "  make test-telegram  - Dispatch test notification to Telegram chat"
 	@echo "  make diagnostics    - Run full biometric, hardware & storage diagnostics"
 	@echo "  make diagnostics-gui - Open interactive system diagnostics & health window"
@@ -565,6 +593,32 @@ pin-lockout: build
 pin-lockout-json: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-pin-lockout $(SECONDS) --json
 
+set-duress-pin: build
+	@if [ -z "$(PIN)" ]; then \
+		echo "Usage: make set-duress-pin PIN=<4-8 digit numeric PIN>"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-duress-pin $(PIN)
+
+set-duress-pin-json: build
+	@if [ -z "$(PIN)" ]; then \
+		echo "{\"success\":false,\"error\":\"Usage: make set-duress-pin-json PIN=<4-8 digit numeric PIN>\"}"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-duress-pin $(PIN) --json
+
+clear-duress-pin: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --clear-duress-pin
+
+clear-duress-pin-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --clear-duress-pin --json
+
+duress-status: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --duress-status
+
+duress-status-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --duress-status --json
+
 clear-incidents: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --clear-incidents
 
@@ -707,6 +761,27 @@ export-audit-csv-json: build
 
 export-logs: export-audit
 export-logs-json: export-audit-json
+
+audit-integrity: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-integrity
+
+audit-integrity-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-integrity --json
+
+check-audit: audit-integrity
+check-audit-json: audit-integrity-json
+
+repair-audit: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --repair-audit
+
+repair-audit-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --repair-audit --json
+
+audit-digest: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-digest
+
+audit-digest-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-digest --json
 
 set-threshold: build
 	@if [ -z "$(THRESHOLD)" ]; then \
@@ -900,6 +975,52 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --security-score-json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --posture > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --posture-json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --threat-intel > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --threat-intel --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --threat-intel-json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --risk-level > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --validate-config > /dev/null || true
+	@build/FaceLock.app/Contents/MacOS/FaceLock --validate-config --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --validate-config-json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --check-config-json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-integrity > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-integrity --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --check-audit > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --check-audit-json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-digest > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --audit-digest --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --storage-summary > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --storage-summary --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --storage-summary-json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --storage-stats > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --storage-stats-json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --prune-incidents-size 500 > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --prune-incidents-size 500 --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --prune-incidents-size-json 500 > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --prune-incidents-quota 500 > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --prune-incidents-quota 500 --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --prune-incidents-quota-json 500 > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --duress-status > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --duress-status --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --duress-status-json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-duress-pin 9999 --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --set-duress-pin-json 9999 > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --clear-duress-pin --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --clear-duress-pin-json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --add-meeting-app com.custom.meeting --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --add-meeting-app-json com.custom.meeting > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --custom-meeting-apps --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --custom-meeting-apps-json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --remove-meeting-app com.custom.meeting --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --remove-meeting-app-json com.custom.meeting > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --reset-meeting-apps --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --reset-meeting-apps-json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --harden > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --harden --json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --harden-json > /dev/null
+	@mkdir -p /tmp/facelock_test_archive && build/FaceLock.app/Contents/MacOS/FaceLock --archive-incidents /tmp/facelock_test_archive --json > /dev/null && rm -rf /tmp/facelock_test_archive
+	@build/FaceLock.app/Contents/MacOS/FaceLock --auto-harden > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --auto-harden-json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --set-profile normal --json > /dev/null
 	@build/FaceLock.app/Contents/MacOS/FaceLock --health --json > /dev/null || true
 	@echo "✓ All CLI tests passed!"
@@ -939,6 +1060,131 @@ check-presentation: build
 
 check-presentation-json: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --check-presentation $(APP) --json
+
+add-meeting-app: build
+	@if [ -z "$(APP)" ]; then \
+		echo "Usage: make add-meeting-app APP=<bundleId>"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --add-meeting-app "$(APP)"
+
+add-meeting-app-json: build
+	@if [ -z "$(APP)" ]; then \
+		echo "{\"success\":false,\"error\":\"Usage: make add-meeting-app-json APP=<bundleId>\"}"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --add-meeting-app "$(APP)" --json
+
+remove-meeting-app: build
+	@if [ -z "$(APP)" ]; then \
+		echo "Usage: make remove-meeting-app APP=<bundleId>"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --remove-meeting-app "$(APP)"
+
+remove-meeting-app-json: build
+	@if [ -z "$(APP)" ]; then \
+		echo "{\"success\":false,\"error\":\"Usage: make remove-meeting-app-json APP=<bundleId>\"}"; \
+		exit 1; \
+	fi
+	@build/FaceLock.app/Contents/MacOS/FaceLock --remove-meeting-app "$(APP)" --json
+
+reset-meeting-apps: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --reset-meeting-apps
+
+reset-meeting-apps-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --reset-meeting-apps --json
+
+custom-meeting-apps: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --custom-meeting-apps
+
+custom-meeting-apps-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --custom-meeting-apps --json
+
+add-presentation-app: add-meeting-app
+add-presentation-app-json: add-meeting-app-json
+remove-presentation-app: remove-meeting-app
+remove-presentation-app-json: remove-meeting-app-json
+reset-presentation-apps: reset-meeting-apps
+custom-presentation-apps: custom-meeting-apps
+
+threat-intel: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --threat-intel
+
+threat-intel-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --threat-intel --json
+
+risk-level: threat-intel
+
+risk-level-json: threat-intel-json
+
+validate-config: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --validate-config
+
+validate-config-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --validate-config --json
+
+check-config: validate-config
+
+check-config-json: validate-config-json
+
+harden: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --harden
+
+harden-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --harden --json
+
+auto-harden: harden
+
+auto-harden-json: harden-json
+
+storage-summary: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --storage-summary
+
+storage-summary-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --storage-summary --json
+
+storage-stats: storage-summary
+
+storage-stats-json: storage-summary-json
+
+prune-incidents-size: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --prune-incidents-size $(MB)
+
+prune-incidents-size-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --prune-incidents-size $(MB) --json
+
+prune-incidents-mb: prune-incidents-size
+
+prune-incidents-mb-json: prune-incidents-size-json
+
+prune-incidents-quota: prune-incidents-size
+
+prune-incidents-quota-json: prune-incidents-size-json
+
+archive-incidents: build
+	@if [ -z "$(DEST)" ] && [ -z "$(DIR)" ]; then \
+		echo "Usage: make archive-incidents DIR=<directory> [TYPE=<type>]"; \
+		exit 1; \
+	fi
+	@TARGET_DIR="$${DEST:-$(DIR)}"; \
+	if [ -n "$(TYPE)" ]; then \
+		build/FaceLock.app/Contents/MacOS/FaceLock --archive-incidents "$$TARGET_DIR" --type "$(TYPE)"; \
+	else \
+		build/FaceLock.app/Contents/MacOS/FaceLock --archive-incidents "$$TARGET_DIR"; \
+	fi
+
+archive-incidents-json: build
+	@if [ -z "$(DEST)" ] && [ -z "$(DIR)" ]; then \
+		echo "{\"success\":false,\"error\":\"Usage: make archive-incidents-json DIR=<directory> [TYPE=<type>]\"}"; \
+		exit 1; \
+	fi
+	@TARGET_DIR="$${DEST:-$(DIR)}"; \
+	if [ -n "$(TYPE)" ]; then \
+		build/FaceLock.app/Contents/MacOS/FaceLock --archive-incidents "$$TARGET_DIR" --type "$(TYPE)" --json; \
+	else \
+		build/FaceLock.app/Contents/MacOS/FaceLock --archive-incidents "$$TARGET_DIR" --json; \
+	fi
 
 commit:
 	@./scripts/autocommit.sh
