@@ -204,14 +204,17 @@ elif command -v facelock >/dev/null 2>&1; then
 fi
 
 if [[ -n "$BIN_CANDIDATE" ]]; then
-    POSTURE_REPORT=$("$BIN_CANDIDATE" --security-score-json 2>/dev/null || echo "{}")
-    THREAT_REPORT=$("$BIN_CANDIDATE" --threat-intel --json 2>/dev/null || echo "{}")
-    DOCTOR_REPORT=$("$BIN_CANDIDATE" --doctor-json 2>/dev/null || echo "{}")
+    POSTURE_REPORT=$("$BIN_CANDIDATE" --security-score-json 2>/dev/null || true)
+    THREAT_REPORT=$("$BIN_CANDIDATE" --threat-intel --json 2>/dev/null || true)
+    DOCTOR_REPORT=$("$BIN_CANDIDATE" --doctor-json 2>/dev/null || true)
 else
     POSTURE_REPORT="{}"
     THREAT_REPORT="{}"
     DOCTOR_REPORT="{}"
 fi
+if [[ -z "$POSTURE_REPORT" ]]; then POSTURE_REPORT="{}"; fi
+if [[ -z "$THREAT_REPORT" ]]; then THREAT_REPORT="{}"; fi
+if [[ -z "$DOCTOR_REPORT" ]]; then DOCTOR_REPORT="{}"; fi
 POSTURE_SCORE=$(echo "$POSTURE_REPORT" | python3 -c "import sys, json
 try:
     content = sys.stdin.read()
