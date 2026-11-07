@@ -206,9 +206,11 @@ fi
 if [[ -n "$BIN_CANDIDATE" ]]; then
     POSTURE_REPORT=$("$BIN_CANDIDATE" --security-score-json 2>/dev/null || echo "{}")
     THREAT_REPORT=$("$BIN_CANDIDATE" --threat-intel --json 2>/dev/null || echo "{}")
+    DOCTOR_REPORT=$("$BIN_CANDIDATE" --doctor-json 2>/dev/null || echo "{}")
 else
     POSTURE_REPORT="{}"
     THREAT_REPORT="{}"
+    DOCTOR_REPORT="{}"
 fi
 POSTURE_SCORE=$(echo "$POSTURE_REPORT" | python3 -c "import sys, json
 try:
@@ -222,6 +224,31 @@ try:
     st = d.get('status', '')
     if s is not None:
         print(f'{s}/100 ({g} {st})')
+    else:
+        print('N/A')
+except:
+    print('N/A')
+" 2>/dev/null || echo "N/A")
+
+DOCTOR_STATUS=$(echo "$DOCTOR_REPORT" | python3 -c "import sys, json
+try:
+    content = sys.stdin.read()
+    idx = content.find('{')
+    if idx != -1:
+        content = content[idx:]
+    d = json.loads(content)
+    st = d.get('overallStatus', '')
+    stats = d.get('stats', {})
+    p = stats.get('passed', 0)
+    tot = stats.get('totalChecks', 0)
+    w = stats.get('warnings', 0)
+    f = stats.get('failures', 0)
+    if st == 'HEALTHY':
+        print(f'ЗДОРОВ ✅ ({p}/{tot} проверок)')
+    elif st == 'WARNING':
+        print(f'ВНИМАНИЕ ⚠️ ({w} замечаний)')
+    elif st == 'CRITICAL':
+        print(f'КРИТИЧНО ❌ ({f} ошибок)')
     else:
         print('N/A')
 except:
@@ -252,10 +279,12 @@ try:
     if idx != -1:
         content = content[idx:]
     d = json.loads(content)
-    lvl = d.get('riskLevel', 'LOW')
-    badge = d.get('statusBadge', '🟢')
+    badge = d.get('statusBadge', '')
     score = d.get('riskScore', 0)
-    print(f'{lvl} {badge} ({score}/100)')
+    if not badge:
+        lvl = d.get('riskLevel', 'LOW')
+        badge = f'{lvl} 🟢'
+    print(f'{badge} ({score}/100)')
 except:
     print('LOW 🟢 (0/100)')
 " 2>/dev/null || echo "LOW 🟢")
@@ -289,6 +318,7 @@ MESSAGE="🛡️ <b>FaceLock Status Report</b>
 
 🖥️ <b>Локальный статус FaceLock:</b>
 • Демон: <b>$DAEMON_STATUS</b>
+• Доктор системы: <b>$DOCTOR_STATUS</b>
 • Защита: <b>$SHIELD_STATUS</b>
 • Профиль: <b>$ACTIVE_PROFILE</b>
 • Рейтинг безопасности: <b>$POSTURE_SCORE</b>

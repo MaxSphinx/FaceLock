@@ -285,6 +285,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--audit-digest", "--json"])
             case "--audit-checksum":
                 args.append("--audit-digest")
+            case "--doctor-json", "--diag-doctor-json", "--check-doctor-json", "--doctor-check-json":
+                args.append(contentsOf: ["--doctor", "--json"])
+            case "--diag-doctor", "--check-doctor", "--doctor-check":
+                args.append("--doctor")
             default:
                 args.append(arg)
             }
@@ -415,6 +419,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --set-camera <id|name|default> Set preferred camera device by ID, name substring, or 'default'
               --reset-camera [--json]    Reset preferred camera selection to default front/built-in camera
               --diagnostics, -d [--json] Run complete biometric & hardware system diagnostics
+              --doctor [--json]          Run comprehensive pre-flight & runtime health diagnostic doctor
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -450,6 +455,19 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         if args.contains("--diagnostics") || args.contains("-d") {
             Diagnostics.run(jsonOutput: args.contains("--json"))
             exit(0)
+        }
+
+        if args.contains("--doctor") {
+            let report = Diagnostics.runDoctor()
+            if args.contains("--json") {
+                if let data = try? JSONSerialization.data(withJSONObject: report.toDictionary(), options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                report.printDoctorSummary()
+            }
+            exit(report.failureCount > 0 ? 1 : 0)
         }
 
         if args.contains("--security-score") || args.contains("--posture") {

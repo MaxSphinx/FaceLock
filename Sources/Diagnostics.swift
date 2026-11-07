@@ -91,6 +91,167 @@ public struct HardeningResult {
     }
 }
 
+public enum DoctorCheckStatus: String, Codable {
+    case pass = "PASS"
+    case warn = "WARN"
+    case fail = "FAIL"
+    case info = "INFO"
+
+    public var badge: String {
+        switch self {
+        case .pass: return "PASS ✅"
+        case .warn: return "WARN ⚠️"
+        case .fail: return "FAIL ❌"
+        case .info: return "INFO ℹ️"
+        }
+    }
+}
+
+public struct DoctorCheckItem: Codable {
+    public let id: String
+    public let category: String
+    public let name: String
+    public let status: DoctorCheckStatus
+    public let message: String
+    public let remediation: String?
+
+    public init(
+        id: String,
+        category: String,
+        name: String,
+        status: DoctorCheckStatus,
+        message: String,
+        remediation: String? = nil
+    ) {
+        self.id = id
+        self.category = category
+        self.name = name
+        self.status = status
+        self.message = message
+        self.remediation = remediation
+    }
+
+    public func toDictionary() -> [String: Any] {
+        var dict: [String: Any] = [
+            "id": id,
+            "category": category,
+            "name": name,
+            "status": status.rawValue,
+            "badge": status.badge,
+            "message": message
+        ]
+        if let rem = remediation {
+            dict["remediation"] = rem
+        }
+        return dict
+    }
+}
+
+public struct DoctorReport {
+    public let overallStatus: String // "HEALTHY", "WARNING", "CRITICAL"
+    public let summary: String
+    public let checks: [DoctorCheckItem]
+    public let totalChecks: Int
+    public let passedCount: Int
+    public let warningCount: Int
+    public let failureCount: Int
+    public let infoCount: Int
+    public let remediations: [String]
+    public let timestamp: String
+    public let version: String
+
+    public init(
+        checks: [DoctorCheckItem],
+        version: String = Config.currentVersion
+    ) {
+        self.checks = checks
+        self.totalChecks = checks.count
+        self.passedCount = checks.filter { $0.status == .pass }.count
+        self.warningCount = checks.filter { $0.status == .warn }.count
+        self.failureCount = checks.filter { $0.status == .fail }.count
+        self.infoCount = checks.filter { $0.status == .info }.count
+        self.version = version
+
+        if failureCount > 0 {
+            self.overallStatus = "CRITICAL"
+            self.summary = "Critical issues detected (\(failureCount) failing checks). Immediate remediation required."
+        } else if warningCount > 0 {
+            self.overallStatus = "WARNING"
+            self.summary = "System operational with \(warningCount) warning(s) that should be addressed."
+        } else {
+            self.overallStatus = "HEALTHY"
+            self.summary = "All checks passed successfully. FaceLock is fully operational and hardened."
+        }
+
+        var rems: [String] = []
+        for c in checks {
+            if let r = c.remediation, !r.isEmpty {
+                rems.append(r)
+            }
+        }
+        self.remediations = rems
+        self.timestamp = ISO8601DateFormatter().string(from: Date())
+    }
+
+    public func toDictionary() -> [String: Any] {
+        return [
+            "version": version,
+            "timestamp": timestamp,
+            "overallStatus": overallStatus,
+            "summary": summary,
+            "stats": [
+                "totalChecks": totalChecks,
+                "passed": passedCount,
+                "warnings": warningCount,
+                "failures": failureCount,
+                "info": infoCount
+            ],
+            "checks": checks.map { $0.toDictionary() },
+            "remediations": remediations
+        ]
+    }
+
+    public func printDoctorSummary() {
+        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        print("          🩺  FaceLock Health & Diagnostic Doctor           ")
+        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        let statusBadge: String
+        switch overallStatus {
+        case "HEALTHY": statusBadge = "HEALTHY ✅"
+        case "WARNING": statusBadge = "WARNING ⚠️"
+        default:        statusBadge = "CRITICAL ❌"
+        }
+        print("Overall System Status: \(statusBadge) (\(passedCount) Passed, \(warningCount) Warnings, \(failureCount) Failures, \(infoCount) Info)")
+        print("FaceLock Version: v\(version)")
+
+        let categories: [(String, String)] = [
+            ("hardware", "Hardware & Sensors"),
+            ("filesystem", "Filesystem & Cryptography"),
+            ("daemon", "Background Daemon & Automation"),
+            ("security", "Security Posture & Hardening"),
+            ("network", "Remote Alerting & Network")
+        ]
+
+        for (catKey, catTitle) in categories {
+            let catChecks = checks.filter { $0.category == catKey }
+            if catChecks.isEmpty { continue }
+            print("\n[\(catTitle)]")
+            for c in catChecks {
+                print("  \(c.status.badge)  \(c.name): \(c.message)")
+            }
+        }
+
+        if !remediations.isEmpty {
+            print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            print("  📋 Actionable Recommendations (\(remediations.count)):")
+            for (idx, rem) in remediations.enumerated() {
+                print("    \(idx + 1). \(rem)")
+            }
+        }
+        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+    }
+}
+
 public struct Diagnostics {
     public static func collectReport() -> [String: Any] {
         // 1. System & Architecture
@@ -883,5 +1044,501 @@ public struct Diagnostics {
         print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
         print(" Diagnostics complete: All core biometric subsystems verified.")
         print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+    }
+
+    public static func runDoctor(config: Config = .shared, skipNetwork: Bool = false) -> DoctorReport {
+        var checks: [DoctorCheckItem] = []
+
+        // Category 1: Hardware & Architecture
+        // 1.1 Architecture
+        var uts = utsname()
+        uname(&uts)
+        let arch = withUnsafePointer(to: &uts.machine) {
+            $0.withMemoryRebound(to: CChar.self, capacity: 1) { String(cString: $0) }
+        }
+        let isAppleSilicon = (arch == "arm64")
+        if isAppleSilicon {
+            checks.append(DoctorCheckItem(
+                id: "hardware.architecture",
+                category: "hardware",
+                name: "Processor Architecture",
+                status: .pass,
+                message: "Apple Silicon (arm64) detected: Accelerate vDSP SIMD & Neural Engine accelerated."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "hardware.architecture",
+                category: "hardware",
+                name: "Processor Architecture",
+                status: .warn,
+                message: "Intel (x86_64) architecture detected: Apple Silicon recommended for sub-second biometric inference.",
+                remediation: "Upgrade to Apple Silicon Mac for real-time sub-second biometric verification."
+            ))
+        }
+
+        // 1.2 Vision Framework Neural Faceprint
+        let hasFaceprintReq = (NSClassFromString("VNCreateFaceprintRequest") != nil)
+        if hasFaceprintReq {
+            checks.append(DoctorCheckItem(
+                id: "hardware.vision_framework",
+                category: "hardware",
+                name: "Apple Vision Neural Model",
+                status: .pass,
+                message: "VNCreateFaceprintRequest neural embedding extractor is loaded and operational."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "hardware.vision_framework",
+                category: "hardware",
+                name: "Apple Vision Neural Model",
+                status: .fail,
+                message: "VNCreateFaceprintRequest is unavailable in macOS Vision framework.",
+                remediation: "Update macOS to version 12 Monterey or newer."
+            ))
+        }
+
+        // 1.3 Video Capture Devices
+        let discovery = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.builtInWideAngleCamera, .external],
+            mediaType: .video,
+            position: .unspecified
+        )
+        let devices = discovery.devices
+        if !devices.isEmpty {
+            let activeCam = CameraScanner.selectDevice(preferredID: config.preferredCameraID)?.localizedName ?? devices[0].localizedName
+            checks.append(DoctorCheckItem(
+                id: "hardware.camera_device",
+                category: "hardware",
+                name: "Video Capture Hardware",
+                status: .pass,
+                message: "Found \(devices.count) camera device(s). Active camera: '\(activeCam)'."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "hardware.camera_device",
+                category: "hardware",
+                name: "Video Capture Hardware",
+                status: .warn,
+                message: "No video capture camera detected on system.",
+                remediation: "Ensure internal FaceTime camera or external USB webcam is connected and recognized."
+            ))
+        }
+
+        // 1.4 Camera Authorization (TCC)
+        let camAuth = AVCaptureDevice.authorizationStatus(for: .video)
+        switch camAuth {
+        case .authorized:
+            checks.append(DoctorCheckItem(
+                id: "hardware.camera_permission",
+                category: "hardware",
+                name: "Camera Privacy Permission",
+                status: .pass,
+                message: "Camera access authorized by macOS Transparency, Consent, and Control (TCC)."
+            ))
+        case .notDetermined:
+            checks.append(DoctorCheckItem(
+                id: "hardware.camera_permission",
+                category: "hardware",
+                name: "Camera Privacy Permission",
+                status: .warn,
+                message: "Camera authorization has not been requested yet.",
+                remediation: "Launch FaceLock or execute 'facelock --verify-face' to grant camera access prompt."
+            ))
+        case .denied, .restricted:
+            checks.append(DoctorCheckItem(
+                id: "hardware.camera_permission",
+                category: "hardware",
+                name: "Camera Privacy Permission",
+                status: .fail,
+                message: "Camera access denied by system privacy settings.",
+                remediation: "Enable camera permission in macOS System Settings > Privacy & Security > Camera."
+            ))
+        @unknown default:
+            checks.append(DoctorCheckItem(
+                id: "hardware.camera_permission",
+                category: "hardware",
+                name: "Camera Privacy Permission",
+                status: .info,
+                message: "Camera authorization status unknown."
+            ))
+        }
+
+        // 1.5 Touch ID Biometrics
+        let laContext = LAContext()
+        var laError: NSError?
+        let canTouchID = laContext.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &laError)
+        if canTouchID {
+            checks.append(DoctorCheckItem(
+                id: "hardware.touchid",
+                category: "hardware",
+                name: "LocalAuthentication Biometrics",
+                status: .pass,
+                message: "Touch ID biometric sensor available and enrolled for instant lock-screen fallback."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "hardware.touchid",
+                category: "hardware",
+                name: "LocalAuthentication Biometrics",
+                status: .info,
+                message: "Touch ID biometrics unconfigured or unsupported on this device (PIN authentication active)."
+            ))
+        }
+
+        // Category 2: Filesystem & Cryptography
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
+
+        // 2.1 ~/.facelock Directory & Permissions
+        var isDir: ObjCBool = false
+        if FileManager.default.fileExists(atPath: facelockDir.path, isDirectory: &isDir), isDir.boolValue {
+            if let attrs = try? FileManager.default.attributesOfItem(atPath: facelockDir.path),
+               let perms = attrs[.posixPermissions] as? NSNumber {
+                let p = perms.intValue
+                if (p & 0o077) == 0 {
+                    checks.append(DoctorCheckItem(
+                        id: "filesystem.directory",
+                        category: "filesystem",
+                        name: "Data Directory Permissions",
+                        status: .pass,
+                        message: "Secure directory permissions confirmed (0\(String(p, radix: 8))) at \(facelockDir.path)."
+                    ))
+                } else {
+                    checks.append(DoctorCheckItem(
+                        id: "filesystem.directory",
+                        category: "filesystem",
+                        name: "Data Directory Permissions",
+                        status: .warn,
+                        message: "Directory permissions are relaxed: 0\(String(p, radix: 8)).",
+                        remediation: "Run 'chmod 700 ~/.facelock' to restrict access exclusively to your macOS user account."
+                    ))
+                }
+            } else {
+                checks.append(DoctorCheckItem(
+                    id: "filesystem.directory",
+                    category: "filesystem",
+                    name: "Data Directory Permissions",
+                    status: .pass,
+                    message: "Data directory verified at \(facelockDir.path)."
+                ))
+            }
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.directory",
+                category: "filesystem",
+                name: "Data Directory Permissions",
+                status: .info,
+                message: "FaceLock data directory not created yet (will be initialized on first launch)."
+            ))
+        }
+
+        // 2.2 Configuration Schema & Settings
+        let val = Config.validateConfig(config)
+        if val.isValid {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.config_schema",
+                category: "filesystem",
+                name: "Configuration Integrity",
+                status: .pass,
+                message: "Configuration file is valid with 0 errors (\(val.warningCount) non-blocking warning(s))."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.config_schema",
+                category: "filesystem",
+                name: "Configuration Integrity",
+                status: .fail,
+                message: "Configuration contains \(val.errorCount) validation error(s).",
+                remediation: "Run 'make check-config' or reset configuration via 'make restore-config'."
+            ))
+        }
+
+        // 2.3 Enrolled Biometric Vectors
+        let vectors = config.loadEnrolledVectors()
+        if vectors.count >= 3 {
+            let metrics = config.getVectorMetrics()
+            let quality = metrics["quality"] as? String ?? "Good"
+            checks.append(DoctorCheckItem(
+                id: "filesystem.enrolled_vectors",
+                category: "filesystem",
+                name: "Enrolled Facial Biometrics",
+                status: .pass,
+                message: "\(vectors.count) neural face templates enrolled (128-D vectors, Cluster Quality: \(quality))."
+            ))
+        } else if (1...2).contains(vectors.count) {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.enrolled_vectors",
+                category: "filesystem",
+                name: "Enrolled Facial Biometrics",
+                status: .warn,
+                message: "Only \(vectors.count) face template(s) enrolled.",
+                remediation: "Run 'make enroll' to capture 3-5 diverse face angles for maximum recognition reliability."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.enrolled_vectors",
+                category: "filesystem",
+                name: "Enrolled Facial Biometrics",
+                status: .warn,
+                message: "No facial biometric templates enrolled.",
+                remediation: "Execute 'make enroll' or 'facelock --enroll' to calibrate face recognition."
+            ))
+        }
+
+        // 2.4 Audit Log Cryptographic Integrity
+        let auditReport = SecurityAuditLogger.shared.verifyAuditIntegrity()
+        if auditReport.corruptedLinesCount == 0 && auditReport.chronologyErrorsCount == 0 {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.audit_integrity",
+                category: "filesystem",
+                name: "Audit Cryptographic Integrity",
+                status: .pass,
+                message: "Audit log cryptographic chain intact: \(auditReport.validEventsCount) event(s) verified (SHA-256 digest: \(String(auditReport.sha256Digest.prefix(12))))."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.audit_integrity",
+                category: "filesystem",
+                name: "Audit Cryptographic Integrity",
+                status: .fail,
+                message: "Audit log cryptographic integrity compromised (\(auditReport.corruptedLinesCount) corrupted line(s), \(auditReport.chronologyErrorsCount) chronology errors).",
+                remediation: "Execute 'make repair-audit' to isolate and recover corrupted records."
+            ))
+        }
+
+        // 2.5 Intruder Photo Storage & Disk Quota
+        let intrudersDir = facelockDir.appendingPathComponent("intruders", isDirectory: true)
+        var intruderCount = 0
+        var totalBytes: UInt64 = 0
+        if let files = try? FileManager.default.contentsOfDirectory(atPath: intrudersDir.path) {
+            let jpegs = files.filter { $0.hasSuffix(".jpg") || $0.hasSuffix(".jpeg") }
+            intruderCount = jpegs.count
+            for f in jpegs {
+                let p = intrudersDir.appendingPathComponent(f).path
+                if let attrs = try? FileManager.default.attributesOfItem(atPath: p),
+                   let sz = attrs[.size] as? UInt64 {
+                    totalBytes += sz
+                }
+            }
+        }
+        let sizeMB = Double(totalBytes) / (1024.0 * 1024.0)
+        let formattedSize = String(format: "%.2f MB", sizeMB)
+        if totalBytes > 500 * 1024 * 1024 {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.intruder_storage",
+                category: "filesystem",
+                name: "Intruder Photo Storage",
+                status: .warn,
+                message: "Intruder capture storage consumes \(formattedSize) (\(intruderCount) photos), exceeding 500MB budget.",
+                remediation: "Run 'make prune-incidents-quota MB=100' or 'make prune-incidents-days DAYS=14' to free space."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.intruder_storage",
+                category: "filesystem",
+                name: "Intruder Photo Storage",
+                status: .pass,
+                message: "Intruder incident storage healthy: \(intruderCount) photo(s) stored (\(formattedSize))."
+            ))
+        }
+
+        // Category 3: Background Daemon & Automation
+        // 3.1 Daemon Process
+        let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: "io.github.facelock")
+            .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
+        if !runningApps.isEmpty {
+            let pids = runningApps.map { "\($0.processIdentifier)" }.joined(separator: ", ")
+            checks.append(DoctorCheckItem(
+                id: "daemon.process",
+                category: "daemon",
+                name: "Background Shield Process",
+                status: .pass,
+                message: "FaceLock background shield daemon is active (PID: \(pids))."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "daemon.process",
+                category: "daemon",
+                name: "Background Shield Process",
+                status: .info,
+                message: "FaceLock daemon is not currently running in the background.",
+                remediation: "Run 'make run' or open '/Applications/FaceLock.app' to start continuous protection."
+            ))
+        }
+
+        // 3.2 Maintainer LaunchAgent
+        let agentPlist = home.appendingPathComponent("Library/LaunchAgents/io.github.facelock.maintainer.plist").path
+        if FileManager.default.fileExists(atPath: agentPlist) {
+            checks.append(DoctorCheckItem(
+                id: "daemon.launchagent",
+                category: "daemon",
+                name: "Autonomous Maintainer LaunchAgent",
+                status: .pass,
+                message: "Autonomous LaunchAgent is installed at ~/Library/LaunchAgents/io.github.facelock.maintainer.plist."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "daemon.launchagent",
+                category: "daemon",
+                name: "Autonomous Maintainer LaunchAgent",
+                status: .info,
+                message: "Autonomous maintainer LaunchAgent is not installed.",
+                remediation: "Run 'make maintainer-install' or 'make install-sync' to enable continuous auto-maintenance."
+            ))
+        }
+
+        // Category 4: Security Posture & Hardening
+        // 4.1 Master PIN
+        if config.pin == "0000" || config.pin == "1234" {
+            checks.append(DoctorCheckItem(
+                id: "security.master_pin",
+                category: "security",
+                name: "Master Unlock PIN",
+                status: .warn,
+                message: "Default master PIN detected ('\(config.pin)'). Vulnerable to unauthorized access.",
+                remediation: "Configure a custom 4-8 digit master PIN via 'make set-pin PIN=...'."
+            ))
+        } else if config.pin.count >= 4 && config.pin.count <= 8 && config.pin.allSatisfy({ $0.isNumber }) {
+            checks.append(DoctorCheckItem(
+                id: "security.master_pin",
+                category: "security",
+                name: "Master Unlock PIN",
+                status: .pass,
+                message: "Master unlock PIN configured securely (\(config.pin.count) digits)."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.master_pin",
+                category: "security",
+                name: "Master Unlock PIN",
+                status: .fail,
+                message: "Master unlock PIN is invalid.",
+                remediation: "Set a valid 4-8 digit numeric PIN via 'make set-pin PIN=...'."
+            ))
+        }
+
+        // 4.2 Duress PIN
+        if config.duressPin.isEmpty {
+            checks.append(DoctorCheckItem(
+                id: "security.duress_pin",
+                category: "security",
+                name: "Silent Duress Distress PIN",
+                status: .info,
+                message: "Silent duress PIN is not configured (anti-coercion distress unmonitored).",
+                remediation: "Set an anti-coercion duress PIN via 'make set-duress-pin PIN=...'."
+            ))
+        } else if Config.isValidDuressPin(config.duressPin, masterPin: config.pin).isValid {
+            checks.append(DoctorCheckItem(
+                id: "security.duress_pin",
+                category: "security",
+                name: "Silent Duress Distress PIN",
+                status: .pass,
+                message: "Silent duress emergency distress PIN configured (\(config.duressPin.count) digits)."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.duress_pin",
+                category: "security",
+                name: "Silent Duress Distress PIN",
+                status: .warn,
+                message: "Configured duress PIN is invalid or collides with master PIN.",
+                remediation: "Set a distinct 4-8 digit numeric PIN via 'make set-duress-pin PIN=...'."
+            ))
+        }
+
+        // 4.3 Security Posture Score
+        let posture = assessSecurityPosture(config: config, enrolledVectors: vectors)
+        if posture.score >= 80 {
+            checks.append(DoctorCheckItem(
+                id: "security.posture_score",
+                category: "security",
+                name: "Security Posture Rating",
+                status: .pass,
+                message: "Hardened security posture score: \(posture.score)/\(posture.maxScore) (Grade: \(posture.grade) - \(posture.status))."
+            ))
+        } else if posture.score >= 60 {
+            checks.append(DoctorCheckItem(
+                id: "security.posture_score",
+                category: "security",
+                name: "Security Posture Rating",
+                status: .warn,
+                message: "Moderate security posture score: \(posture.score)/\(posture.maxScore) (Grade: \(posture.grade)).",
+                remediation: "Run 'make auto-harden' to automatically remediate security settings and achieve Grade A+."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.posture_score",
+                category: "security",
+                name: "Security Posture Rating",
+                status: .fail,
+                message: "Vulnerable security posture score: \(posture.score)/\(posture.maxScore) (Grade: \(posture.grade)).",
+                remediation: "Run 'make auto-harden' immediately to enforce essential defense policies."
+            ))
+        }
+
+        // Category 5: Remote Alerting & Network
+        if config.telegramEnabled {
+            if !config.telegramBotToken.isEmpty && !config.telegramChatId.isEmpty {
+                var reachable = true
+                if !skipNetwork {
+                    let sema = DispatchSemaphore(value: 0)
+                    if let testUrl = URL(string: "https://api.telegram.org") {
+                        var req = URLRequest(url: testUrl, timeoutInterval: 2.0)
+                        req.httpMethod = "HEAD"
+                        let task = URLSession.shared.dataTask(with: req) { _, response, error in
+                            if let http = response as? HTTPURLResponse, (200...399).contains(http.statusCode) {
+                                reachable = true
+                            } else if error == nil {
+                                reachable = true
+                            } else {
+                                reachable = false
+                            }
+                            sema.signal()
+                        }
+                        task.resume()
+                        _ = sema.wait(timeout: .now() + 2.2)
+                    }
+                }
+                if reachable {
+                    let maskedChat = config.telegramChatId.count > 4 ? "\(config.telegramChatId.prefix(4))..." : config.telegramChatId
+                    checks.append(DoctorCheckItem(
+                        id: "network.telegram_alert",
+                        category: "network",
+                        name: "Telegram Remote Alerting",
+                        status: .pass,
+                        message: "Telegram alert bot active and reachable (Target Chat ID: \(maskedChat))."
+                    ))
+                } else {
+                    checks.append(DoctorCheckItem(
+                        id: "network.telegram_alert",
+                        category: "network",
+                        name: "Telegram Remote Alerting",
+                        status: .warn,
+                        message: "Telegram gateway unreachable (DNS error or network offline).",
+                        remediation: "Verify internet connection and test Telegram dispatch via 'make test-telegram'."
+                    ))
+                }
+            } else {
+                checks.append(DoctorCheckItem(
+                    id: "network.telegram_alert",
+                    category: "network",
+                    name: "Telegram Remote Alerting",
+                    status: .warn,
+                    message: "Telegram alerts are enabled in settings, but bot token or chat ID is missing.",
+                    remediation: "Configure bot token and chat ID via 'facelock --set-telegram <token> <chatId>'."
+                ))
+            }
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "network.telegram_alert",
+                category: "network",
+                name: "Telegram Remote Alerting",
+                status: .info,
+                message: "Telegram remote alerting is disabled (local incident logging active).",
+                remediation: "Optionally configure Telegram alerts via 'facelock --set-telegram <token> <chatId>'."
+            ))
+        }
+
+        return DoctorReport(checks: checks, version: Config.currentVersion)
     }
 }

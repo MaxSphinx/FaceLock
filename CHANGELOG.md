@@ -4,6 +4,25 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.4] - 2026-11-07
+
+### Added
+- **Autonomous System Health & Diagnostic Doctor Suite (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`, `scripts/telegram_report.sh`)**:
+  - Implemented `Diagnostics.runDoctor()` evaluating 16 mission-critical system, biometrics, hardware, and security layers:
+    - *Hardware & Sensors*: Apple Silicon (arm64) architecture verification, Apple Vision neural faceprint model availability (`VNCreateFaceprintRequest`), AVFoundation camera capture device detection, macOS TCC camera privacy authorization status, and LocalAuthentication Touch ID sensor presence.
+    - *Filesystem & Cryptography*: Secure `~/.facelock` directory permissions (0700 enforcement), configuration schema validity (`Config.validateConfig()`), enrolled facial biometric template count & cluster quality, cryptographic SHA-256 audit log chain integrity (`SecurityAuditLogger.verifyAuditIntegrity()`), and intruder capture storage quota monitoring.
+    - *Background Daemon & Automation*: Real-time background shield daemon process detection (`io.github.facelock`) and autonomous maintainer LaunchAgent service installation verification.
+    - *Security Posture & Hardening*: Master unlock PIN security check (default PIN warning), anti-coercion silent duress PIN check, and comprehensive security posture rating (Grade A-F).
+    - *Remote Alerting & Network*: Telegram bot token, chat ID configuration, and live gateway reachability check to `api.telegram.org`.
+  - Introduced `DoctorCheckStatus` (`PASS`, `WARN`, `FAIL`, `INFO`) with badges, `DoctorCheckItem`, and `DoctorReport` with structured status breakdown (`HEALTHY`, `WARNING`, `CRITICAL`), check statistics, and deduplicated actionable remediation recommendations.
+  - Added CLI options `--doctor` and `--doctor --json` (with `--doctor-json`, `--diag-doctor-json`, `--check-doctor-json`, `--doctor-check-json`, `--diag-doctor`, `--check-doctor`, `--doctor-check` normalizations).
+  - Added Makefile targets `make doctor` and `make doctor-json`.
+  - Added real-time Doctor diagnostic status badge (`DOCTOR_STATUS`) to the 24/7 autonomous Telegram status reporter (`scripts/telegram_report.sh`).
+- **Automated Test Suite Expansion (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV124Enhancements()` verifying 16+ comprehensive doctor checks, status badges, dictionary and JSON serialization, simulated degradation (critical failure & warning handling), and CLI argument normalizations.
+- **Version Bump to v1.2.4 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.2.3] - 2026-11-07
 
 ### Added

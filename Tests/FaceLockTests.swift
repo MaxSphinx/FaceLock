@@ -81,6 +81,7 @@ public final class FaceLockTestSuite {
         testMaintenanceV121Enhancements()
         testMaintenanceV122Enhancements()
         testMaintenanceV123Enhancements()
+        testMaintenanceV124Enhancements()
         testVectorMatchingBenchmark()
 
         let elapsed = Date().timeIntervalSince(startTime)
@@ -2183,6 +2184,89 @@ public final class FaceLockTestSuite {
         assertEqual(AppDelegate.normalizeArguments(["--threat-level"]), ["--threat-intel"], "Normalizes --threat-level")
         assertEqual(AppDelegate.normalizeArguments(["--threat-summary"]), ["--threat-intel"], "Normalizes --threat-summary")
         assertEqual(AppDelegate.normalizeArguments(["--threat"]), ["--threat-intel"], "Normalizes --threat")
+    }
+
+    // MARK: - Maintenance v1.2.4 Enhancements Test Suite (Diagnostic Doctor & Health Suite)
+    private func testMaintenanceV124Enhancements() {
+        print("\n▶ Test Suite: Autonomous Diagnostic Doctor & Health Suite (v1.2.4)")
+
+        // 1. Doctor Report Execution
+        let report = Diagnostics.runDoctor(skipNetwork: true)
+        assert(report.totalChecks >= 15, "Doctor executes at least 15 comprehensive checks (Got \(report.totalChecks))")
+        assert(report.passedCount > 0, "Doctor has passed checks (\(report.passedCount) passed)")
+        assertEqual(report.version, "1.2.4", "Doctor report matches currentVersion 1.2.4")
+        assert(!report.timestamp.isEmpty, "Doctor report contains ISO8601 timestamp")
+        assert(["HEALTHY", "WARNING", "CRITICAL"].contains(report.overallStatus), "Doctor overallStatus is valid: \(report.overallStatus)")
+
+        // 2. Doctor Check Categories
+        let categories = Set(report.checks.map { $0.category })
+        assert(categories.contains("hardware"), "Contains 'hardware' category")
+        assert(categories.contains("filesystem"), "Contains 'filesystem' category")
+        assert(categories.contains("daemon"), "Contains 'daemon' category")
+        assert(categories.contains("security"), "Contains 'security' category")
+        assert(categories.contains("network"), "Contains 'network' category")
+
+        // 3. Check Items Validity
+        for check in report.checks {
+            assert(!check.id.isEmpty, "Check ID is non-empty: \(check.id)")
+            assert(!check.name.isEmpty, "Check name is non-empty: \(check.name)")
+            assert(!check.message.isEmpty, "Check message is non-empty: \(check.message)")
+            assert(!check.status.badge.isEmpty, "Check status badge is non-empty: \(check.status.badge)")
+        }
+
+        // 4. Doctor Check Status Badges
+        assertEqual(DoctorCheckStatus.pass.badge, "PASS ✅", "DoctorCheckStatus pass badge")
+        assertEqual(DoctorCheckStatus.warn.badge, "WARN ⚠️", "DoctorCheckStatus warn badge")
+        assertEqual(DoctorCheckStatus.fail.badge, "FAIL ❌", "DoctorCheckStatus fail badge")
+        assertEqual(DoctorCheckStatus.info.badge, "INFO ℹ️", "DoctorCheckStatus info badge")
+
+        // 5. Doctor Report Dictionary Serialization
+        let dict = report.toDictionary()
+        assertEqual(dict["version"] as? String, "1.2.4", "Dictionary contains version 1.2.4")
+        assertEqual(dict["overallStatus"] as? String, report.overallStatus, "Dictionary contains overallStatus")
+        let statsDict = dict["stats"] as? [String: Any]
+        assert(statsDict != nil, "Dictionary contains stats sub-dictionary")
+        assertEqual(statsDict?["totalChecks"] as? Int, report.totalChecks, "Stats dictionary totalChecks matches")
+        let checksArr = dict["checks"] as? [[String: Any]]
+        assert(checksArr != nil && checksArr?.count == report.totalChecks, "Dictionary checks array serialized correctly")
+
+        // 6. JSON Serialization
+        let jsonData = try? JSONSerialization.data(withJSONObject: dict, options: [.sortedKeys])
+        assert(jsonData != nil && (jsonData?.count ?? 0) > 100, "Doctor report serializes to valid JSON bytes")
+
+        // 7. Simulated Degradation
+        let mockFailingItem = DoctorCheckItem(
+            id: "test.failure",
+            category: "security",
+            name: "Mock Security Failure",
+            status: .fail,
+            message: "Simulated critical failure",
+            remediation: "Perform simulated repair"
+        )
+        let degradedReport = DoctorReport(checks: [mockFailingItem], version: "1.2.4")
+        assertEqual(degradedReport.overallStatus, "CRITICAL", "Doctor correctly flags CRITICAL when failure exists")
+        assertEqual(degradedReport.failureCount, 1, "Doctor records 1 failure")
+        assertEqual(degradedReport.remediations.count, 1, "Doctor includes remediation for failing check")
+
+        let mockWarningItem = DoctorCheckItem(
+            id: "test.warning",
+            category: "security",
+            name: "Mock Security Warning",
+            status: .warn,
+            message: "Simulated warning",
+            remediation: "Perform simulated warning fix"
+        )
+        let warningReport = DoctorReport(checks: [mockWarningItem], version: "1.2.4")
+        assertEqual(warningReport.overallStatus, "WARNING", "Doctor correctly flags WARNING when warnings exist without failures")
+
+        // 8. Normalization
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-json"]), ["--doctor", "--json"], "Normalizes --doctor-json")
+        assertEqual(AppDelegate.normalizeArguments(["--diag-doctor-json"]), ["--doctor", "--json"], "Normalizes --diag-doctor-json")
+        assertEqual(AppDelegate.normalizeArguments(["--check-doctor-json"]), ["--doctor", "--json"], "Normalizes --check-doctor-json")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-check-json"]), ["--doctor", "--json"], "Normalizes --doctor-check-json")
+        assertEqual(AppDelegate.normalizeArguments(["--diag-doctor"]), ["--doctor"], "Normalizes --diag-doctor")
+        assertEqual(AppDelegate.normalizeArguments(["--check-doctor"]), ["--doctor"], "Normalizes --check-doctor")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-check"]), ["--doctor"], "Normalizes --doctor-check")
     }
 
     // MARK: - 10. Performance Benchmark
