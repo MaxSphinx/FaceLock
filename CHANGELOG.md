@@ -4,6 +4,32 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.5] - 2026-11-08
+
+### Added
+- **Autonomous Doctor Health Auto-Repair Suite (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `Diagnostics.runDoctorRepair(config:save:)` and `DoctorRepairReport` delivering automated, hands-off remediation for system and security issues:
+    - *Filesystem Permissions*: Enforces strict `0700` POSIX permissions on `~/.facelock` to protect facial vectors and incident logs against local snooping.
+    - *Cryptographic Audit Chain Repair*: Detects corrupted audit lines or chronological discrepancies and repairs the integrity chain (`SecurityAuditLogger.shared.repairAuditLog()`).
+    - *Incident Dataset Recovery*: Detects truncated or invalid JPEG intruder photos and removes corrupted captures (`CameraScanner.shared.repairCorruptedIncidents()`).
+    - *Disk Quota Enforcement*: Prunes oldest intruder captures exceeding 500MB budget to prevent disk exhaustion.
+    - *Facial Biometric Cluster Optimization*: Removes template outliers and redundant vectors (`Config.shared.optimizeVectors()`).
+    - *Security Posture Hardening*: Enforces essential defense policies (biometric shield activation, bystander defense, lock-on-wake, liveness anti-spoofing, 45s walk-away timeout, and PIN lockout exponential cooldown).
+    - *Audit Telemetry*: Logs `doctor_repair_applied` event with full details in `SecurityAuditLogger`.
+  - Added CLI options `--doctor-repair` and `--doctor-repair --json` (with `--doctor-repair-json`, `--doctor-fix`, `--doctor-fix-json`, `--repair-doctor`, `--repair-doctor-json` aliases).
+  - Added Makefile targets `make doctor-repair`, `make doctor-repair-json`, `make doctor-fix`, `make doctor-fix-json`.
+- **Diagnostic Doctor Diagnostic Expansion to 18 Checks (`Diagnostics.swift`)**:
+  - Added `security.biometric_spoofing`: Evaluates neural anti-spoofing liveness verification state.
+  - Added `security.shoulder_surfing`: Evaluates shoulder-surfing bystander defense readiness.
+- **Audit Telemetry Metric Enrichment (`SecurityAuditLogger.swift`)**:
+  - Added `doctorRepairs` metric counter to `SecurityAuditLogger.AuditSummary`.
+- **Build Lock Self-Healing & Resilience (`build.sh`)**:
+  - Implemented automatic stale lock recovery in `build.sh`: writes PID to `/tmp/facelock_build.lock/pid`, detects inactive PIDs or locks older than 60s, breaks stale locks, and sets robust traps on EXIT/INT/TERM/HUP.
+- **Automated Test Suite Expansion (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV125Enhancements()` verifying 18+ doctor check items, `DoctorRepairReport` data structure and dictionary serialization, `runDoctorRepair()` execution, `AuditSummary.doctorRepairs` metric, and CLI argument normalizations.
+- **Version Bump to v1.2.5 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.2.5` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.2.4] - 2026-11-07
 
 ### Added

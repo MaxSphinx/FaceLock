@@ -82,6 +82,7 @@ public final class FaceLockTestSuite {
         testMaintenanceV122Enhancements()
         testMaintenanceV123Enhancements()
         testMaintenanceV124Enhancements()
+        testMaintenanceV125Enhancements()
         testVectorMatchingBenchmark()
 
         let elapsed = Date().timeIntervalSince(startTime)
@@ -2194,7 +2195,7 @@ public final class FaceLockTestSuite {
         let report = Diagnostics.runDoctor(skipNetwork: true)
         assert(report.totalChecks >= 15, "Doctor executes at least 15 comprehensive checks (Got \(report.totalChecks))")
         assert(report.passedCount > 0, "Doctor has passed checks (\(report.passedCount) passed)")
-        assertEqual(report.version, "1.2.4", "Doctor report matches currentVersion 1.2.4")
+        assertEqual(report.version, Config.currentVersion, "Doctor report matches currentVersion \(Config.currentVersion)")
         assert(!report.timestamp.isEmpty, "Doctor report contains ISO8601 timestamp")
         assert(["HEALTHY", "WARNING", "CRITICAL"].contains(report.overallStatus), "Doctor overallStatus is valid: \(report.overallStatus)")
 
@@ -2222,7 +2223,7 @@ public final class FaceLockTestSuite {
 
         // 5. Doctor Report Dictionary Serialization
         let dict = report.toDictionary()
-        assertEqual(dict["version"] as? String, "1.2.4", "Dictionary contains version 1.2.4")
+        assertEqual(dict["version"] as? String, Config.currentVersion, "Dictionary contains version \(Config.currentVersion)")
         assertEqual(dict["overallStatus"] as? String, report.overallStatus, "Dictionary contains overallStatus")
         let statsDict = dict["stats"] as? [String: Any]
         assert(statsDict != nil, "Dictionary contains stats sub-dictionary")
@@ -2267,6 +2268,58 @@ public final class FaceLockTestSuite {
         assertEqual(AppDelegate.normalizeArguments(["--diag-doctor"]), ["--doctor"], "Normalizes --diag-doctor")
         assertEqual(AppDelegate.normalizeArguments(["--check-doctor"]), ["--doctor"], "Normalizes --check-doctor")
         assertEqual(AppDelegate.normalizeArguments(["--doctor-check"]), ["--doctor"], "Normalizes --doctor-check")
+    }
+
+    // MARK: - 9.11 Maintenance Suite v1.2.5 (Doctor Auto-Repair & Stale Lock Resilience)
+    private func testMaintenanceV125Enhancements() {
+        print("\n▶ Test Suite: Autonomous Doctor Auto-Repair Suite (v1.2.5)")
+
+        // 1. Doctor 18-Check Coverage
+        let report = Diagnostics.runDoctor(skipNetwork: true)
+        assert(report.totalChecks >= 18, "Doctor executes at least 18 comprehensive checks (Got \(report.totalChecks))")
+        let checkIds = Set(report.checks.map { $0.id })
+        assert(checkIds.contains("security.biometric_spoofing"), "Contains 'security.biometric_spoofing' check")
+        assert(checkIds.contains("security.shoulder_surfing"), "Contains 'security.shoulder_surfing' check")
+
+        // 2. DoctorRepairReport Data Structure & Dictionary Serialization
+        let initialReport = report
+        let repairedActions = ["Restricted ~/.facelock directory permissions to 0700", "Enabled shoulder-surfing bystander detection"]
+        let repairReport = DoctorRepairReport(
+            initialReport: initialReport,
+            finalReport: initialReport,
+            repairedActions: repairedActions,
+            version: Config.currentVersion
+        )
+        assertEqual(repairReport.recoveredCount, 2, "DoctorRepairReport recoveredCount matches")
+        assertEqual(repairReport.version, Config.currentVersion, "DoctorRepairReport version matches currentVersion")
+
+        let repDict = repairReport.toDictionary()
+        assertEqual(repDict["version"] as? String, Config.currentVersion, "Repair dictionary contains version")
+        assertEqual(repDict["recoveredCount"] as? Int, 2, "Repair dictionary contains recoveredCount")
+        assertEqual(repDict["initialStatus"] as? String, initialReport.overallStatus, "Repair dictionary contains initialStatus")
+        assertEqual(repDict["finalStatus"] as? String, initialReport.overallStatus, "Repair dictionary contains finalStatus")
+        let initStats = repDict["initialStats"] as? [String: Any]
+        assertEqual(initStats?["totalChecks"] as? Int, initialReport.totalChecks, "Initial stats totalChecks matches")
+
+        // 3. Test runDoctorRepair Execution
+        let execRepair = Diagnostics.runDoctorRepair(save: false)
+        assert(execRepair.finalReport.totalChecks >= 18, "Doctor repair produces report with 18+ checks")
+        assert(["HEALTHY", "WARNING", "CRITICAL"].contains(execRepair.finalReport.overallStatus), "Doctor repair final status is valid")
+
+        // 4. Test AuditSummary Doctor Repairs Metric
+        let testAudit = SecurityAuditLogger.shared.getAuditSummary()
+        assert(testAudit.doctorRepairs >= 0, "AuditSummary doctorRepairs counter is non-negative")
+        let auditDict = testAudit.toDictionary()
+        assert(auditDict["doctorRepairs"] != nil, "AuditSummary dictionary exports doctorRepairs")
+
+        // 5. Test CLI Argument Normalization for Doctor Repair
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-repair-json"]), ["--doctor-repair", "--json"], "Normalizes --doctor-repair-json")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-fix-json"]), ["--doctor-repair", "--json"], "Normalizes --doctor-fix-json")
+        assertEqual(AppDelegate.normalizeArguments(["--repair-doctor-json"]), ["--doctor-repair", "--json"], "Normalizes --repair-doctor-json")
+        assertEqual(AppDelegate.normalizeArguments(["--fix-doctor-json"]), ["--doctor-repair", "--json"], "Normalizes --fix-doctor-json")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-fix"]), ["--doctor-repair"], "Normalizes --doctor-fix")
+        assertEqual(AppDelegate.normalizeArguments(["--repair-doctor"]), ["--doctor-repair"], "Normalizes --repair-doctor")
+        assertEqual(AppDelegate.normalizeArguments(["--fix-doctor"]), ["--doctor-repair"], "Normalizes --fix-doctor")
     }
 
     // MARK: - 10. Performance Benchmark

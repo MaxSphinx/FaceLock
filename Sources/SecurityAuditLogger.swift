@@ -1198,6 +1198,7 @@ public final class SecurityAuditLogger {
         public let topChallengedApplications: [String: Int]
         public let averageDailyEvents: Double
         public let duressPinUnlocks: Int
+        public let doctorRepairs: Int
 
         public init(
             totalEvents: Int,
@@ -1215,7 +1216,8 @@ public final class SecurityAuditLogger {
             verificationSuccessRate: Double,
             topChallengedApplications: [String: Int],
             averageDailyEvents: Double,
-            duressPinUnlocks: Int = 0
+            duressPinUnlocks: Int = 0,
+            doctorRepairs: Int = 0
         ) {
             self.totalEvents = totalEvents
             self.fileSizeBytes = fileSizeBytes
@@ -1233,6 +1235,7 @@ public final class SecurityAuditLogger {
             self.topChallengedApplications = topChallengedApplications
             self.averageDailyEvents = averageDailyEvents
             self.duressPinUnlocks = duressPinUnlocks
+            self.doctorRepairs = doctorRepairs
         }
 
         public func toDictionary() -> [String: Any] {
@@ -1252,7 +1255,8 @@ public final class SecurityAuditLogger {
                 "verificationSuccessRate": Double(round(verificationSuccessRate * 1000) / 1000),
                 "topChallengedApplications": topChallengedApplications,
                 "averageDailyEvents": Double(round(averageDailyEvents * 10) / 10),
-                "duressPinUnlocks": duressPinUnlocks
+                "duressPinUnlocks": duressPinUnlocks,
+                "doctorRepairs": doctorRepairs
             ]
         }
     }
@@ -1324,6 +1328,7 @@ public final class SecurityAuditLogger {
         var emergencyLock = 0
         var pinLockouts = 0
         var duressPinUnlocks = 0
+        var doctorRepairs = 0
         var appChallenges: [String: Int] = [:]
 
         for event in parsedEvents {
@@ -1344,6 +1349,8 @@ public final class SecurityAuditLogger {
                 emergencyLock += 1
             } else if t == "pin_bruteforce" {
                 pinLockouts += 1
+            } else if t == "doctor_repair" || t == "doctor_repair_applied" {
+                doctorRepairs += 1
             }
 
             if let app = event.appName, !app.isEmpty, app != "FaceLock CLI", app != "System" {
@@ -1378,7 +1385,8 @@ public final class SecurityAuditLogger {
             verificationSuccessRate: successRate,
             topChallengedApplications: topApps,
             averageDailyEvents: avgDaily,
-            duressPinUnlocks: duressPinUnlocks
+            duressPinUnlocks: duressPinUnlocks,
+            doctorRepairs: doctorRepairs
         )
     }
 

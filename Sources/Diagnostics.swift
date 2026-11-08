@@ -252,6 +252,88 @@ public struct DoctorReport {
     }
 }
 
+public struct DoctorRepairReport {
+    public let initialReport: DoctorReport
+    public let finalReport: DoctorReport
+    public let repairedActions: [String]
+    public let recoveredCount: Int
+    public let version: String
+
+    public init(
+        initialReport: DoctorReport,
+        finalReport: DoctorReport,
+        repairedActions: [String],
+        version: String = Config.currentVersion
+    ) {
+        self.initialReport = initialReport
+        self.finalReport = finalReport
+        self.repairedActions = repairedActions
+        self.recoveredCount = repairedActions.count
+        self.version = version
+    }
+
+    public func toDictionary() -> [String: Any] {
+        return [
+            "version": version,
+            "repairedActions": repairedActions,
+            "recoveredCount": recoveredCount,
+            "initialStatus": initialReport.overallStatus,
+            "finalStatus": finalReport.overallStatus,
+            "initialStats": [
+                "totalChecks": initialReport.totalChecks,
+                "passed": initialReport.passedCount,
+                "warnings": initialReport.warningCount,
+                "failures": initialReport.failureCount,
+                "info": initialReport.infoCount
+            ],
+            "finalStats": [
+                "totalChecks": finalReport.totalChecks,
+                "passed": finalReport.passedCount,
+                "warnings": finalReport.warningCount,
+                "failures": finalReport.failureCount,
+                "info": finalReport.infoCount
+            ],
+            "remediationsRemaining": finalReport.remediations,
+            "report": finalReport.toDictionary()
+        ]
+    }
+
+    public func printSummary() {
+        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        print("        🛠️  FaceLock Autonomous Doctor Auto-Repair          ")
+        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        let initBadge: String
+        switch initialReport.overallStatus {
+        case "HEALTHY": initBadge = "HEALTHY ✅"
+        case "WARNING": initBadge = "WARNING ⚠️"
+        default:        initBadge = "CRITICAL ❌"
+        }
+        let finalBadge: String
+        switch finalReport.overallStatus {
+        case "HEALTHY": finalBadge = "HEALTHY ✅"
+        case "WARNING": finalBadge = "WARNING ⚠️"
+        default:        finalBadge = "CRITICAL ❌"
+        }
+        print("Initial Status: \(initBadge) (\(initialReport.passedCount) Pass, \(initialReport.warningCount) Warn, \(initialReport.failureCount) Fail)")
+        print("Final Status:   \(finalBadge) (\(finalReport.passedCount) Pass, \(finalReport.warningCount) Warn, \(finalReport.failureCount) Fail)")
+        print("Repairs Executed: \(repairedActions.count)")
+        if repairedActions.isEmpty {
+            print("  • System already healthy and hardened; no repairs needed! ✅")
+        } else {
+            for action in repairedActions {
+                print("  ✓ \(action)")
+            }
+        }
+        if !finalReport.remediations.isEmpty {
+            print("\nRemaining Recommendations (\(finalReport.remediations.count)):")
+            for rem in finalReport.remediations {
+                print("  • \(rem)")
+            }
+        }
+        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+    }
+}
+
 public struct Diagnostics {
     public static func collectReport() -> [String: Any] {
         // 1. System & Architecture
@@ -749,6 +831,10 @@ public struct Diagnostics {
         if config.pinLockoutSeconds < 5 {
             config.pinLockoutSeconds = 5
             fixes.append("Hardened PIN lockout exponential cooldown to 5 seconds")
+        }
+        if config.telegramEnabled && (config.telegramBotToken.isEmpty || config.telegramChatId.isEmpty) {
+            config.telegramEnabled = false
+            fixes.append("Disabled incomplete Telegram alerting (missing bot token or chat ID)")
         }
 
         // Purge corrupted captures if any exist
@@ -1476,6 +1562,46 @@ public struct Diagnostics {
             ))
         }
 
+        // 4.4 Biometric Anti-Spoofing Liveness
+        if config.livenessDetectionEnabled {
+            checks.append(DoctorCheckItem(
+                id: "security.biometric_spoofing",
+                category: "security",
+                name: "Deep Anti-Spoofing Liveness",
+                status: .pass,
+                message: "Deep neural anti-spoofing liveness verification active (prevents photo/screen presentation attacks)."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.biometric_spoofing",
+                category: "security",
+                name: "Deep Anti-Spoofing Liveness",
+                status: .warn,
+                message: "Liveness anti-spoofing is disabled (vulnerable to printed photo presentation attacks).",
+                remediation: "Enable anti-spoofing via 'facelock --set-liveness on' or 'make toggle-liveness'."
+            ))
+        }
+
+        // 4.5 Shoulder-Surfing Bystander Defense
+        if config.shoulderSurfingDefense {
+            checks.append(DoctorCheckItem(
+                id: "security.shoulder_surfing",
+                category: "security",
+                name: "Shoulder-Surfing Defense",
+                status: .pass,
+                message: "Shoulder-surfing bystander defense active (detects unauthorized onlookers behind user)."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.shoulder_surfing",
+                category: "security",
+                name: "Shoulder-Surfing Defense",
+                status: .info,
+                message: "Shoulder-surfing bystander defense disabled (opt-in feature for public environments).",
+                remediation: "Enable bystander defense in public/cafe areas via 'make toggle-shoulder'."
+            ))
+        }
+
         // Category 5: Remote Alerting & Network
         if config.telegramEnabled {
             if !config.telegramBotToken.isEmpty && !config.telegramChatId.isEmpty {
@@ -1540,5 +1666,81 @@ public struct Diagnostics {
         }
 
         return DoctorReport(checks: checks, version: Config.currentVersion)
+    }
+
+    public static func runDoctorRepair(config: Config = .shared, save: Bool = true) -> DoctorRepairReport {
+        let initialReport = runDoctor(config: config, skipNetwork: true)
+        var actions: [String] = []
+
+        // 1. Data directory permissions repair (chmod 0700 ~/.facelock)
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
+        var isDir: ObjCBool = false
+        if FileManager.default.fileExists(atPath: facelockDir.path, isDirectory: &isDir), isDir.boolValue {
+            if let attrs = try? FileManager.default.attributesOfItem(atPath: facelockDir.path),
+               let perms = attrs[.posixPermissions] as? NSNumber {
+                let p = perms.intValue
+                if (p & 0o077) != 0 {
+                    if (try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: facelockDir.path)) != nil {
+                        actions.append("Restricted ~/.facelock directory permissions to 0700")
+                    }
+                }
+            }
+        }
+
+        // 2. Cryptographic audit log auto-repair
+        let auditReport = SecurityAuditLogger.shared.verifyAuditIntegrity()
+        if auditReport.corruptedLinesCount > 0 {
+            if let rep = try? SecurityAuditLogger.shared.repairAuditLog(), rep.repairedCount > 0 {
+                actions.append("Repaired \(rep.repairedCount) corrupted audit log event(s)")
+            }
+        }
+
+        // 3. Intruder incident storage integrity auto-repair
+        let incReport = CameraScanner.shared.verifyIncidentsIntegrity()
+        if incReport.corruptedCount > 0 {
+            let rep = CameraScanner.shared.repairCorruptedIncidents()
+            if rep.repairedCount > 0 {
+                actions.append("Repaired \(rep.repairedCount) corrupted intruder capture(s)")
+            }
+        }
+
+        // 4. Intruder photo quota enforcement
+        let storageRep = CameraScanner.shared.pruneIncidentsByMegaBytes(maxMB: 500)
+        if storageRep.removedCount > 0 {
+            let freedMB = String(format: "%.2f", Double(storageRep.freedBytes) / (1024.0 * 1024.0))
+            actions.append("Pruned \(storageRep.removedCount) older intruder photo(s) to fit 500MB budget (\(freedMB) MB freed)")
+        }
+
+        // 5. Enrolled biometric template cluster optimization
+        let optRep = config.optimizeVectors()
+        let prunedTotal = (optRep["prunedRedundant"] as? Int ?? 0) + (optRep["prunedOutliers"] as? Int ?? 0)
+        if prunedTotal > 0 {
+            actions.append("Optimized biometric cluster: removed \(prunedTotal) outlier template(s)")
+        }
+
+        // 6. Security auto-hardening
+        let hardenRep = autoHardenSecurity(config: config, save: save)
+        for fix in hardenRep.appliedFixes {
+            actions.append(fix)
+        }
+
+        // 7. Audit log telemetry
+        if save {
+            SecurityAuditLogger.shared.log(
+                eventType: "doctor_repair_applied",
+                appName: "FaceLock Doctor",
+                details: "\(actions.count) health and security repair action(s) executed",
+                isSuccess: true
+            )
+        }
+
+        let finalReport = runDoctor(config: config, skipNetwork: true)
+        return DoctorRepairReport(
+            initialReport: initialReport,
+            finalReport: finalReport,
+            repairedActions: actions,
+            version: Config.currentVersion
+        )
     }
 }

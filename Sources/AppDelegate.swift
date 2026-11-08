@@ -289,6 +289,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor", "--json"])
             case "--diag-doctor", "--check-doctor", "--doctor-check":
                 args.append("--doctor")
+            case "--doctor-repair-json", "--doctor-fix-json", "--repair-doctor-json", "--fix-doctor-json":
+                args.append(contentsOf: ["--doctor-repair", "--json"])
+            case "--doctor-fix", "--repair-doctor", "--fix-doctor":
+                args.append("--doctor-repair")
             default:
                 args.append(arg)
             }
@@ -420,6 +424,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --reset-camera [--json]    Reset preferred camera selection to default front/built-in camera
               --diagnostics, -d [--json] Run complete biometric & hardware system diagnostics
               --doctor [--json]          Run comprehensive pre-flight & runtime health diagnostic doctor
+              --doctor-repair [--json]   Auto-remediate issues detected by diagnostic doctor (permissions, audit, posture)
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -455,6 +460,19 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         if args.contains("--diagnostics") || args.contains("-d") {
             Diagnostics.run(jsonOutput: args.contains("--json"))
             exit(0)
+        }
+
+        if args.contains("--doctor-repair") {
+            let repairReport = Diagnostics.runDoctorRepair()
+            if args.contains("--json") {
+                if let data = try? JSONSerialization.data(withJSONObject: repairReport.toDictionary(), options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                repairReport.printSummary()
+            }
+            exit(repairReport.finalReport.failureCount > 0 ? 1 : 0)
         }
 
         if args.contains("--doctor") {
