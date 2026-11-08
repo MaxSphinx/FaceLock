@@ -4,6 +4,25 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.6] - 2026-11-08
+
+### Added
+- **Diagnostic Doctor Expansion to 20 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `hardware.power_efficiency`: Evaluates whether battery-aware adaptive idle polling (`config.batteryAwareScanning`) is active to throttle camera sweeps on MacBook battery and Low Power Mode.
+  - Added `security.presentation_suppression`: Evaluates whether meeting and presentation mode auto-suppression (`config.presentationModeSuppression`) is active across recognized meeting/presentation tools (Zoom, Meet, Keynote, PowerPoint, Webex, Teams, etc.) to prevent disruptive lockouts during conferences and slide decks.
+- **Doctor Strict Mode Enforcement (`AppDelegate.swift`, `Makefile`)**:
+  - Implemented `--doctor-strict` CLI mode designed for automated maintenance pipelines, CI/CD gates, and security compliance verification. Fails with non-zero exit code (1) if ANY warning or failure is detected.
+  - Added CLI options `--doctor-strict` and `--doctor-strict --json` (with `--doctor-strict-json`, `--diag-doctor-strict-json`, `--check-doctor-strict-json`, `--strict-doctor-json`, `--diag-doctor-strict`, `--check-doctor-strict`, `--strict-doctor` aliases).
+  - Added Makefile targets `make doctor-strict` and `make doctor-strict-json`.
+- **Diagnostic Health Report Export Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `Diagnostics.exportDoctorReport(toPath:config:skipNetwork:)` allowing atomic JSON export of comprehensive health and security audit diagnostics (defaulting to `~/.facelock/doctor_report.json` with secure `0600` POSIX permissions, or to custom path).
+  - Added CLI options `--doctor-export [path]` and `--doctor-export [path] --json` (with `--doctor-export-json`, `--export-doctor-json`, `--export-doctor` aliases).
+  - Added Makefile targets `make doctor-export` and `make doctor-export-json`.
+- **Automated Test Suite Expansion (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV126Enhancements()` asserting 20+ doctor check items, strict mode verification logic, atomic doctor report export file integrity, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.2.6 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.2.6` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.2.5] - 2026-11-08
 
 ### Added

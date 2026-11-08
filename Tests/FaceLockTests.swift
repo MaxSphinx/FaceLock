@@ -83,6 +83,7 @@ public final class FaceLockTestSuite {
         testMaintenanceV123Enhancements()
         testMaintenanceV124Enhancements()
         testMaintenanceV125Enhancements()
+        testMaintenanceV126Enhancements()
         testVectorMatchingBenchmark()
 
         let elapsed = Date().timeIntervalSince(startTime)
@@ -2320,6 +2321,83 @@ public final class FaceLockTestSuite {
         assertEqual(AppDelegate.normalizeArguments(["--doctor-fix"]), ["--doctor-repair"], "Normalizes --doctor-fix")
         assertEqual(AppDelegate.normalizeArguments(["--repair-doctor"]), ["--doctor-repair"], "Normalizes --repair-doctor")
         assertEqual(AppDelegate.normalizeArguments(["--fix-doctor"]), ["--doctor-repair"], "Normalizes --fix-doctor")
+    }
+
+    // MARK: - 9.12 Maintenance Suite v1.2.6 (Doctor 20-Check Expansion, Strict Mode & Report Export)
+    private func testMaintenanceV126Enhancements() {
+        print("\n▶ Test Suite: Autonomous Doctor 20-Check Expansion & Strict Mode (v1.2.6)")
+
+        // 1. Doctor 20-Check Coverage
+        let report = Diagnostics.runDoctor(skipNetwork: true)
+        assert(report.totalChecks >= 20, "Doctor executes at least 20 comprehensive checks (Got \(report.totalChecks))")
+        let checkIds = Set(report.checks.map { $0.id })
+        assert(checkIds.contains("hardware.power_efficiency"), "Contains 'hardware.power_efficiency' check")
+        assert(checkIds.contains("security.presentation_suppression"), "Contains 'security.presentation_suppression' check")
+
+        // 2. Doctor Strict Mode Logic
+        let passItem = DoctorCheckItem(
+            id: "test.pass",
+            category: "hardware",
+            name: "Mock Pass Item",
+            status: .pass,
+            message: "Simulated pass"
+        )
+        let warnItem = DoctorCheckItem(
+            id: "test.warn",
+            category: "security",
+            name: "Mock Warn Item",
+            status: .warn,
+            message: "Simulated warning"
+        )
+        let failItem = DoctorCheckItem(
+            id: "test.fail",
+            category: "security",
+            name: "Mock Fail Item",
+            status: .fail,
+            message: "Simulated failure"
+        )
+
+        let cleanReport = DoctorReport(checks: [passItem], version: Config.currentVersion)
+        assertEqual(cleanReport.overallStatus, "HEALTHY", "Clean doctor report is HEALTHY")
+        assert(cleanReport.failureCount == 0 && cleanReport.warningCount == 0, "Clean doctor report passes strict check")
+
+        let warningOnlyReport = DoctorReport(checks: [passItem, warnItem], version: Config.currentVersion)
+        assertEqual(warningOnlyReport.overallStatus, "WARNING", "Warning doctor report is WARNING")
+        assert(warningOnlyReport.warningCount > 0, "Strict mode detects warning as non-passing")
+
+        let failingReport = DoctorReport(checks: [passItem, failItem], version: Config.currentVersion)
+        assertEqual(failingReport.overallStatus, "CRITICAL", "Critical doctor report is CRITICAL")
+        assert(failingReport.failureCount > 0, "Strict mode detects failure")
+
+        // 3. Doctor Report Export Test
+        let tempExportPath = "/tmp/facelock_test_doctor_export_\(UUID().uuidString).json"
+        let exportResult = Diagnostics.exportDoctorReport(toPath: tempExportPath, skipNetwork: true)
+        assert(exportResult.success, "exportDoctorReport succeeded")
+        assertEqual(exportResult.path, tempExportPath, "exportDoctorReport exported to expected path")
+        assert(FileManager.default.fileExists(atPath: tempExportPath), "Exported doctor JSON file exists on disk")
+        if let data = try? Data(contentsOf: URL(fileURLWithPath: tempExportPath)),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            assertEqual(json["version"] as? String, Config.currentVersion, "Exported JSON contains matching version")
+            assert(json["checks"] != nil, "Exported JSON contains checks array")
+            assert(json["stats"] != nil, "Exported JSON contains stats object")
+        }
+        try? FileManager.default.removeItem(atPath: tempExportPath)
+
+        // 4. Test Version Synchronization
+        assertEqual(Config.currentVersion, "1.2.6", "Config currentVersion is 1.2.6")
+
+        // 5. Test CLI Argument Normalization for Doctor Strict and Export
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-strict-json"]), ["--doctor-strict", "--json"], "Normalizes --doctor-strict-json")
+        assertEqual(AppDelegate.normalizeArguments(["--diag-doctor-strict-json"]), ["--doctor-strict", "--json"], "Normalizes --diag-doctor-strict-json")
+        assertEqual(AppDelegate.normalizeArguments(["--check-doctor-strict-json"]), ["--doctor-strict", "--json"], "Normalizes --check-doctor-strict-json")
+        assertEqual(AppDelegate.normalizeArguments(["--strict-doctor-json"]), ["--doctor-strict", "--json"], "Normalizes --strict-doctor-json")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-strict"]), ["--doctor-strict"], "Normalizes --doctor-strict")
+        assertEqual(AppDelegate.normalizeArguments(["--diag-doctor-strict"]), ["--doctor-strict"], "Normalizes --diag-doctor-strict")
+        assertEqual(AppDelegate.normalizeArguments(["--check-doctor-strict"]), ["--doctor-strict"], "Normalizes --check-doctor-strict")
+        assertEqual(AppDelegate.normalizeArguments(["--strict-doctor"]), ["--doctor-strict"], "Normalizes --strict-doctor")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-export-json"]), ["--doctor-export", "--json"], "Normalizes --doctor-export-json")
+        assertEqual(AppDelegate.normalizeArguments(["--export-doctor-json"]), ["--doctor-export", "--json"], "Normalizes --export-doctor-json")
+        assertEqual(AppDelegate.normalizeArguments(["--export-doctor"]), ["--doctor-export"], "Normalizes --export-doctor")
     }
 
     // MARK: - 10. Performance Benchmark

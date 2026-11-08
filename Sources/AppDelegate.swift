@@ -293,6 +293,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor-repair", "--json"])
             case "--doctor-fix", "--repair-doctor", "--fix-doctor":
                 args.append("--doctor-repair")
+            case "--doctor-strict-json", "--diag-doctor-strict-json", "--check-doctor-strict-json", "--strict-doctor-json":
+                args.append(contentsOf: ["--doctor-strict", "--json"])
+            case "--doctor-strict", "--diag-doctor-strict", "--check-doctor-strict", "--strict-doctor":
+                args.append("--doctor-strict")
+            case "--doctor-export-json", "--export-doctor-json":
+                args.append(contentsOf: ["--doctor-export", "--json"])
+            case "--export-doctor":
+                args.append("--doctor-export")
             default:
                 args.append(arg)
             }
@@ -424,7 +432,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --reset-camera [--json]    Reset preferred camera selection to default front/built-in camera
               --diagnostics, -d [--json] Run complete biometric & hardware system diagnostics
               --doctor [--json]          Run comprehensive pre-flight & runtime health diagnostic doctor
+              --doctor-strict [--json]   Run health doctor in strict mode (fails with exit 1 on any warning)
               --doctor-repair [--json]   Auto-remediate issues detected by diagnostic doctor (permissions, audit, posture)
+              --doctor-export [path] [--json] Export doctor diagnostic report to JSON file
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -486,6 +496,49 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 report.printDoctorSummary()
             }
             exit(report.failureCount > 0 ? 1 : 0)
+        }
+
+        if args.contains("--doctor-strict") {
+            let report = Diagnostics.runDoctor()
+            if args.contains("--json") {
+                if let data = try? JSONSerialization.data(withJSONObject: report.toDictionary(), options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                report.printDoctorSummary()
+            }
+            let isStrictFailing = report.failureCount > 0 || report.warningCount > 0
+            exit(isStrictFailing ? 1 : 0)
+        }
+
+        if args.contains("--doctor-export") {
+            let customPath = AppDelegate.valueForOption("--doctor-export", in: args)
+            let result = Diagnostics.exportDoctorReport(toPath: customPath)
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "success": result.success,
+                    "path": result.path,
+                    "overallStatus": result.report.overallStatus,
+                    "totalChecks": result.report.totalChecks,
+                    "passed": result.report.passedCount,
+                    "warnings": result.report.warningCount,
+                    "failures": result.report.failureCount,
+                    "version": result.report.version
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                if result.success {
+                    print("✓ Doctor diagnostic health report exported to: \(result.path)")
+                    print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
+                } else {
+                    print("✗ Failed to export doctor diagnostic report to: \(result.path)")
+                }
+            }
+            exit(result.success ? 0 : 1)
         }
 
         if args.contains("--security-score") || args.contains("--posture") {

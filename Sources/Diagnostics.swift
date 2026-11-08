@@ -1271,6 +1271,26 @@ public struct Diagnostics {
             ))
         }
 
+        // 1.6 Battery-Aware Power Efficiency
+        if config.batteryAwareScanning {
+            checks.append(DoctorCheckItem(
+                id: "hardware.power_efficiency",
+                category: "hardware",
+                name: "Battery-Aware Power Efficiency",
+                status: .pass,
+                message: "Adaptive power management active (dynamically throttles camera sampling on battery / Low Power Mode)."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "hardware.power_efficiency",
+                category: "hardware",
+                name: "Battery-Aware Power Efficiency",
+                status: .info,
+                message: "Battery-aware adaptive polling is disabled (continuous high-frequency sampling active on battery).",
+                remediation: "Enable power-efficient scanning via 'facelock --set-battery on' or 'make toggle-battery'."
+            ))
+        }
+
         // Category 2: Filesystem & Cryptography
         let home = FileManager.default.homeDirectoryForCurrentUser
         let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
@@ -1602,6 +1622,27 @@ public struct Diagnostics {
             ))
         }
 
+        // 4.6 Meeting & Presentation Shield
+        if config.presentationModeSuppression {
+            let totalMonitored = WalkAwayMonitor.presentationCatalog.count + config.customPresentationBundleIdentifiers.count
+            checks.append(DoctorCheckItem(
+                id: "security.presentation_suppression",
+                category: "security",
+                name: "Meeting & Presentation Shield",
+                status: .pass,
+                message: "Meeting & presentation suppression active (\(totalMonitored) apps monitored to suppress lock screen during video calls and slideshows)."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.presentation_suppression",
+                category: "security",
+                name: "Meeting & Presentation Shield",
+                status: .warn,
+                message: "Meeting and presentation suppression is disabled (active calls/slides may be interrupted by lock screen).",
+                remediation: "Enable meeting & presentation suppression via 'facelock --set-presentation on' or 'make toggle-presentation'."
+            ))
+        }
+
         // Category 5: Remote Alerting & Network
         if config.telegramEnabled {
             if !config.telegramBotToken.isEmpty && !config.telegramChatId.isEmpty {
@@ -1742,5 +1783,32 @@ public struct Diagnostics {
             repairedActions: actions,
             version: Config.currentVersion
         )
+    }
+
+    @discardableResult
+    public static func exportDoctorReport(toPath customPath: String? = nil, config: Config = .shared, skipNetwork: Bool = false) -> (success: Bool, path: String, report: DoctorReport) {
+        let report = runDoctor(config: config, skipNetwork: skipNetwork)
+        let targetURL: URL
+        if let customPath = customPath, !customPath.isEmpty {
+            targetURL = URL(fileURLWithPath: (customPath as NSString).expandingTildeInPath)
+        } else {
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
+            try? FileManager.default.createDirectory(at: facelockDir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            targetURL = facelockDir.appendingPathComponent("doctor_report.json")
+        }
+
+        let dict = report.toDictionary()
+        guard let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]) else {
+            return (false, targetURL.path, report)
+        }
+
+        do {
+            try data.write(to: targetURL, options: .atomic)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: targetURL.path)
+            return (true, targetURL.path, report)
+        } catch {
+            return (false, targetURL.path, report)
+        }
     }
 }
