@@ -301,6 +301,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor-export", "--json"])
             case "--export-doctor":
                 args.append("--doctor-export")
+            case "--doctor-md-json", "--doctor-markdown-json":
+                args.append(contentsOf: ["--doctor-markdown", "--json"])
+            case "--doctor-md", "--markdown-doctor", "--doctor-markdown":
+                args.append("--doctor-markdown")
+            case "--doctor-export-md-json", "--export-doctor-md-json":
+                args.append(contentsOf: ["--doctor-export-md", "--json"])
+            case "--export-doctor-md":
+                args.append("--doctor-export-md")
             default:
                 args.append(arg)
             }
@@ -435,6 +443,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --doctor-strict [--json]   Run health doctor in strict mode (fails with exit 1 on any warning)
               --doctor-repair [--json]   Auto-remediate issues detected by diagnostic doctor (permissions, audit, posture)
               --doctor-export [path] [--json] Export doctor diagnostic report to JSON file
+              --doctor-markdown [--json] Generate health doctor diagnostic report in GitHub-flavored Markdown
+              --doctor-export-md [path] [--json] Export doctor diagnostic report to Markdown file
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -536,6 +546,59 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
                 } else {
                     print("✗ Failed to export doctor diagnostic report to: \(result.path)")
+                }
+            }
+            exit(result.success ? 0 : 1)
+        }
+
+        if args.contains("--doctor-markdown") {
+            let report = Diagnostics.runDoctor()
+            let md = report.generateMarkdown()
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "version": report.version,
+                    "overallStatus": report.overallStatus,
+                    "totalChecks": report.totalChecks,
+                    "passed": report.passedCount,
+                    "warnings": report.warningCount,
+                    "failures": report.failureCount,
+                    "markdown": md
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                print(md)
+            }
+            exit(report.failureCount > 0 ? 1 : 0)
+        }
+
+        if args.contains("--doctor-export-md") {
+            let customPath = AppDelegate.valueForOption("--doctor-export-md", in: args)
+            let result = Diagnostics.exportDoctorMarkdown(toPath: customPath)
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "success": result.success,
+                    "path": result.path,
+                    "overallStatus": result.report.overallStatus,
+                    "totalChecks": result.report.totalChecks,
+                    "passed": result.report.passedCount,
+                    "warnings": result.report.warningCount,
+                    "failures": result.report.failureCount,
+                    "version": result.report.version,
+                    "bytesWritten": result.content.utf8.count
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                if result.success {
+                    print("✓ Doctor diagnostic health report exported to Markdown: \(result.path)")
+                    print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
+                } else {
+                    print("✗ Failed to export doctor diagnostic report to Markdown: \(result.path)")
                 }
             }
             exit(result.success ? 0 : 1)

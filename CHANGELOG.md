@@ -4,6 +4,24 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.7] - 2026-11-09
+
+### Added
+- **Diagnostic Doctor Expansion to 24 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `security.lock_on_wake`: Evaluates whether screen wake biometric verification (`config.lockOnWake`) is active to intercept Mac lid opening and sleep-wake transitions.
+  - Added `security.walk_away_lock`: Evaluates whether autonomous presence detection (`config.walkAwayLockEnabled`) is active and verifies that the idle timeout (`config.walkAwayIdleSeconds`) is strictly within secure operational bounds (<= 120s).
+  - Added `security.app_shield_policy`: Evaluates application shielding mode (`config.protectionMode`) and ensures configured application protection coverage (detects empty selective lists).
+  - Added `security.pin_bruteforce_defense`: Evaluates PIN brute-force attempt limits (`config.maxFailedPinAttempts` <= 5) and exponential lockout cooldown duration (`config.pinLockoutSeconds` >= 5s).
+- **Diagnostic Doctor Markdown Report Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.generateMarkdown()` generating a GitHub-flavored Markdown health report with status badges, summary metrics table, categorized check breakdowns, and actionable remediation recommendations.
+  - Implemented `Diagnostics.exportDoctorMarkdown(toPath:config:skipNetwork:)` allowing atomic export to `~/.facelock/doctor_report.md` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-markdown` and `--doctor-export-md [path]` with `--json` output support and full normalization aliases (`--doctor-md`, `--doctor-md-json`, `--doctor-markdown-json`, `--doctor-export-md-json`, `--export-doctor-md`, `--export-doctor-md-json`).
+  - Added Makefile targets `make doctor-markdown`, `make doctor-md`, `make doctor-export-md`, and `make doctor-export-md-json`.
+- **Automated Test Suite Expansion (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV127Enhancements()` verifying 24+ doctor checks, Markdown report generation, file export integrity, version synchronization, and CLI argument normalizations.
+- **Version Bump to v1.2.7 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.2.7` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.2.6] - 2026-11-08
 
 ### Added

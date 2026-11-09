@@ -1,4 +1,4 @@
-.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app protect-app-json unprotect-app unprotect-app-json ignore-app ignore-app-json unignore-app unignore-app-json reset-apps diagnostics diagnostics-gui health health-json toggle toggle-json pause pause-json resume resume-json toggle-wake toggle-wake-json wake reload reload-json reset-session reset-session-json check-app check-app-json vectors vectors-json optimize-vectors optimize-vectors-json vector-consistency vector-consistency-json clear-vectors clear-vectors-json reset-vectors reset-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents clear-incidents-json clear-incidents-type clear-incidents-type-json prune-incidents prune-incidents-days prune-incidents-days-json export-incidents export-incidents-json test-telegram test-telegram-json incidents incidents-summary incidents-summary-json incidents-search incidents-search-json incidents-integrity incidents-integrity-json check-incidents check-incidents-json repair-incidents repair-incidents-json latest-incident latest-incident-json export-latest-incident export-latest-incident-json incident incident-json delete-incident delete-incident-json verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-stats-json log-stats log-stats-json audit-summary audit-summary-json audit-gui audit-search audit-search-json prune-audit prune-audit-days prune-audit-days-json prune-logs-days prune-logs-days-json clear-audit clear-audit-json export-audit export-audit-json export-audit-csv export-audit-csv-json export-logs export-logs-json set-threshold set-threshold-json set-timeout set-timeout-json set-debounce set-debounce-json set-mode set-mode-json set-walkaway set-walkaway-json pin-attempts pin-attempts-json pin-lockout pin-lockout-json set-pin set-pin-json cameras cameras-json set-camera reset-camera backup-config backup-config-json export-config export-config-json restore-config restore-config-json import-config import-config-json export-vectors export-vectors-json backup-vectors backup-vectors-json import-vectors import-vectors-json restore-vectors restore-vectors-json test profiles profiles-json profile profile-json toggle-shoulder toggle-shoulder-json toggle-audible toggle-audible-json toggle-battery toggle-battery-json toggle-presentation toggle-presentation-json toggle-liveness toggle-liveness-json toggle-touchid toggle-touchid-json toggle-walkaway toggle-walkaway-json battery-status battery-status-json security-score security-score-json posture posture-json presentation-apps presentation-apps-json meeting-apps meeting-apps-json check-presentation check-presentation-json threat-intel threat-intel-json risk-level risk-level-json validate-config validate-config-json check-config check-config-json harden harden-json auto-harden auto-harden-json storage-summary storage-summary-json storage-stats storage-stats-json prune-incidents-size prune-incidents-size-json prune-incidents-mb prune-incidents-mb-json audit-integrity audit-integrity-json check-audit check-audit-json repair-audit repair-audit-json audit-digest audit-digest-json set-duress-pin set-duress-pin-json clear-duress-pin clear-duress-pin-json duress-status duress-status-json prune-incidents-quota prune-incidents-quota-json add-meeting-app add-meeting-app-json remove-meeting-app remove-meeting-app-json reset-meeting-apps reset-meeting-apps-json custom-meeting-apps custom-meeting-apps-json add-presentation-app add-presentation-app-json remove-presentation-app remove-presentation-app-json reset-presentation-apps custom-presentation-apps archive-incidents archive-incidents-json doctor doctor-json doctor-strict doctor-strict-json doctor-repair doctor-repair-json doctor-fix doctor-fix-json doctor-export doctor-export-json
+.PHONY: all build run enroll test-lock lock lock-json lockdown lockdown-json is-locked is-locked-json settings gallery status config apps apps-gui protect-app protect-app-json unprotect-app unprotect-app-json ignore-app ignore-app-json unignore-app unignore-app-json reset-apps diagnostics diagnostics-gui health health-json toggle toggle-json pause pause-json resume resume-json toggle-wake toggle-wake-json wake reload reload-json reset-session reset-session-json check-app check-app-json vectors vectors-json optimize-vectors optimize-vectors-json vector-consistency vector-consistency-json clear-vectors clear-vectors-json reset-vectors reset-vectors-json install install-cli uninstall stop clean help commit update sync install-sync uninstall-sync release maintainer-install maintainer-stop report clear-incidents clear-incidents-json clear-incidents-type clear-incidents-type-json prune-incidents prune-incidents-days prune-incidents-days-json export-incidents export-incidents-json test-telegram test-telegram-json incidents incidents-summary incidents-summary-json incidents-search incidents-search-json incidents-integrity incidents-integrity-json check-incidents check-incidents-json repair-incidents repair-incidents-json latest-incident latest-incident-json export-latest-incident export-latest-incident-json incident incident-json delete-incident delete-incident-json verify-face verify-pin status-json diagnostics-json audit audit-json audit-stats audit-stats-json log-stats log-stats-json audit-summary audit-summary-json audit-gui audit-search audit-search-json prune-audit prune-audit-days prune-audit-days-json prune-logs-days prune-logs-days-json clear-audit clear-audit-json export-audit export-audit-json export-audit-csv export-audit-csv-json export-logs export-logs-json set-threshold set-threshold-json set-timeout set-timeout-json set-debounce set-debounce-json set-mode set-mode-json set-walkaway set-walkaway-json pin-attempts pin-attempts-json pin-lockout pin-lockout-json set-pin set-pin-json cameras cameras-json set-camera reset-camera backup-config backup-config-json export-config export-config-json restore-config restore-config-json import-config import-config-json export-vectors export-vectors-json backup-vectors backup-vectors-json import-vectors import-vectors-json restore-vectors restore-vectors-json test profiles profiles-json profile profile-json toggle-shoulder toggle-shoulder-json toggle-audible toggle-audible-json toggle-battery toggle-battery-json toggle-presentation toggle-presentation-json toggle-liveness toggle-liveness-json toggle-touchid toggle-touchid-json toggle-walkaway toggle-walkaway-json battery-status battery-status-json security-score security-score-json posture posture-json presentation-apps presentation-apps-json meeting-apps meeting-apps-json check-presentation check-presentation-json threat-intel threat-intel-json risk-level risk-level-json validate-config validate-config-json check-config check-config-json harden harden-json auto-harden auto-harden-json storage-summary storage-summary-json storage-stats storage-stats-json prune-incidents-size prune-incidents-size-json prune-incidents-mb prune-incidents-mb-json audit-integrity audit-integrity-json check-audit check-audit-json repair-audit repair-audit-json audit-digest audit-digest-json set-duress-pin set-duress-pin-json clear-duress-pin clear-duress-pin-json duress-status duress-status-json prune-incidents-quota prune-incidents-quota-json add-meeting-app add-meeting-app-json remove-meeting-app remove-meeting-app-json reset-meeting-apps reset-meeting-apps-json custom-meeting-apps custom-meeting-apps-json add-presentation-app add-presentation-app-json remove-presentation-app remove-presentation-app-json reset-presentation-apps custom-presentation-apps archive-incidents archive-incidents-json doctor doctor-json doctor-strict doctor-strict-json doctor-repair doctor-repair-json doctor-fix doctor-fix-json doctor-export doctor-export-json doctor-md doctor-md-json doctor-markdown doctor-markdown-json doctor-export-md doctor-export-md-json
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -41,6 +41,8 @@ help:
 	@echo "  make doctor-repair-json - Auto-remediate doctor issues (JSON output)"
 	@echo "  make doctor-export  - Export doctor diagnostic report to ~/.facelock/doctor_report.json"
 	@echo "  make doctor-export-json - Export doctor diagnostic report (JSON output)"
+	@echo "  make doctor-markdown - Export and display diagnostic doctor report in Markdown format"
+	@echo "  make doctor-export-md - Export doctor diagnostic report to ~/.facelock/doctor_report.md"
 	@echo "  make config         - Display active FaceLock configuration settings"
 	@echo "  make apps           - List protected and ignored application bundle IDs"
 	@echo "  make apps-gui       - Open interactive application protection policy window"
@@ -1041,6 +1043,10 @@ test: build
 	@build/FaceLock.app/Contents/MacOS/FaceLock --doctor-repair-json > /dev/null || true
 	@build/FaceLock.app/Contents/MacOS/FaceLock --doctor-export /tmp/facelock_doc_test.json > /dev/null && rm -f /tmp/facelock_doc_test.json
 	@build/FaceLock.app/Contents/MacOS/FaceLock --doctor-export-json > /dev/null
+	@build/FaceLock.app/Contents/MacOS/FaceLock --doctor-markdown > /dev/null || true
+	@build/FaceLock.app/Contents/MacOS/FaceLock --doctor-markdown --json > /dev/null || true
+	@build/FaceLock.app/Contents/MacOS/FaceLock --doctor-export-md /tmp/facelock_doc_test.md > /dev/null && rm -f /tmp/facelock_doc_test.md
+	@build/FaceLock.app/Contents/MacOS/FaceLock --doctor-export-md --json > /dev/null
 	@echo "✓ All CLI tests passed!"
 
 doctor: build
@@ -1078,6 +1084,34 @@ doctor-export-json: build
 		build/FaceLock.app/Contents/MacOS/FaceLock --doctor-export "$$TARGET_PATH" --json; \
 	else \
 		build/FaceLock.app/Contents/MacOS/FaceLock --doctor-export --json; \
+	fi
+
+doctor-md: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --doctor-markdown
+
+doctor-md-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --doctor-markdown --json
+
+doctor-markdown: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --doctor-markdown
+
+doctor-markdown-json: build
+	@build/FaceLock.app/Contents/MacOS/FaceLock --doctor-markdown --json
+
+doctor-export-md: build
+	@if [ -n "$(DEST)" ] || [ -n "$(FILE)" ]; then \
+		TARGET_PATH="$${DEST:-$(FILE)}"; \
+		build/FaceLock.app/Contents/MacOS/FaceLock --doctor-export-md "$$TARGET_PATH"; \
+	else \
+		build/FaceLock.app/Contents/MacOS/FaceLock --doctor-export-md; \
+	fi
+
+doctor-export-md-json: build
+	@if [ -n "$(DEST)" ] || [ -n "$(FILE)" ]; then \
+		TARGET_PATH="$${DEST:-$(FILE)}"; \
+		build/FaceLock.app/Contents/MacOS/FaceLock --doctor-export-md "$$TARGET_PATH" --json; \
+	else \
+		build/FaceLock.app/Contents/MacOS/FaceLock --doctor-export-md --json; \
 	fi
 
 diagnostics: build

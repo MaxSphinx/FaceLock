@@ -250,6 +250,73 @@ public struct DoctorReport {
         }
         print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
     }
+
+    public func generateMarkdown() -> String {
+        var md = ""
+        md += "# 🩺 FaceLock Health & Diagnostic Doctor Report\n\n"
+
+        let statusBadge: String
+        switch overallStatus {
+        case "HEALTHY": statusBadge = "HEALTHY ✅"
+        case "WARNING": statusBadge = "WARNING ⚠️"
+        default:        statusBadge = "CRITICAL ❌"
+        }
+
+        md += "> **Overall System Status**: \(statusBadge)  \n"
+        md += "> **FaceLock Version**: `v\(version)`  \n"
+        md += "> **Report Timestamp**: `\(timestamp)`\n\n"
+
+        md += "## Summary Statistics\n\n"
+        md += "| Metric | Status / Count |\n"
+        md += "|---|---|\n"
+        md += "| Overall Status | **\(overallStatus)** |\n"
+        md += "| Total Checks Evaluated | `\(totalChecks)` |\n"
+        md += "| Passed Checks ✅ | `\(passedCount)` |\n"
+        md += "| Warnings ⚠️ | `\(warningCount)` |\n"
+        md += "| Failures ❌ | `\(failureCount)` |\n"
+        md += "| Informational ℹ️ | `\(infoCount)` |\n\n"
+
+        md += "## Detailed Diagnostic Results\n\n"
+        let categories: [(String, String)] = [
+            ("hardware", "1. Hardware & Sensors"),
+            ("filesystem", "2. Filesystem & Cryptography"),
+            ("daemon", "3. Background Daemon & Automation"),
+            ("security", "4. Security Posture & Hardening"),
+            ("network", "5. Remote Alerting & Network")
+        ]
+
+        for (catKey, catTitle) in categories {
+            let catChecks = checks.filter { $0.category == catKey }
+            if catChecks.isEmpty { continue }
+            md += "### \(catTitle)\n\n"
+            md += "| Status | Check | Details |\n"
+            md += "|:---:|---|---|\n"
+            for c in catChecks {
+                let badge = c.status.badge
+                let name = c.name
+                var details = c.message
+                if let rem = c.remediation, !rem.isEmpty {
+                    details += "<br>*(Action: \(rem))*"
+                }
+                let safeDetails = details.replacingOccurrences(of: "|", with: "\\|")
+                md += "| \(badge) | **\(name)** | \(safeDetails) |\n"
+            }
+            md += "\n"
+        }
+
+        if !remediations.isEmpty {
+            md += "## Actionable Recommendations\n\n"
+            for (idx, rem) in remediations.enumerated() {
+                md += "\(idx + 1). \(rem)\n"
+            }
+            md += "\n"
+        } else {
+            md += "## Recommendations\n\n"
+            md += "✓ All diagnostic health checks are in optimal operational order. No action required.\n\n"
+        }
+
+        return md
+    }
 }
 
 public struct DoctorRepairReport {
@@ -835,6 +902,10 @@ public struct Diagnostics {
         if config.telegramEnabled && (config.telegramBotToken.isEmpty || config.telegramChatId.isEmpty) {
             config.telegramEnabled = false
             fixes.append("Disabled incomplete Telegram alerting (missing bot token or chat ID)")
+        }
+        if config.protectionMode == "selective" && config.protectedBundleIdentifiers.isEmpty {
+            config.protectionMode = "all"
+            fixes.append("Switched application protection mode to 'all' because selective protected list was empty")
         }
 
         // Purge corrupted captures if any exist
@@ -1643,6 +1714,113 @@ public struct Diagnostics {
             ))
         }
 
+        // 4.7 Screen Wake Biometric Verification
+        if config.lockOnWake {
+            checks.append(DoctorCheckItem(
+                id: "security.lock_on_wake",
+                category: "security",
+                name: "Screen Wake Biometric Verification",
+                status: .pass,
+                message: "Screen wake biometric verification active (intercepts display wake and lid opening to require face or PIN authentication)."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.lock_on_wake",
+                category: "security",
+                name: "Screen Wake Biometric Verification",
+                status: .warn,
+                message: "Screen wake biometric verification is disabled (Mac wake from sleep bypasses biometric authentication).",
+                remediation: "Enable lock-on-wake via 'facelock --set-lock-on-wake on' or 'make toggle-wake'."
+            ))
+        }
+
+        // 4.8 Autonomous Walk-Away Presence Shield
+        if !config.walkAwayLockEnabled {
+            checks.append(DoctorCheckItem(
+                id: "security.walk_away_lock",
+                category: "security",
+                name: "Autonomous Walk-Away Presence Shield",
+                status: .warn,
+                message: "Walk-away autonomous lock is disabled (unattended workstation will remain unlocked).",
+                remediation: "Enable walk-away autonomous lock via 'facelock --set-walkaway toggle' or 'make set-walkaway SECONDS=45'."
+            ))
+        } else if config.walkAwayIdleSeconds > 120 {
+            checks.append(DoctorCheckItem(
+                id: "security.walk_away_lock",
+                category: "security",
+                name: "Autonomous Walk-Away Presence Shield",
+                status: .warn,
+                message: "Walk-away idle timeout is excessively relaxed (\(Int(config.walkAwayIdleSeconds))s > 120s).",
+                remediation: "Tighten idle timeout to 45 seconds or less via 'make set-walkaway SECONDS=45'."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.walk_away_lock",
+                category: "security",
+                name: "Autonomous Walk-Away Presence Shield",
+                status: .pass,
+                message: "Walk-away autonomous presence shield active (\(Int(config.walkAwayIdleSeconds))s idle threshold)."
+            ))
+        }
+
+        // 4.9 Application Shield Policy
+        if config.protectionMode == "all" {
+            let ignoredCount = config.ignoredBundleIdentifiers.count
+            checks.append(DoctorCheckItem(
+                id: "security.app_shield_policy",
+                category: "security",
+                name: "Application Shield Policy",
+                status: .pass,
+                message: "Full application shield active (all desktop apps protected except \(ignoredCount) ignored system exceptions)."
+            ))
+        } else if !config.protectedBundleIdentifiers.isEmpty {
+            checks.append(DoctorCheckItem(
+                id: "security.app_shield_policy",
+                category: "security",
+                name: "Application Shield Policy",
+                status: .pass,
+                message: "Selective application shield active (\(config.protectedBundleIdentifiers.count) sensitive application(s) guarded)."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.app_shield_policy",
+                category: "security",
+                name: "Application Shield Policy",
+                status: .fail,
+                message: "Selective protection mode is active, but zero applications are configured in protected bundle list.",
+                remediation: "Add sensitive apps via 'facelock --protect-app <bundleId>' or switch mode to 'all' via 'facelock --set-mode all'."
+            ))
+        }
+
+        // 4.10 PIN Rate Limiting & Lockout Defense
+        if config.maxFailedPinAttempts <= 5 && config.pinLockoutSeconds >= 5 {
+            checks.append(DoctorCheckItem(
+                id: "security.pin_bruteforce_defense",
+                category: "security",
+                name: "PIN Rate Limiting & Lockout Defense",
+                status: .pass,
+                message: "PIN brute-force defense active (max \(config.maxFailedPinAttempts) failed attempt(s), \(Int(config.pinLockoutSeconds))s exponential lockout cooldown)."
+            ))
+        } else if config.maxFailedPinAttempts > 5 {
+            checks.append(DoctorCheckItem(
+                id: "security.pin_bruteforce_defense",
+                category: "security",
+                name: "PIN Rate Limiting & Lockout Defense",
+                status: .warn,
+                message: "Max failed PIN attempts allowance is too high (\(config.maxFailedPinAttempts) attempts > 5).",
+                remediation: "Tighten PIN lockout attempts to 3 via 'make pin-attempts ATTEMPTS=3'."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.pin_bruteforce_defense",
+                category: "security",
+                name: "PIN Rate Limiting & Lockout Defense",
+                status: .warn,
+                message: "PIN lockout cooldown duration is too brief (\(Int(config.pinLockoutSeconds))s < 5s).",
+                remediation: "Harden PIN lockout cooldown via 'make pin-lockout SECONDS=10'."
+            ))
+        }
+
         // Category 5: Remote Alerting & Network
         if config.telegramEnabled {
             if !config.telegramBotToken.isEmpty && !config.telegramChatId.isEmpty {
@@ -1809,6 +1987,33 @@ public struct Diagnostics {
             return (true, targetURL.path, report)
         } catch {
             return (false, targetURL.path, report)
+        }
+    }
+
+    @discardableResult
+    public static func exportDoctorMarkdown(toPath customPath: String? = nil, config: Config = .shared, skipNetwork: Bool = false) -> (success: Bool, path: String, content: String, report: DoctorReport) {
+        let report = runDoctor(config: config, skipNetwork: skipNetwork)
+        let md = report.generateMarkdown()
+        let targetURL: URL
+        if let customPath = customPath, !customPath.isEmpty {
+            targetURL = URL(fileURLWithPath: (customPath as NSString).expandingTildeInPath)
+        } else {
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
+            try? FileManager.default.createDirectory(at: facelockDir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            targetURL = facelockDir.appendingPathComponent("doctor_report.md")
+        }
+
+        guard let data = md.data(using: .utf8) else {
+            return (false, targetURL.path, md, report)
+        }
+
+        do {
+            try data.write(to: targetURL, options: .atomic)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: targetURL.path)
+            return (true, targetURL.path, md, report)
+        } catch {
+            return (false, targetURL.path, md, report)
         }
     }
 }

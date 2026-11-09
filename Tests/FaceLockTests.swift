@@ -84,6 +84,7 @@ public final class FaceLockTestSuite {
         testMaintenanceV124Enhancements()
         testMaintenanceV125Enhancements()
         testMaintenanceV126Enhancements()
+        testMaintenanceV127Enhancements()
         testVectorMatchingBenchmark()
 
         let elapsed = Date().timeIntervalSince(startTime)
@@ -2384,7 +2385,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.2.6", "Config currentVersion is 1.2.6")
+        assertEqual(Config.currentVersion, "1.2.7", "Config currentVersion is synchronized")
 
         // 5. Test CLI Argument Normalization for Doctor Strict and Export
         assertEqual(AppDelegate.normalizeArguments(["--doctor-strict-json"]), ["--doctor-strict", "--json"], "Normalizes --doctor-strict-json")
@@ -2398,6 +2399,62 @@ public final class FaceLockTestSuite {
         assertEqual(AppDelegate.normalizeArguments(["--doctor-export-json"]), ["--doctor-export", "--json"], "Normalizes --doctor-export-json")
         assertEqual(AppDelegate.normalizeArguments(["--export-doctor-json"]), ["--doctor-export", "--json"], "Normalizes --export-doctor-json")
         assertEqual(AppDelegate.normalizeArguments(["--export-doctor"]), ["--doctor-export"], "Normalizes --export-doctor")
+    }
+
+    // MARK: - 9.13 Maintenance Suite v1.2.7 (Doctor 24-Check Expansion & Markdown Report Engine)
+    private func testMaintenanceV127Enhancements() {
+        print("\n▶ Test Suite: Autonomous Doctor 24-Check Expansion & Markdown Engine (v1.2.7)")
+
+        // 1. Doctor 24-Check Coverage
+        let report = Diagnostics.runDoctor(skipNetwork: true)
+        assert(report.totalChecks >= 24, "Doctor executes at least 24 comprehensive checks (Got \(report.totalChecks))")
+        let checkIds = Set(report.checks.map { $0.id })
+        assert(checkIds.contains("security.lock_on_wake"), "Contains 'security.lock_on_wake' check")
+        assert(checkIds.contains("security.walk_away_lock"), "Contains 'security.walk_away_lock' check")
+        assert(checkIds.contains("security.app_shield_policy"), "Contains 'security.app_shield_policy' check")
+        assert(checkIds.contains("security.pin_bruteforce_defense"), "Contains 'security.pin_bruteforce_defense' check")
+
+        // 2. Doctor Markdown Report Generation
+        let md = report.generateMarkdown()
+        assert(md.contains("# 🩺 FaceLock Health & Diagnostic Doctor Report"), "Markdown contains title")
+        assert(md.contains("## Summary Statistics"), "Markdown contains summary statistics")
+        assert(md.contains("## Detailed Diagnostic Results"), "Markdown contains detailed results")
+        assert(md.contains("Screen Wake Biometric Verification"), "Markdown contains lock_on_wake check")
+        assert(md.contains("Autonomous Walk-Away Presence Shield"), "Markdown contains walk_away_lock check")
+        assert(md.contains("Application Shield Policy"), "Markdown contains app_shield_policy check")
+        assert(md.contains("PIN Rate Limiting & Lockout Defense"), "Markdown contains pin_bruteforce_defense check")
+        assert(md.contains("1. Hardware & Sensors"), "Markdown contains hardware category")
+        assert(md.contains("2. Filesystem & Cryptography"), "Markdown contains filesystem category")
+        assert(md.contains("3. Background Daemon & Automation"), "Markdown contains daemon category")
+        assert(md.contains("4. Security Posture & Hardening"), "Markdown contains security category")
+        assert(md.contains("5. Remote Alerting & Network"), "Markdown contains network category")
+
+        // 3. Doctor Markdown File Export Test
+        let tempExportPath = "/tmp/facelock_test_doc_export_\(UUID().uuidString).md"
+        let exportResult = Diagnostics.exportDoctorMarkdown(toPath: tempExportPath, skipNetwork: true)
+        assert(exportResult.success, "exportDoctorMarkdown succeeded")
+        assertEqual(exportResult.path, tempExportPath, "exportDoctorMarkdown exported to expected path")
+        assert(FileManager.default.fileExists(atPath: tempExportPath), "Exported doctor markdown file exists on disk")
+        assert(exportResult.content.contains("# 🩺 FaceLock Health & Diagnostic Doctor Report"), "Exported content matches markdown")
+        if let data = try? Data(contentsOf: URL(fileURLWithPath: tempExportPath)),
+           let str = String(data: data, encoding: .utf8) {
+            assert(str.contains("v\(Config.currentVersion)"), "Exported Markdown contains version string")
+            assert(str.contains("Summary Statistics"), "Exported Markdown contains summary")
+        }
+        try? FileManager.default.removeItem(atPath: tempExportPath)
+
+        // 4. Test Version Synchronization
+        assertEqual(Config.currentVersion, "1.2.7", "Config currentVersion is 1.2.7")
+
+        // 5. Test CLI Argument Normalization for Doctor Markdown and Export MD
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-md-json"]), ["--doctor-markdown", "--json"], "Normalizes --doctor-md-json")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-markdown-json"]), ["--doctor-markdown", "--json"], "Normalizes --doctor-markdown-json")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-md"]), ["--doctor-markdown"], "Normalizes --doctor-md")
+        assertEqual(AppDelegate.normalizeArguments(["--markdown-doctor"]), ["--doctor-markdown"], "Normalizes --markdown-doctor")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-markdown"]), ["--doctor-markdown"], "Normalizes --doctor-markdown")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-export-md-json"]), ["--doctor-export-md", "--json"], "Normalizes --doctor-export-md-json")
+        assertEqual(AppDelegate.normalizeArguments(["--export-doctor-md-json"]), ["--doctor-export-md", "--json"], "Normalizes --export-doctor-md-json")
+        assertEqual(AppDelegate.normalizeArguments(["--export-doctor-md"]), ["--doctor-export-md"], "Normalizes --export-doctor-md")
     }
 
     // MARK: - 10. Performance Benchmark
