@@ -666,6 +666,80 @@ public struct DoctorReport {
 
         return html
     }
+
+    public func toSARIFDictionary() -> [String: Any] {
+        var rules: [[String: Any]] = []
+        for check in checks {
+            let defaultLevel: String
+            switch check.status {
+            case .fail: defaultLevel = "error"
+            case .warn: defaultLevel = "warning"
+            case .info, .pass: defaultLevel = "note"
+            }
+            var ruleDict: [String: Any] = [
+                "id": check.id,
+                "name": check.name.replacingOccurrences(of: " ", with: ""),
+                "shortDescription": ["text": check.name],
+                "fullDescription": ["text": check.message],
+                "defaultConfiguration": ["level": defaultLevel]
+            ]
+            if let rem = check.remediation {
+                ruleDict["help"] = ["text": rem]
+            }
+            rules.append(ruleDict)
+        }
+
+        var results: [[String: Any]] = []
+        for check in checks {
+            let level: String
+            switch check.status {
+            case .fail: level = "error"
+            case .warn: level = "warning"
+            case .info: level = "note"
+            case .pass: continue
+            }
+
+            var resultDict: [String: Any] = [
+                "ruleId": check.id,
+                "level": level,
+                "message": ["text": check.message]
+            ]
+            if let rem = check.remediation {
+                resultDict["fixes"] = [
+                    ["description": ["text": rem]]
+                ]
+            }
+            results.append(resultDict)
+        }
+
+        let sarif: [String: Any] = [
+            "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+            "version": "2.1.0",
+            "runs": [
+                [
+                    "tool": [
+                        "driver": [
+                            "name": "FaceLock Doctor",
+                            "version": version,
+                            "informationUri": "https://github.com/MaxSphinx/FaceLock",
+                            "rules": rules
+                        ]
+                    ],
+                    "results": results
+                ]
+            ]
+        ]
+        return sarif
+    }
+
+    public func generateSARIF() -> String {
+        let dict = toSARIFDictionary()
+        guard let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
+              let str = String(data: data, encoding: .utf8) else {
+            return "{}"
+        }
+        return str
+    }
 }
 
 public struct DoctorRepairReport {
@@ -1723,7 +1797,7 @@ public struct Diagnostics {
             ))
         }
 
-        // 1.6 Battery-Aware Power Efficiency
+        // 1.7 Battery-Aware Power Efficiency
         if config.batteryAwareScanning {
             checks.append(DoctorCheckItem(
                 id: "hardware.power_efficiency",
@@ -1740,6 +1814,53 @@ public struct Diagnostics {
                 status: .info,
                 message: "Battery-aware adaptive polling is disabled (continuous high-frequency sampling active on battery).",
                 remediation: "Enable power-efficient scanning via 'facelock --set-battery on' or 'make toggle-battery'."
+            ))
+        }
+
+        // 1.8 macOS Thermal State & Throttling
+        let thermalState = ProcessInfo.processInfo.thermalState
+        switch thermalState {
+        case .nominal:
+            checks.append(DoctorCheckItem(
+                id: "hardware.thermal_state",
+                category: "hardware",
+                name: "macOS Thermal State",
+                status: .pass,
+                message: "Thermal state is nominal. Optimal biometric inference performance and cooling headroom."
+            ))
+        case .fair:
+            checks.append(DoctorCheckItem(
+                id: "hardware.thermal_state",
+                category: "hardware",
+                name: "macOS Thermal State",
+                status: .pass,
+                message: "Thermal state is fair. Biometric capture running without throttling."
+            ))
+        case .serious:
+            checks.append(DoctorCheckItem(
+                id: "hardware.thermal_state",
+                category: "hardware",
+                name: "macOS Thermal State",
+                status: .warn,
+                message: "Thermal state is serious. Fans elevated; adaptive camera throttling recommended to reduce heat.",
+                remediation: "Ensure adequate ventilation or enable battery-aware scanning via 'facelock --toggle-battery-aware'."
+            ))
+        case .critical:
+            checks.append(DoctorCheckItem(
+                id: "hardware.thermal_state",
+                category: "hardware",
+                name: "macOS Thermal State",
+                status: .fail,
+                message: "Thermal state is critical. System is heavily throttling processing.",
+                remediation: "Reduce system CPU/GPU workload immediately and ensure proper ventilation."
+            ))
+        @unknown default:
+            checks.append(DoctorCheckItem(
+                id: "hardware.thermal_state",
+                category: "hardware",
+                name: "macOS Thermal State",
+                status: .info,
+                message: "Thermal state telemetry unavailable."
             ))
         }
 
@@ -1897,6 +2018,56 @@ public struct Diagnostics {
                 name: "Intruder Photo Storage",
                 status: .pass,
                 message: "Intruder incident storage healthy: \(intruderCount) photo(s) stored (\(formattedSize))."
+            ))
+        }
+
+        // 2.6 Storage Volume Free Headroom
+        var freeBytes: Int64 = -1
+        if let values = try? facelockDir.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]),
+           let avail = values.volumeAvailableCapacityForImportantUsage {
+            freeBytes = avail
+        } else if let values = try? facelockDir.resourceValues(forKeys: [.volumeAvailableCapacityKey]),
+                  let avail = values.volumeAvailableCapacity {
+            freeBytes = Int64(avail)
+        }
+
+        if freeBytes >= 0 {
+            let freeGB = Double(freeBytes) / (1024.0 * 1024.0 * 1024.0)
+            let freeMB = Double(freeBytes) / (1024.0 * 1024.0)
+            if freeMB < 200.0 {
+                checks.append(DoctorCheckItem(
+                    id: "filesystem.disk_headroom",
+                    category: "filesystem",
+                    name: "Storage Volume Free Headroom",
+                    status: .fail,
+                    message: String(format: "Critical disk space deficit (only %.1f MB free on host volume). Intruder captures and audit logs may fail.", freeMB),
+                    remediation: "Free disk space on host drive to ensure reliable intruder capture persistence."
+                ))
+            } else if freeMB < 1024.0 {
+                checks.append(DoctorCheckItem(
+                    id: "filesystem.disk_headroom",
+                    category: "filesystem",
+                    name: "Storage Volume Free Headroom",
+                    status: .warn,
+                    message: String(format: "Low disk space headroom (%.1f MB free on host volume).", freeMB),
+                    remediation: "Prune old intruder incident photos via 'make prune-incidents-days DAYS=7'."
+                ))
+            } else {
+                checks.append(DoctorCheckItem(
+                    id: "filesystem.disk_headroom",
+                    category: "filesystem",
+                    name: "Storage Volume Free Headroom",
+                    status: .pass,
+                    message: String(format: "Ample disk headroom available (%.1f GB free on host volume).", freeGB)
+                ))
+            }
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.disk_headroom",
+                category: "filesystem",
+                name: "Storage Volume Free Headroom",
+                status: .info,
+                message: "Unable to query host volume free capacity."
             ))
         }
 
@@ -2282,6 +2453,81 @@ public struct Diagnostics {
             ))
         }
 
+        // 4.12 Enrolled Biometric Cluster Cohesion & Entropy
+        let enrolledVectors = config.loadEnrolledVectors()
+        if enrolledVectors.isEmpty {
+            checks.append(DoctorCheckItem(
+                id: "security.biometric_cluster_cohesion",
+                category: "security",
+                name: "Biometric Cluster Cohesion & Entropy",
+                status: .info,
+                message: "No facial vectors enrolled yet (biometric consistency evaluation pending calibration)."
+            ))
+        } else if enrolledVectors.count < 3 {
+            checks.append(DoctorCheckItem(
+                id: "security.biometric_cluster_cohesion",
+                category: "security",
+                name: "Biometric Cluster Cohesion & Entropy",
+                status: .info,
+                message: "Enrolled vector count (\(enrolledVectors.count)) insufficient for cluster entropy analysis (3+ vectors required)."
+            ))
+        } else {
+            let analysis = config.analyzeTemplateConsistency(vectors: enrolledVectors)
+            let cohesion = analysis["cohesionScore"] as? Double ?? 0.0
+            let status = analysis["status"] as? String ?? "UNKNOWN"
+            let cohesionPct = String(format: "%.1f%%", cohesion * 100.0)
+            if cohesion >= 0.70 {
+                checks.append(DoctorCheckItem(
+                    id: "security.biometric_cluster_cohesion",
+                    category: "security",
+                    name: "Biometric Cluster Cohesion & Entropy",
+                    status: .pass,
+                    message: "Enrolled face vector cluster demonstrates high cohesion (\(cohesionPct), status: \(status)). Robust biometric recognition baseline."
+                ))
+            } else {
+                checks.append(DoctorCheckItem(
+                    id: "security.biometric_cluster_cohesion",
+                    category: "security",
+                    name: "Biometric Cluster Cohesion & Entropy",
+                    status: .warn,
+                    message: "Enrolled face vector cluster cohesion is suboptimal (\(cohesionPct), status: \(status)). Template drift or lighting variance detected.",
+                    remediation: "Execute 'facelock --optimize-vectors' to prune divergent outliers or recalibrate via 'facelock --enroll'."
+                ))
+            }
+        }
+
+        // 4.13 Duress Distress Alarm Pipeline
+        let trimmedDuressPin = config.duressPin.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedDuressPin.isEmpty {
+            if config.telegramEnabled && !config.telegramBotToken.isEmpty && !config.telegramChatId.isEmpty {
+                checks.append(DoctorCheckItem(
+                    id: "security.duress_alarm_pipeline",
+                    category: "security",
+                    name: "Silent Duress Alert Pipeline",
+                    status: .pass,
+                    message: "Duress PIN armed with multi-tier emergency pipeline (silent intruder capture, screen disguise & instant Telegram dispatch)."
+                ))
+            } else {
+                checks.append(DoctorCheckItem(
+                    id: "security.duress_alarm_pipeline",
+                    category: "security",
+                    name: "Silent Duress Alert Pipeline",
+                    status: .warn,
+                    message: "Duress PIN is configured, but remote Telegram notification is not configured. Coerced unlock will only log locally without offsite alert.",
+                    remediation: "Configure Telegram bot credentials via 'facelock --set-telegram <token> <chatId>' to enable offsite duress dispatch."
+                ))
+            }
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.duress_alarm_pipeline",
+                category: "security",
+                name: "Silent Duress Alert Pipeline",
+                status: .info,
+                message: "Silent duress distress PIN is unconfigured (optional coerced-unlock defense).",
+                remediation: "Set emergency duress PIN via 'facelock --set-duress-pin <pin>' to guard against physical coercion."
+            ))
+        }
+
         // Category 5: Remote Alerting & Network
         if config.telegramEnabled {
             if !config.telegramBotToken.isEmpty && !config.telegramChatId.isEmpty {
@@ -2502,6 +2748,33 @@ public struct Diagnostics {
             return (true, targetURL.path, html, report)
         } catch {
             return (false, targetURL.path, html, report)
+        }
+    }
+
+    @discardableResult
+    public static func exportDoctorSARIF(toPath customPath: String? = nil, config: Config = .shared, skipNetwork: Bool = false) -> (success: Bool, path: String, content: String, report: DoctorReport) {
+        let report = runDoctor(config: config, skipNetwork: skipNetwork)
+        let sarif = report.generateSARIF()
+        let targetURL: URL
+        if let customPath = customPath, !customPath.isEmpty {
+            targetURL = URL(fileURLWithPath: (customPath as NSString).expandingTildeInPath)
+        } else {
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
+            try? FileManager.default.createDirectory(at: facelockDir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            targetURL = facelockDir.appendingPathComponent("doctor_report.sarif")
+        }
+
+        guard let data = sarif.data(using: .utf8) else {
+            return (false, targetURL.path, sarif, report)
+        }
+
+        do {
+            try data.write(to: targetURL, options: .atomic)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: targetURL.path)
+            return (true, targetURL.path, sarif, report)
+        } catch {
+            return (false, targetURL.path, sarif, report)
         }
     }
 }

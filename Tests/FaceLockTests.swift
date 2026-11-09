@@ -86,6 +86,7 @@ public final class FaceLockTestSuite {
         testMaintenanceV126Enhancements()
         testMaintenanceV127Enhancements()
         testMaintenanceV128Enhancements()
+        testMaintenanceV129Enhancements()
         testVectorMatchingBenchmark()
 
         let elapsed = Date().timeIntervalSince(startTime)
@@ -2386,7 +2387,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.2.8", "Config currentVersion is synchronized")
+        assertEqual(Config.currentVersion, "1.2.9", "Config currentVersion is synchronized")
 
         // 5. Test CLI Argument Normalization for Doctor Strict and Export
         assertEqual(AppDelegate.normalizeArguments(["--doctor-strict-json"]), ["--doctor-strict", "--json"], "Normalizes --doctor-strict-json")
@@ -2445,7 +2446,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.2.8", "Config currentVersion is 1.2.8")
+        assertEqual(Config.currentVersion, "1.2.9", "Config currentVersion is 1.2.9")
 
         // 5. Test CLI Argument Normalization for Doctor Markdown and Export MD
         assertEqual(AppDelegate.normalizeArguments(["--doctor-md-json"]), ["--doctor-markdown", "--json"], "Normalizes --doctor-md-json")
@@ -2504,7 +2505,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.2.8", "Config currentVersion is 1.2.8")
+        assertEqual(Config.currentVersion, "1.2.9", "Config currentVersion is 1.2.9")
 
         // 5. Test CLI Argument Normalization for Doctor HTML and Export HTML
         assertEqual(AppDelegate.normalizeArguments(["--doctor-html-json"]), ["--doctor-html", "--json"], "Normalizes --doctor-html-json")
@@ -2517,6 +2518,78 @@ public final class FaceLockTestSuite {
         assertEqual(AppDelegate.normalizeArguments(["--doctor-export-html"]), ["--doctor-export-html"], "Normalizes --doctor-export-html")
         assertEqual(AppDelegate.normalizeArguments(["--export-doctor-html"]), ["--doctor-export-html"], "Normalizes --export-doctor-html")
         assertEqual(AppDelegate.normalizeArguments(["--export-html-doctor"]), ["--doctor-export-html"], "Normalizes --export-html-doctor")
+    }
+
+    // MARK: - 9.15 Maintenance Suite v1.2.9 (Doctor 32-Check Expansion & OASIS SARIF v2.1.0 Report Engine)
+    private func testMaintenanceV129Enhancements() {
+        print("\n▶ Test Suite: Autonomous Doctor 32-Check Expansion & SARIF Report Engine (v1.2.9)")
+
+        // 1. Doctor 32-Check Coverage
+        let report = Diagnostics.runDoctor(skipNetwork: true)
+        assert(report.totalChecks >= 32, "Doctor executes at least 32 comprehensive checks (Got \(report.totalChecks))")
+        let checkIds = Set(report.checks.map { $0.id })
+        assert(checkIds.contains("hardware.thermal_state"), "Contains 'hardware.thermal_state' check")
+        assert(checkIds.contains("filesystem.disk_headroom"), "Contains 'filesystem.disk_headroom' check")
+        assert(checkIds.contains("security.biometric_cluster_cohesion"), "Contains 'security.biometric_cluster_cohesion' check")
+        assert(checkIds.contains("security.duress_alarm_pipeline"), "Contains 'security.duress_alarm_pipeline' check")
+
+        // 2. SARIF v2.1.0 Structure & Schema Validation
+        let sarifDict = report.toSARIFDictionary()
+        assertEqual(sarifDict["version"] as? String, "2.1.0", "SARIF version is 2.1.0")
+        assertEqual(sarifDict["$schema"] as? String, "https://json.schemastore.org/sarif-2.1.0.json", "SARIF schema matches OASIS spec")
+        guard let runs = sarifDict["runs"] as? [[String: Any]], let firstRun = runs.first else {
+            assert(false, "SARIF runs array is present and non-empty")
+            return
+        }
+        guard let tool = firstRun["tool"] as? [String: Any],
+              let driver = tool["driver"] as? [String: Any] else {
+            assert(false, "SARIF tool driver is present")
+            return
+        }
+        assertEqual(driver["name"] as? String, "FaceLock Doctor", "Driver name is 'FaceLock Doctor'")
+        assertEqual(driver["version"] as? String, Config.currentVersion, "Driver version is \(Config.currentVersion)")
+        if let rules = driver["rules"] as? [[String: Any]] {
+            assert(rules.count >= 32, "SARIF rules count matches evaluated checks (Got \(rules.count))")
+            let ruleIds = rules.compactMap { $0["id"] as? String }
+            assert(ruleIds.contains("hardware.thermal_state"), "SARIF rules include hardware.thermal_state")
+            assert(ruleIds.contains("filesystem.disk_headroom"), "SARIF rules include filesystem.disk_headroom")
+            assert(ruleIds.contains("security.biometric_cluster_cohesion"), "SARIF rules include security.biometric_cluster_cohesion")
+            assert(ruleIds.contains("security.duress_alarm_pipeline"), "SARIF rules include security.duress_alarm_pipeline")
+        }
+
+        // 3. SARIF JSON Serialization Output
+        let sarifJSON = report.generateSARIF()
+        assert(sarifJSON.contains("\"version\" : \"2.1.0\"") || sarifJSON.contains("\"version\": \"2.1.0\""), "SARIF JSON contains version 2.1.0")
+        assert(sarifJSON.contains("FaceLock Doctor"), "SARIF JSON contains driver name")
+        assert(sarifJSON.contains("hardware.thermal_state"), "SARIF JSON contains thermal check")
+
+        // 4. Doctor SARIF File Export Test
+        let tempExportPath = "/tmp/facelock_test_doc_export_\(UUID().uuidString).sarif"
+        let exportResult = Diagnostics.exportDoctorSARIF(toPath: tempExportPath, skipNetwork: true)
+        assert(exportResult.success, "exportDoctorSARIF succeeded")
+        assertEqual(exportResult.path, tempExportPath, "exportDoctorSARIF exported to expected path")
+        assert(FileManager.default.fileExists(atPath: tempExportPath), "Exported doctor SARIF file exists on disk")
+        assert(exportResult.content.contains("2.1.0"), "Exported content matches SARIF")
+        if let data = try? Data(contentsOf: URL(fileURLWithPath: tempExportPath)),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            assertEqual(json["version"] as? String, "2.1.0", "Exported SARIF JSON has valid version")
+        }
+        try? FileManager.default.removeItem(atPath: tempExportPath)
+
+        // 5. Test Version Synchronization
+        assertEqual(Config.currentVersion, "1.2.9", "Config currentVersion is 1.2.9")
+
+        // 6. Test CLI Argument Normalization for Doctor SARIF and Export SARIF
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-sarif-json"]), ["--doctor-sarif", "--json"], "Normalizes --doctor-sarif-json")
+        assertEqual(AppDelegate.normalizeArguments(["--sarif-doctor-json"]), ["--doctor-sarif", "--json"], "Normalizes --sarif-doctor-json")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-sarif"]), ["--doctor-sarif"], "Normalizes --doctor-sarif")
+        assertEqual(AppDelegate.normalizeArguments(["--sarif-doctor"]), ["--doctor-sarif"], "Normalizes --sarif-doctor")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-export-sarif-json"]), ["--doctor-export-sarif", "--json"], "Normalizes --doctor-export-sarif-json")
+        assertEqual(AppDelegate.normalizeArguments(["--export-doctor-sarif-json"]), ["--doctor-export-sarif", "--json"], "Normalizes --export-doctor-sarif-json")
+        assertEqual(AppDelegate.normalizeArguments(["--export-sarif-doctor-json"]), ["--doctor-export-sarif", "--json"], "Normalizes --export-sarif-doctor-json")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-export-sarif"]), ["--doctor-export-sarif"], "Normalizes --doctor-export-sarif")
+        assertEqual(AppDelegate.normalizeArguments(["--export-doctor-sarif"]), ["--doctor-export-sarif"], "Normalizes --export-doctor-sarif")
+        assertEqual(AppDelegate.normalizeArguments(["--export-sarif-doctor"]), ["--doctor-export-sarif"], "Normalizes --export-sarif-doctor")
     }
 
     // MARK: - 10. Performance Benchmark

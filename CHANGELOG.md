@@ -4,6 +4,24 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.9] - 2026-11-09
+
+### Added
+- **Diagnostic Doctor Expansion to 32 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `hardware.thermal_state`: Assesses real-time macOS host thermal throttling state (`ProcessInfo.processInfo.thermalState`), verifying adequate thermal headroom and alerting when serious or critical thermal pressure impacts biometric neural inference throughput.
+  - Added `filesystem.disk_headroom`: Evaluates available storage capacity on the volume hosting `~/.facelock`, ensuring adequate disk headroom (>= 1GB) and warning if free storage deficit threatens intruder photo capture or audit event persistence.
+  - Added `security.biometric_cluster_cohesion`: Analyzes enrolled 128-D facial vector template consistency and cluster cohesion (`Config.analyzeTemplateConsistency()`), detecting intra-cluster variance, template drift, and lighting anomalies (with automated remediation via `--optimize-vectors`).
+  - Added `security.duress_alarm_pipeline`: Assesses duress distress protection readiness (`config.duressPin`), verifying that the silent coercion defense path is fully backed by remote offsite Telegram notification and local forensic photo capture.
+- **OASIS SARIF v2.1.0 Security Diagnostic Report Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.toSARIFDictionary()` and `DoctorReport.generateSARIF()` generating valid, schema-compliant OASIS SARIF v2.1.0 (`https://json.schemastore.org/sarif-2.1.0.json`) JSON output with tool driver metadata, evaluated rule definitions, and severity-mapped finding results (`error`, `warning`, `note`) for direct integration into GitHub Advanced Security Code Scanning, Jamf, Kandji, and CI/CD pipelines.
+  - Implemented `Diagnostics.exportDoctorSARIF(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_report.sarif` with strict `0600` POSIX attributes.
+  - Added CLI options `--doctor-sarif` and `--doctor-export-sarif [path]` with `--json` output support and full normalization aliases (`--doctor-sarif-json`, `--sarif-doctor-json`, `--doctor-sarif`, `--sarif-doctor`, `--doctor-export-sarif-json`, `--export-doctor-sarif-json`, `--export-sarif-doctor-json`, `--doctor-export-sarif`, `--export-doctor-sarif`, `--export-sarif-doctor`).
+  - Added Makefile targets `make doctor-sarif`, `make doctor-sarif-json`, `make doctor-export-sarif`, and `make doctor-export-sarif-json`.
+- **Automated Test Suite Expansion to 1,138 Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV129Enhancements()` validating 32+ doctor checks, all 4 new check identifiers, SARIF v2.1.0 schema compliance, driver name and versioning, atomic file export integrity, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.2.9 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.2.9` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.2.8] - 2026-11-09
 
 ### Added

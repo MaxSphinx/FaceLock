@@ -317,6 +317,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor-export-html", "--json"])
             case "--doctor-export-html", "--export-doctor-html", "--export-html-doctor":
                 args.append("--doctor-export-html")
+            case "--doctor-sarif-json", "--sarif-doctor-json":
+                args.append(contentsOf: ["--doctor-sarif", "--json"])
+            case "--doctor-sarif", "--sarif-doctor":
+                args.append("--doctor-sarif")
+            case "--doctor-export-sarif-json", "--export-doctor-sarif-json", "--export-sarif-doctor-json":
+                args.append(contentsOf: ["--doctor-export-sarif", "--json"])
+            case "--doctor-export-sarif", "--export-doctor-sarif", "--export-sarif-doctor":
+                args.append("--doctor-export-sarif")
             default:
                 args.append(arg)
             }
@@ -455,6 +463,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --doctor-export-md [path] [--json] Export doctor diagnostic report to Markdown file
               --doctor-html [--json]     Generate health doctor diagnostic report as standalone HTML5 page
               --doctor-export-html [path] [--json] Export doctor diagnostic report to HTML5 dashboard file
+              --doctor-sarif [--json]    Generate health doctor diagnostic report in OASIS SARIF v2.1.0 format
+              --doctor-export-sarif [path] [--json] Export doctor diagnostic report to SARIF v2.1.0 file
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -662,6 +672,59 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
                 } else {
                     print("✗ Failed to export doctor diagnostic report to HTML: \(result.path)")
+                }
+            }
+            exit(result.success ? 0 : 1)
+        }
+
+        if args.contains("--doctor-sarif") {
+            let report = Diagnostics.runDoctor()
+            let sarif = report.generateSARIF()
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "version": report.version,
+                    "overallStatus": report.overallStatus,
+                    "totalChecks": report.totalChecks,
+                    "passed": report.passedCount,
+                    "warnings": report.warningCount,
+                    "failures": report.failureCount,
+                    "sarif": sarif
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                print(sarif)
+            }
+            exit(report.failureCount > 0 ? 1 : 0)
+        }
+
+        if args.contains("--doctor-export-sarif") {
+            let customPath = AppDelegate.valueForOption("--doctor-export-sarif", in: args)
+            let result = Diagnostics.exportDoctorSARIF(toPath: customPath)
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "success": result.success,
+                    "path": result.path,
+                    "overallStatus": result.report.overallStatus,
+                    "totalChecks": result.report.totalChecks,
+                    "passed": result.report.passedCount,
+                    "warnings": result.report.warningCount,
+                    "failures": result.report.failureCount,
+                    "version": result.report.version,
+                    "bytesWritten": result.content.utf8.count
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                if result.success {
+                    print("✓ Doctor diagnostic health report exported to SARIF: \(result.path)")
+                    print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
+                } else {
+                    print("✗ Failed to export doctor diagnostic report to SARIF: \(result.path)")
                 }
             }
             exit(result.success ? 0 : 1)

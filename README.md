@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/MaxSphinx/FaceLock/releases"><img src="https://img.shields.io/github/v/release/MaxSphinx/FaceLock?style=flat-square&color=00BBF9" alt="Latest Release" /></a>
   <a href="https://github.com/MaxSphinx/FaceLock/actions"><img src="https://img.shields.io/github/actions/workflow/status/MaxSphinx/FaceLock/build.yml?branch=main&style=flat-square&label=build" alt="Build Status" /></a>
-  <img src="https://img.shields.io/badge/tests-635%20passed%20(100%25)-brightgreen?style=flat-square" alt="Tests" />
+  <img src="https://img.shields.io/badge/tests-1138%20passed%20(100%25)-brightgreen?style=flat-square" alt="Tests" />
   <img src="https://img.shields.io/badge/platform-macOS%2014.0%2B-blue?style=flat-square" alt="Platform" />
   <img src="https://img.shields.io/badge/arch-Apple%20Silicon%20(arm64)-orange?style=flat-square" alt="Architecture" />
   <img src="https://img.shields.io/badge/swift-6.0%2B-F05138?style=flat-square&logo=swift&logoColor=white" alt="Swift" />
@@ -87,7 +87,8 @@ Built strictly in modern **Swift & native AppKit**, with **zero external package
   - Profile switcher, 3D face calibration wizard, dynamic camera switcher.
   - Interactive Incident Gallery with 24h / 7d period filtering and one-click pruning.
   - Security Audit Log viewer with category filtering, pruning, and JSONL/CSV/JSON export.
-- **🧪 100% Automated Test Suite**: 635 unit tests and microsecond Apple Silicon vector benchmarks built directly into the binary (`make test`).
+- **🩺 32-Check Diagnostic Doctor & SARIF / HTML5 Report Suite**: Comprehensive health, biometrics, hardware, and filesystem diagnostic doctor (`make doctor`) with auto-repair (`make doctor-repair`), responsive HTML5 dashboard export (`make doctor-export-html`), and OASIS SARIF v2.1.0 security compliance export (`make doctor-export-sarif`) for GitHub Code Scanning and enterprise MDM pipelines.
+- **🧪 100% Automated Test Suite**: 1,138 unit tests and microsecond Apple Silicon vector benchmarks built directly into the binary (`make test`).
 
 ---
 
