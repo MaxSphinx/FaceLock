@@ -317,6 +317,355 @@ public struct DoctorReport {
 
         return md
     }
+
+    public func generateHTML() -> String {
+        func escape(_ s: String) -> String {
+            return s.replacingOccurrences(of: "&", with: "&amp;")
+                    .replacingOccurrences(of: "<", with: "&lt;")
+                    .replacingOccurrences(of: ">", with: "&gt;")
+                    .replacingOccurrences(of: "\"", with: "&quot;")
+                    .replacingOccurrences(of: "'", with: "&#39;")
+        }
+
+        let statusBadgeText: String
+        switch overallStatus {
+        case "HEALTHY":
+            statusBadgeText = "HEALTHY"
+        case "WARNING":
+            statusBadgeText = "WARNING"
+        default:
+            statusBadgeText = "CRITICAL"
+        }
+
+        var html = """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>FaceLock Health & Diagnostic Doctor Report</title>
+            <style>
+                :root {
+                    --bg: #0b0f19;
+                    --surface: #131b2e;
+                    --surface-hover: #1b2640;
+                    --border: #233150;
+                    --text: #f1f5f9;
+                    --text-muted: #889bb8;
+                    --pass: #22c55e;
+                    --warn: #eab308;
+                    --fail: #ef4444;
+                    --info: #0ea5e9;
+                }
+                @media (prefers-color-scheme: light) {
+                    :root {
+                        --bg: #f8fafc;
+                        --surface: #ffffff;
+                        --surface-hover: #f1f5f9;
+                        --border: #e2e8f0;
+                        --text: #0f172a;
+                        --text-muted: #64748b;
+                        --pass: #16a34a;
+                        --warn: #ca8a04;
+                        --fail: #dc2626;
+                        --info: #0284c7;
+                    }
+                }
+                body {
+                    margin: 0;
+                    padding: 32px 16px;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                    background-color: var(--bg);
+                    color: var(--text);
+                    line-height: 1.5;
+                }
+                .container {
+                    max-width: 900px;
+                    margin: 0 auto;
+                }
+                .header {
+                    background: var(--surface);
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    padding: 24px;
+                    margin-bottom: 24px;
+                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                }
+                .header-top {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    flex-wrap: wrap;
+                    gap: 16px;
+                }
+                .title-area h1 {
+                    margin: 0;
+                    font-size: 24px;
+                    font-weight: 700;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                }
+                .meta-bar {
+                    margin-top: 10px;
+                    font-size: 13px;
+                    color: var(--text-muted);
+                }
+                .status-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 6px 14px;
+                    border-radius: 9999px;
+                    font-weight: 700;
+                    font-size: 13px;
+                    text-transform: uppercase;
+                    background: rgba(34, 197, 94, 0.15);
+                    color: var(--pass);
+                    border: 1px solid var(--pass);
+                }
+                .status-badge.warning {
+                    background: rgba(234, 179, 8, 0.15);
+                    color: var(--warn);
+                    border-color: var(--warn);
+                }
+                .status-badge.critical {
+                    background: rgba(239, 68, 68, 0.15);
+                    color: var(--fail);
+                    border-color: var(--fail);
+                }
+                .stats-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+                    gap: 12px;
+                    margin-bottom: 24px;
+                }
+                .stat-card {
+                    background: var(--surface);
+                    border: 1px solid var(--border);
+                    border-radius: 10px;
+                    padding: 16px;
+                    text-align: center;
+                }
+                .stat-value {
+                    font-size: 24px;
+                    font-weight: 700;
+                    margin-top: 4px;
+                }
+                .stat-label {
+                    font-size: 12px;
+                    color: var(--text-muted);
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                .category-section {
+                    margin-bottom: 24px;
+                }
+                .category-title {
+                    font-size: 18px;
+                    font-weight: 600;
+                    margin-bottom: 12px;
+                    color: var(--text);
+                }
+                .check-list {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                }
+                .check-item {
+                    background: var(--surface);
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    padding: 14px 16px;
+                }
+                .check-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    margin-bottom: 6px;
+                }
+                .check-name {
+                    font-weight: 600;
+                    font-size: 15px;
+                }
+                .check-tag {
+                    font-size: 11px;
+                    font-weight: 700;
+                    padding: 2px 8px;
+                    border-radius: 4px;
+                    text-transform: uppercase;
+                }
+                .tag-pass { background: rgba(34, 197, 94, 0.2); color: var(--pass); }
+                .tag-warn { background: rgba(234, 179, 8, 0.2); color: var(--warn); }
+                .tag-fail { background: rgba(239, 68, 68, 0.2); color: var(--fail); }
+                .tag-info { background: rgba(14, 165, 233, 0.2); color: var(--info); }
+                .check-desc {
+                    font-size: 13px;
+                    color: var(--text-muted);
+                    margin: 0;
+                }
+                .remediation {
+                    margin-top: 8px;
+                    padding: 8px 12px;
+                    border-radius: 6px;
+                    background: rgba(234, 179, 8, 0.1);
+                    border-left: 3px solid var(--warn);
+                    font-size: 12px;
+                    color: var(--warn);
+                }
+                .remediation.critical {
+                    background: rgba(239, 68, 68, 0.1);
+                    border-left-color: var(--fail);
+                    color: var(--fail);
+                }
+                .recommendations-box {
+                    background: var(--surface);
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    padding: 20px;
+                    margin-top: 24px;
+                }
+                .recommendations-box h2 {
+                    margin-top: 0;
+                    font-size: 18px;
+                }
+                .recommendations-box ol {
+                    margin: 0;
+                    padding-left: 20px;
+                    font-size: 14px;
+                }
+                .recommendations-box li {
+                    margin-bottom: 6px;
+                }
+                .footer {
+                    margin-top: 32px;
+                    text-align: center;
+                    font-size: 12px;
+                    color: var(--text-muted);
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <div class="header-top">
+                        <div class="title-area">
+                            <h1>🛡️ FaceLock Health &amp; Diagnostic Doctor</h1>
+                            <div class="meta-bar">
+                                Version: <strong>v\(escape(version))</strong> &bull;
+                                Generated: <strong>\(escape(timestamp))</strong>
+                            </div>
+                        </div>
+                        <div>
+                            <span class="status-badge \(overallStatus.lowercased())">\(statusBadgeText)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Checks</div>
+                        <div class="stat-value">\(totalChecks)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Passed</div>
+                        <div class="stat-value" style="color: var(--pass);">\(passedCount)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Warnings</div>
+                        <div class="stat-value" style="color: var(--warn);">\(warningCount)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Failures</div>
+                        <div class="stat-value" style="color: var(--fail);">\(failureCount)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Info</div>
+                        <div class="stat-value" style="color: var(--info);">\(infoCount)</div>
+                    </div>
+                </div>
+        """
+
+        let categories: [(String, String)] = [
+            ("hardware", "1. Hardware &amp; Sensors"),
+            ("filesystem", "2. Filesystem &amp; Cryptography"),
+            ("daemon", "3. Background Daemon &amp; Automation"),
+            ("security", "4. Security Posture &amp; Hardening"),
+            ("network", "5. Remote Alerting &amp; Network")
+        ]
+
+        for (catKey, catTitle) in categories {
+            let catChecks = checks.filter { $0.category == catKey }
+            if catChecks.isEmpty { continue }
+
+            html += """
+                <div class="category-section">
+                    <div class="category-title">\(catTitle)</div>
+                    <div class="check-list">
+            """
+
+            for c in catChecks {
+                let tagClass = "tag-\(c.status.rawValue.lowercased())"
+                html += """
+                        <div class="check-item">
+                            <div class="check-header">
+                                <span class="check-name">\(escape(c.name))</span>
+                                <span class="check-tag \(tagClass)">\(escape(c.status.rawValue))</span>
+                            </div>
+                            <p class="check-desc">\(escape(c.message))</p>
+                """
+                if let rem = c.remediation, !rem.isEmpty {
+                    let remClass = (c.status == .fail) ? "critical" : ""
+                    html += """
+                            <div class="remediation \(remClass)"><strong>Action:</strong> \(escape(rem))</div>
+                    """
+                }
+                html += """
+                        </div>
+                """
+            }
+
+            html += """
+                    </div>
+                </div>
+            """
+        }
+
+        if !remediations.isEmpty {
+            html += """
+                <div class="recommendations-box">
+                    <h2>📋 Actionable Recommendations (\(remediations.count))</h2>
+                    <ol>
+            """
+            for rem in remediations {
+                html += "            <li>\(escape(rem))</li>\n"
+            }
+            html += """
+                    </ol>
+                </div>
+            """
+        } else {
+            html += """
+                <div class="recommendations-box" style="border-left: 4px solid var(--pass);">
+                    <h2>✓ All Checks Optimal</h2>
+                    <p style="margin: 0; font-size: 14px; color: var(--text-muted);">
+                        All evaluated diagnostic health checks passed successfully. FaceLock daemon and security policies are in optimal order.
+                    </p>
+                </div>
+            """
+        }
+
+        html += """
+                <div class="footer">
+                    FaceLock Autonomous Security Suite &bull; macOS Apple Silicon &bull; MIT License
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        return html
+    }
 }
 
 public struct DoctorRepairReport {
@@ -1320,7 +1669,39 @@ public struct Diagnostics {
             ))
         }
 
-        // 1.5 Touch ID Biometrics
+        // 1.5 Video Camera Continuity
+        let preferredCam = config.preferredCameraID.trimmingCharacters(in: .whitespacesAndNewlines)
+        if preferredCam.isEmpty || preferredCam.lowercased() == "default" || preferredCam.lowercased() == "auto" {
+            checks.append(DoctorCheckItem(
+                id: "hardware.camera_continuity",
+                category: "hardware",
+                name: "Video Camera Continuity",
+                status: .pass,
+                message: "Automatic camera selection active (default capture device assigned)."
+            ))
+        } else {
+            let allDevices = CameraScanner.availableCaptureDevices()
+            if let matched = allDevices.first(where: { $0.uniqueID == preferredCam }) {
+                checks.append(DoctorCheckItem(
+                    id: "hardware.camera_continuity",
+                    category: "hardware",
+                    name: "Video Camera Continuity",
+                    status: .pass,
+                    message: "Preferred camera '\(matched.localizedName)' (ID: \(matched.uniqueID)) is connected and verified."
+                ))
+            } else {
+                checks.append(DoctorCheckItem(
+                    id: "hardware.camera_continuity",
+                    category: "hardware",
+                    name: "Video Camera Continuity",
+                    status: .warn,
+                    message: "Configured camera ID '\(preferredCam)' is disconnected; fallback camera in use.",
+                    remediation: "Reconnect designated external camera or reset selection via 'facelock --reset-camera'."
+                ))
+            }
+        }
+
+        // 1.6 Touch ID Biometrics
         let laContext = LAContext()
         var laError: NSError?
         let canTouchID = laContext.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &laError)
@@ -1673,7 +2054,36 @@ public struct Diagnostics {
             ))
         }
 
-        // 4.5 Shoulder-Surfing Bystander Defense
+        // 4.5 Strict Neural Face Matching
+        if config.strictFaceMatch && config.similarityThreshold <= 0.22 {
+            checks.append(DoctorCheckItem(
+                id: "security.strict_face_match",
+                category: "security",
+                name: "Strict Neural Biometric Matching",
+                status: .pass,
+                message: "Strict face matching active (threshold: \(String(format: "%.2f", config.similarityThreshold)) <= 0.22, minimal FAR false accepts)."
+            ))
+        } else if !config.strictFaceMatch {
+            checks.append(DoctorCheckItem(
+                id: "security.strict_face_match",
+                category: "security",
+                name: "Strict Neural Biometric Matching",
+                status: .warn,
+                message: "Strict face matching is disabled (relaxed biometric tolerances active).",
+                remediation: "Enable strict matching via 'facelock --set-strict on' or activate 'lockdown' profile."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.strict_face_match",
+                category: "security",
+                name: "Strict Neural Biometric Matching",
+                status: .warn,
+                message: "Similarity threshold is relaxed (\(String(format: "%.2f", config.similarityThreshold)) > 0.22).",
+                remediation: "Calibrate threshold to 0.20 or lower via 'facelock --set-threshold 0.20'."
+            ))
+        }
+
+        // 4.6 Shoulder-Surfing Bystander Defense
         if config.shoulderSurfingDefense {
             checks.append(DoctorCheckItem(
                 id: "security.shoulder_surfing",
@@ -1690,6 +2100,26 @@ public struct Diagnostics {
                 status: .info,
                 message: "Shoulder-surfing bystander defense disabled (opt-in feature for public environments).",
                 remediation: "Enable bystander defense in public/cafe areas via 'make toggle-shoulder'."
+            ))
+        }
+
+        // 4.7 Audible Security Deterrent
+        if config.audibleAlerts {
+            checks.append(DoctorCheckItem(
+                id: "security.audible_deterrent",
+                category: "security",
+                name: "Audible Security Deterrent",
+                status: .pass,
+                message: "Audible acoustic alarm active (sound chime/alert triggered upon unauthorized intrusion attempts)."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.audible_deterrent",
+                category: "security",
+                name: "Audible Security Deterrent",
+                status: .info,
+                message: "Audible deterrent alert is disabled (silent mode active; incidents logged quietly to audit log).",
+                remediation: "Optionally enable audible deterrents in high-risk environments via 'make toggle-audible'."
             ))
         }
 
@@ -1818,6 +2248,37 @@ public struct Diagnostics {
                 status: .warn,
                 message: "PIN lockout cooldown duration is too brief (\(Int(config.pinLockoutSeconds))s < 5s).",
                 remediation: "Harden PIN lockout cooldown via 'make pin-lockout SECONDS=10'."
+            ))
+        }
+
+        // 4.11 Touch ID Auto-Fallback Policy
+        let canTouchFallback = LAContext().canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
+        if canTouchFallback {
+            if config.autoTriggerTouchID {
+                checks.append(DoctorCheckItem(
+                    id: "security.touchid_fallback",
+                    category: "security",
+                    name: "Touch ID Biometric Redundancy Policy",
+                    status: .pass,
+                    message: "Touch ID auto-prompt fallback is active for seamless multi-modal lock screen unlock."
+                ))
+            } else {
+                checks.append(DoctorCheckItem(
+                    id: "security.touchid_fallback",
+                    category: "security",
+                    name: "Touch ID Biometric Redundancy Policy",
+                    status: .info,
+                    message: "Touch ID auto-prompt is disabled (manual Touch ID click or PIN required).",
+                    remediation: "Enable Touch ID auto-prompt via 'make toggle-touchid' or 'facelock --toggle-touchid'."
+                ))
+            }
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.touchid_fallback",
+                category: "security",
+                name: "Touch ID Biometric Redundancy Policy",
+                status: .info,
+                message: "Touch ID biometric sensor unavailable on host; master PIN fallback active."
             ))
         }
 
@@ -2014,6 +2475,33 @@ public struct Diagnostics {
             return (true, targetURL.path, md, report)
         } catch {
             return (false, targetURL.path, md, report)
+        }
+    }
+
+    @discardableResult
+    public static func exportDoctorHTML(toPath customPath: String? = nil, config: Config = .shared, skipNetwork: Bool = false) -> (success: Bool, path: String, content: String, report: DoctorReport) {
+        let report = runDoctor(config: config, skipNetwork: skipNetwork)
+        let html = report.generateHTML()
+        let targetURL: URL
+        if let customPath = customPath, !customPath.isEmpty {
+            targetURL = URL(fileURLWithPath: (customPath as NSString).expandingTildeInPath)
+        } else {
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
+            try? FileManager.default.createDirectory(at: facelockDir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            targetURL = facelockDir.appendingPathComponent("doctor_report.html")
+        }
+
+        guard let data = html.data(using: .utf8) else {
+            return (false, targetURL.path, html, report)
+        }
+
+        do {
+            try data.write(to: targetURL, options: .atomic)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: targetURL.path)
+            return (true, targetURL.path, html, report)
+        } catch {
+            return (false, targetURL.path, html, report)
         }
     }
 }

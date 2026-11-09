@@ -4,6 +4,24 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.8] - 2026-11-09
+
+### Added
+- **Diagnostic Doctor Expansion to 28 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `hardware.camera_continuity`: Evaluates whether the configured preferred camera (`config.preferredCameraID`) is physically connected and verified, detecting hardware disconnects and fallback switches.
+  - Added `security.strict_face_match`: Evaluates neural facial recognition strictness (`config.strictFaceMatch`) and verifies tight cosine similarity threshold calibration (`config.similarityThreshold <= 0.22`) to minimize False Acceptance Rates (FAR).
+  - Added `security.audible_deterrent`: Evaluates audible acoustic deterrent alarm configuration (`config.audibleAlerts`) for sound perimeter warnings during unauthorized intrusion attempts.
+  - Added `security.touchid_fallback`: Evaluates Touch ID auto-prompt biometric redundancy policy (`config.autoTriggerTouchID`) when biometric sensor hardware is supported.
+- **Diagnostic Doctor Responsive HTML5 Report Dashboard Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.generateHTML()` creating a self-contained, responsive HTML5 diagnostic dashboard with automatic dark/light mode (`prefers-color-scheme`), system health badges, metric summary grid, categorized check breakdown cards, and actionable remediation callouts.
+  - Implemented `Diagnostics.exportDoctorHTML(toPath:config:skipNetwork:)` allowing atomic file export to `~/.facelock/doctor_report.html` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-html` and `--doctor-export-html [path]` with `--json` output support and full normalization aliases (`--doctor-html-json`, `--html-doctor-json`, `--doctor-html`, `--html-doctor`, `--doctor-export-html-json`, `--export-doctor-html-json`, `--export-html-doctor-json`, `--doctor-export-html`, `--export-doctor-html`, `--export-html-doctor`).
+  - Added Makefile targets `make doctor-html`, `make doctor-html-json`, `make doctor-export-html`, and `make doctor-export-html-json`.
+- **Automated Test Suite Expansion (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV128Enhancements()` asserting 28+ comprehensive doctor checks, HTML document structure validity, atomic file export integrity, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.2.8 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.2.8` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.2.7] - 2026-11-09
 
 ### Added

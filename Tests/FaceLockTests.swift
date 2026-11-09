@@ -85,6 +85,7 @@ public final class FaceLockTestSuite {
         testMaintenanceV125Enhancements()
         testMaintenanceV126Enhancements()
         testMaintenanceV127Enhancements()
+        testMaintenanceV128Enhancements()
         testVectorMatchingBenchmark()
 
         let elapsed = Date().timeIntervalSince(startTime)
@@ -2385,7 +2386,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.2.7", "Config currentVersion is synchronized")
+        assertEqual(Config.currentVersion, "1.2.8", "Config currentVersion is synchronized")
 
         // 5. Test CLI Argument Normalization for Doctor Strict and Export
         assertEqual(AppDelegate.normalizeArguments(["--doctor-strict-json"]), ["--doctor-strict", "--json"], "Normalizes --doctor-strict-json")
@@ -2444,7 +2445,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.2.7", "Config currentVersion is 1.2.7")
+        assertEqual(Config.currentVersion, "1.2.8", "Config currentVersion is 1.2.8")
 
         // 5. Test CLI Argument Normalization for Doctor Markdown and Export MD
         assertEqual(AppDelegate.normalizeArguments(["--doctor-md-json"]), ["--doctor-markdown", "--json"], "Normalizes --doctor-md-json")
@@ -2455,6 +2456,67 @@ public final class FaceLockTestSuite {
         assertEqual(AppDelegate.normalizeArguments(["--doctor-export-md-json"]), ["--doctor-export-md", "--json"], "Normalizes --doctor-export-md-json")
         assertEqual(AppDelegate.normalizeArguments(["--export-doctor-md-json"]), ["--doctor-export-md", "--json"], "Normalizes --export-doctor-md-json")
         assertEqual(AppDelegate.normalizeArguments(["--export-doctor-md"]), ["--doctor-export-md"], "Normalizes --export-doctor-md")
+    }
+
+    // MARK: - 9.14 Maintenance Suite v1.2.8 (Doctor 28-Check Expansion & HTML Report Engine)
+    private func testMaintenanceV128Enhancements() {
+        print("\n▶ Test Suite: Autonomous Doctor 28-Check Expansion & HTML Report Engine (v1.2.8)")
+
+        // 1. Doctor 28-Check Coverage
+        let report = Diagnostics.runDoctor(skipNetwork: true)
+        assert(report.totalChecks >= 28, "Doctor executes at least 28 comprehensive checks (Got \(report.totalChecks))")
+        let checkIds = Set(report.checks.map { $0.id })
+        assert(checkIds.contains("hardware.camera_continuity"), "Contains 'hardware.camera_continuity' check")
+        assert(checkIds.contains("security.strict_face_match"), "Contains 'security.strict_face_match' check")
+        assert(checkIds.contains("security.audible_deterrent"), "Contains 'security.audible_deterrent' check")
+        assert(checkIds.contains("security.touchid_fallback"), "Contains 'security.touchid_fallback' check")
+
+        // 2. Doctor HTML Report Generation
+        let html = report.generateHTML()
+        assert(html.contains("<!DOCTYPE html>"), "HTML contains <!DOCTYPE html>")
+        assert(html.contains("<meta charset=\"utf-8\">"), "HTML contains meta charset utf-8")
+        assert(html.contains("<title>FaceLock Health & Diagnostic Doctor Report</title>"), "HTML contains title")
+        assert(html.contains("v\(Config.currentVersion)"), "HTML contains version string")
+        assert(html.contains("Total Checks"), "HTML contains total checks metric")
+        assert(html.contains("Passed"), "HTML contains passed metric")
+        assert(html.contains("Hardware &amp; Sensors"), "HTML contains hardware category")
+        assert(html.contains("Filesystem &amp; Cryptography"), "HTML contains filesystem category")
+        assert(html.contains("Background Daemon &amp; Automation"), "HTML contains daemon category")
+        assert(html.contains("Security Posture &amp; Hardening"), "HTML contains security category")
+        assert(html.contains("Remote Alerting &amp; Network"), "HTML contains network category")
+        assert(html.contains("Video Camera Continuity"), "HTML contains camera_continuity check name")
+        assert(html.contains("Strict Neural Biometric Matching"), "HTML contains strict_face_match check name")
+        assert(html.contains("Audible Security Deterrent"), "HTML contains audible_deterrent check name")
+        assert(html.contains("Touch ID Biometric Redundancy Policy"), "HTML contains touchid_fallback check name")
+
+        // 3. Doctor HTML File Export Test
+        let tempExportPath = "/tmp/facelock_test_doc_export_\(UUID().uuidString).html"
+        let exportResult = Diagnostics.exportDoctorHTML(toPath: tempExportPath, skipNetwork: true)
+        assert(exportResult.success, "exportDoctorHTML succeeded")
+        assertEqual(exportResult.path, tempExportPath, "exportDoctorHTML exported to expected path")
+        assert(FileManager.default.fileExists(atPath: tempExportPath), "Exported doctor HTML file exists on disk")
+        assert(exportResult.content.contains("<!DOCTYPE html>"), "Exported content matches HTML")
+        if let data = try? Data(contentsOf: URL(fileURLWithPath: tempExportPath)),
+           let str = String(data: data, encoding: .utf8) {
+            assert(str.contains("v\(Config.currentVersion)"), "Exported HTML contains version string")
+            assert(str.contains("FaceLock Health &amp; Diagnostic Doctor"), "Exported HTML contains header title")
+        }
+        try? FileManager.default.removeItem(atPath: tempExportPath)
+
+        // 4. Test Version Synchronization
+        assertEqual(Config.currentVersion, "1.2.8", "Config currentVersion is 1.2.8")
+
+        // 5. Test CLI Argument Normalization for Doctor HTML and Export HTML
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-html-json"]), ["--doctor-html", "--json"], "Normalizes --doctor-html-json")
+        assertEqual(AppDelegate.normalizeArguments(["--html-doctor-json"]), ["--doctor-html", "--json"], "Normalizes --html-doctor-json")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-html"]), ["--doctor-html"], "Normalizes --doctor-html")
+        assertEqual(AppDelegate.normalizeArguments(["--html-doctor"]), ["--doctor-html"], "Normalizes --html-doctor")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-export-html-json"]), ["--doctor-export-html", "--json"], "Normalizes --doctor-export-html-json")
+        assertEqual(AppDelegate.normalizeArguments(["--export-doctor-html-json"]), ["--doctor-export-html", "--json"], "Normalizes --export-doctor-html-json")
+        assertEqual(AppDelegate.normalizeArguments(["--export-html-doctor-json"]), ["--doctor-export-html", "--json"], "Normalizes --export-html-doctor-json")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-export-html"]), ["--doctor-export-html"], "Normalizes --doctor-export-html")
+        assertEqual(AppDelegate.normalizeArguments(["--export-doctor-html"]), ["--doctor-export-html"], "Normalizes --export-doctor-html")
+        assertEqual(AppDelegate.normalizeArguments(["--export-html-doctor"]), ["--doctor-export-html"], "Normalizes --export-html-doctor")
     }
 
     // MARK: - 10. Performance Benchmark
