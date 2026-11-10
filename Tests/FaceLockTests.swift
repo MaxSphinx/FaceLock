@@ -88,6 +88,7 @@ public final class FaceLockTestSuite {
         testMaintenanceV128Enhancements()
         testMaintenanceV129Enhancements()
         testMaintenanceV130Enhancements()
+        testMaintenanceV131Enhancements()
         testVectorMatchingBenchmark()
 
         let elapsed = Date().timeIntervalSince(startTime)
@@ -2388,7 +2389,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.3.0", "Config currentVersion is synchronized")
+        assertEqual(Config.currentVersion, "1.3.1", "Config currentVersion is synchronized")
 
         // 5. Test CLI Argument Normalization for Doctor Strict and Export
         assertEqual(AppDelegate.normalizeArguments(["--doctor-strict-json"]), ["--doctor-strict", "--json"], "Normalizes --doctor-strict-json")
@@ -2447,7 +2448,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.3.0", "Config currentVersion is 1.3.0")
+        assertEqual(Config.currentVersion, "1.3.1", "Config currentVersion is 1.3.1")
 
         // 5. Test CLI Argument Normalization for Doctor Markdown and Export MD
         assertEqual(AppDelegate.normalizeArguments(["--doctor-md-json"]), ["--doctor-markdown", "--json"], "Normalizes --doctor-md-json")
@@ -2506,7 +2507,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.3.0", "Config currentVersion is 1.3.0")
+        assertEqual(Config.currentVersion, "1.3.1", "Config currentVersion is 1.3.1")
 
         // 5. Test CLI Argument Normalization for Doctor HTML and Export HTML
         assertEqual(AppDelegate.normalizeArguments(["--doctor-html-json"]), ["--doctor-html", "--json"], "Normalizes --doctor-html-json")
@@ -2578,7 +2579,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 5. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.3.0", "Config currentVersion is 1.3.0")
+        assertEqual(Config.currentVersion, "1.3.1", "Config currentVersion is 1.3.1")
 
         // 6. Test CLI Argument Normalization for Doctor SARIF and Export SARIF
         assertEqual(AppDelegate.normalizeArguments(["--doctor-sarif-json"]), ["--doctor-sarif", "--json"], "Normalizes --doctor-sarif-json")
@@ -2631,7 +2632,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.3.0", "Config currentVersion is 1.3.0")
+        assertEqual(Config.currentVersion, "1.3.1", "Config currentVersion is 1.3.1")
 
         // 5. Test CLI Argument Normalization for Doctor CSV and Export CSV
         assertEqual(AppDelegate.normalizeArguments(["--doctor-csv-json"]), ["--doctor-csv", "--json"], "Normalizes --doctor-csv-json")
@@ -2644,6 +2645,62 @@ public final class FaceLockTestSuite {
         assertEqual(AppDelegate.normalizeArguments(["--doctor-export-csv"]), ["--doctor-export-csv"], "Normalizes --doctor-export-csv")
         assertEqual(AppDelegate.normalizeArguments(["--export-doctor-csv"]), ["--doctor-export-csv"], "Normalizes --export-doctor-csv")
         assertEqual(AppDelegate.normalizeArguments(["--export-csv-doctor"]), ["--doctor-export-csv"], "Normalizes --export-csv-doctor")
+    }
+
+    // MARK: - 9.17 Maintenance Suite v1.3.1 (Doctor 40-Check Expansion & JUnit XML Report Engine)
+    private func testMaintenanceV131Enhancements() {
+        print("\n▶ Test Suite: Autonomous Doctor 40-Check Expansion & JUnit XML Report Engine (v1.3.1)")
+
+        // 1. Doctor 40-Check Coverage
+        let report = Diagnostics.runDoctor(skipNetwork: true)
+        assert(report.totalChecks >= 40, "Doctor executes at least 40 comprehensive checks (Got \(report.totalChecks))")
+        let checkIds = Set(report.checks.map { $0.id })
+        assert(checkIds.contains("filesystem.backup_freshness"), "Contains 'filesystem.backup_freshness' check")
+        assert(checkIds.contains("daemon.memory_footprint"), "Contains 'daemon.memory_footprint' check")
+        assert(checkIds.contains("security.incident_retention_policy"), "Contains 'security.incident_retention_policy' check")
+        assert(checkIds.contains("security.camera_indicator_compliance"), "Contains 'security.camera_indicator_compliance' check")
+
+        // 2. JUnit XML Generation & Schema Compliance
+        let xml = report.generateJUnitXML()
+        assert(xml.contains("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"), "XML contains standard XML declaration")
+        assert(xml.contains("<testsuites id=\"facelock-doctor\" name=\"FaceLock Doctor Diagnostic Suite\""), "XML contains testsuites header")
+        assert(xml.contains("tests=\"\(report.totalChecks)\""), "XML testsuites tests count matches totalChecks")
+        assert(xml.contains("failures=\"\(report.failureCount)\""), "XML testsuites failures count matches failureCount")
+        assert(xml.contains("<testsuite id=\"facelock.doctor.hardware\""), "XML contains hardware testsuite")
+        assert(xml.contains("<testsuite id=\"facelock.doctor.filesystem\""), "XML contains filesystem testsuite")
+        assert(xml.contains("<testsuite id=\"facelock.doctor.daemon\""), "XML contains daemon testsuite")
+        assert(xml.contains("<testsuite id=\"facelock.doctor.security\""), "XML contains security testsuite")
+        assert(xml.contains("id=\"security.camera_indicator_compliance\""), "XML contains camera_indicator_compliance testcase")
+        assert(xml.contains("id=\"daemon.memory_footprint\""), "XML contains daemon memory footprint testcase")
+        assert(xml.contains("</testsuites>"), "XML properly closes testsuites element")
+
+        // 3. Doctor JUnit XML File Export Test
+        let tempExportPath = "/tmp/facelock_test_doc_export_\(UUID().uuidString).xml"
+        let exportResult = Diagnostics.exportDoctorJUnit(toPath: tempExportPath, skipNetwork: true)
+        assert(exportResult.success, "exportDoctorJUnit succeeded")
+        assertEqual(exportResult.path, tempExportPath, "exportDoctorJUnit exported to expected path")
+        assert(FileManager.default.fileExists(atPath: tempExportPath), "Exported doctor JUnit file exists on disk")
+        assert(exportResult.content.contains("<?xml version=\"1.0\""), "Exported content matches XML declaration")
+        if let data = try? Data(contentsOf: URL(fileURLWithPath: tempExportPath)),
+           let fileContent = String(data: data, encoding: .utf8) {
+            assert(fileContent.hasPrefix("<?xml version=\"1.0\""), "File content starts with XML declaration")
+        }
+        try? FileManager.default.removeItem(atPath: tempExportPath)
+
+        // 4. Test Version Synchronization
+        assertEqual(Config.currentVersion, "1.3.1", "Config currentVersion is 1.3.1")
+
+        // 5. Test CLI Argument Normalization for Doctor JUnit and Export JUnit
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-junit-json"]), ["--doctor-junit", "--json"], "Normalizes --doctor-junit-json")
+        assertEqual(AppDelegate.normalizeArguments(["--junit-doctor-json"]), ["--doctor-junit", "--json"], "Normalizes --junit-doctor-json")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-junit"]), ["--doctor-junit"], "Normalizes --doctor-junit")
+        assertEqual(AppDelegate.normalizeArguments(["--junit-doctor"]), ["--doctor-junit"], "Normalizes --junit-doctor")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-export-junit-json"]), ["--doctor-export-junit", "--json"], "Normalizes --doctor-export-junit-json")
+        assertEqual(AppDelegate.normalizeArguments(["--export-doctor-junit-json"]), ["--doctor-export-junit", "--json"], "Normalizes --export-doctor-junit-json")
+        assertEqual(AppDelegate.normalizeArguments(["--export-junit-doctor-json"]), ["--doctor-export-junit", "--json"], "Normalizes --export-junit-doctor-json")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-export-junit"]), ["--doctor-export-junit"], "Normalizes --doctor-export-junit")
+        assertEqual(AppDelegate.normalizeArguments(["--export-doctor-junit"]), ["--doctor-export-junit"], "Normalizes --export-doctor-junit")
+        assertEqual(AppDelegate.normalizeArguments(["--export-junit-doctor"]), ["--doctor-export-junit"], "Normalizes --export-junit-doctor")
     }
 
     // MARK: - 10. Performance Benchmark

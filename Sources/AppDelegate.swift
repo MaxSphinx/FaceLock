@@ -333,6 +333,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor-export-csv", "--json"])
             case "--doctor-export-csv", "--export-doctor-csv", "--export-csv-doctor":
                 args.append("--doctor-export-csv")
+            case "--doctor-junit-json", "--junit-doctor-json":
+                args.append(contentsOf: ["--doctor-junit", "--json"])
+            case "--doctor-junit", "--junit-doctor":
+                args.append("--doctor-junit")
+            case "--doctor-export-junit-json", "--export-doctor-junit-json", "--export-junit-doctor-json":
+                args.append(contentsOf: ["--doctor-export-junit", "--json"])
+            case "--doctor-export-junit", "--export-doctor-junit", "--export-junit-doctor":
+                args.append("--doctor-export-junit")
             default:
                 args.append(arg)
             }
@@ -475,6 +483,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --doctor-export-sarif [path] [--json] Export doctor diagnostic report to SARIF v2.1.0 file
               --doctor-csv [--json]      Generate health doctor diagnostic report in RFC 4180 CSV format
               --doctor-export-csv [path] [--json] Export doctor diagnostic report to CSV file
+              --doctor-junit [--json]    Generate health doctor diagnostic report in JUnit XML format
+              --doctor-export-junit [path] [--json] Export doctor diagnostic report to JUnit XML file
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -788,6 +798,59 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
                 } else {
                     print("✗ Failed to export doctor diagnostic report to CSV: \(result.path)")
+                }
+            }
+            exit(result.success ? 0 : 1)
+        }
+
+        if args.contains("--doctor-junit") {
+            let report = Diagnostics.runDoctor()
+            let junit = report.generateJUnitXML()
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "version": report.version,
+                    "overallStatus": report.overallStatus,
+                    "totalChecks": report.totalChecks,
+                    "passed": report.passedCount,
+                    "warnings": report.warningCount,
+                    "failures": report.failureCount,
+                    "junitXml": junit
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                print(junit)
+            }
+            exit(report.failureCount > 0 ? 1 : 0)
+        }
+
+        if args.contains("--doctor-export-junit") {
+            let customPath = AppDelegate.valueForOption("--doctor-export-junit", in: args)
+            let result = Diagnostics.exportDoctorJUnit(toPath: customPath)
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "success": result.success,
+                    "path": result.path,
+                    "overallStatus": result.report.overallStatus,
+                    "totalChecks": result.report.totalChecks,
+                    "passed": result.report.passedCount,
+                    "warnings": result.report.warningCount,
+                    "failures": result.report.failureCount,
+                    "version": result.report.version,
+                    "bytesWritten": result.content.utf8.count
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                if result.success {
+                    print("✓ Doctor diagnostic health report exported to JUnit XML: \(result.path)")
+                    print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
+                } else {
+                    print("✗ Failed to export doctor diagnostic report to JUnit XML: \(result.path)")
                 }
             }
             exit(result.success ? 0 : 1)

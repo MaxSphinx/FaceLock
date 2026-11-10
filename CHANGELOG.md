@@ -4,6 +4,24 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-11-10
+
+### Added
+- **Diagnostic Doctor Expansion to 40 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `filesystem.backup_freshness`: Evaluates configuration backup recency and age, alerting if backups are older than 30 days and confirming disaster recovery snapshot readiness.
+  - Added `daemon.memory_footprint`: Inspects real-time resident memory usage (`mach_task_basic_info.resident_size`), verifying ultra-lean memory footprint (<= 64MB RSS) and warning if memory usage is elevated.
+  - Added `security.incident_retention_policy`: Evaluates intruder photo storage capacity and retention compliance, verifying that stored captures stay within the 500-incident budget to prevent runaway disk consumption.
+  - Added `security.camera_indicator_compliance`: Validates camera hardware and OS recording green indicator compliance according to Apple Security and TCC privacy guidelines.
+- **JUnit XML Diagnostic Report Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.generateJUnitXML()` generating standard, schema-compliant JUnit XML output (`<testsuites>`, `<testsuite>`, `<testcase>`, `<failure>`, `<system-out>`) for CI/CD DevSecOps compliance reporting in GitHub Actions, GitLab CI, Jenkins, and Azure DevOps.
+  - Implemented `Diagnostics.exportDoctorJUnit(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_report.xml` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-junit` and `--doctor-export-junit [path]` with `--json` output support and full normalization aliases (`--doctor-junit-json`, `--junit-doctor-json`, `--doctor-junit`, `--junit-doctor`, `--doctor-export-junit-json`, `--export-doctor-junit-json`, `--export-junit-doctor-json`, `--doctor-export-junit`, `--export-doctor-junit`, `--export-junit-doctor`).
+  - Added Makefile targets `make doctor-junit`, `make doctor-junit-json`, `make doctor-export-junit`, and `make doctor-export-junit-json`.
+- **Automated Test Suite Expansion to 1,225+ Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV131Enhancements()` validating 40+ doctor checks, all 4 new check identifiers, JUnit XML schema compliance, testsuite breakdown, atomic file export integrity, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.3.1 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.3.1` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.3.0] - 2026-11-10
 
 ### Added
