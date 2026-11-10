@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Implemented `Diagnostics.exportDoctorJUnit(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_report.xml` (or custom path) with secure `0600` POSIX permissions.
   - Added CLI options `--doctor-junit` and `--doctor-export-junit [path]` with `--json` output support and full normalization aliases (`--doctor-junit-json`, `--junit-doctor-json`, `--doctor-junit`, `--junit-doctor`, `--doctor-export-junit-json`, `--export-doctor-junit-json`, `--export-junit-doctor-json`, `--doctor-export-junit`, `--export-doctor-junit`, `--export-junit-doctor`).
   - Added Makefile targets `make doctor-junit`, `make doctor-junit-json`, `make doctor-export-junit`, and `make doctor-export-junit-json`.
-- **Automated Test Suite Expansion to 1,225+ Tests (`Tests/FaceLockTests.swift`)**:
+- **Automated Test Suite Expansion to 1,229 Tests (`Tests/FaceLockTests.swift`)**:
   - Added `testMaintenanceV131Enhancements()` validating 40+ doctor checks, all 4 new check identifiers, JUnit XML schema compliance, testsuite breakdown, atomic file export integrity, version synchronization, and full CLI argument normalization matrix.
 - **Version Bump to v1.3.1 (`Config.swift`, `Resources/Info.plist`)**:
   - Synchronized version string `1.3.1` across `Config.currentVersion` and macOS bundle `Info.plist`.

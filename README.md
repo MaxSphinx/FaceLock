@@ -87,8 +87,8 @@ Built strictly in modern **Swift & native AppKit**, with **zero external package
   - Profile switcher, 3D face calibration wizard, dynamic camera switcher.
   - Interactive Incident Gallery with 24h / 7d period filtering and one-click pruning.
   - Security Audit Log viewer with category filtering, pruning, and JSONL/CSV/JSON export.
-- **🩺 36-Check Diagnostic Doctor & Multi-Engine Compliance Suite**: Comprehensive health, biometrics, hardware, and filesystem diagnostic doctor (`make doctor`) with auto-repair (`make doctor-repair`), responsive HTML5 dashboard export (`make doctor-export-html`), OASIS SARIF v2.1.0 compliance export (`make doctor-export-sarif`), and enterprise RFC 4180 CSV export (`make doctor-export-csv`) for GitHub Code Scanning, SOC 2 / ISO 27001 audit spreadsheets, and fleet MDM pipelines.
-- **🧪 100% Automated Test Suite**: 1,189 unit tests and microsecond Apple Silicon vector benchmarks built directly into the binary (`make test`).
+- **🩺 40-Check Diagnostic Doctor & Multi-Engine Compliance Suite**: Comprehensive health, biometrics, hardware, and filesystem diagnostic doctor (`make doctor`) with auto-repair (`make doctor-repair`), responsive HTML5 dashboard export (`make doctor-export-html`), OASIS SARIF v2.1.0 compliance export (`make doctor-export-sarif`), enterprise RFC 4180 CSV export (`make doctor-export-csv`), and CI/CD JUnit XML export (`make doctor-export-junit`) for GitHub Code Scanning, DevSecOps pipelines, SOC 2 / ISO 27001 audit spreadsheets, and fleet MDM pipelines.
+- **🧪 100% Automated Test Suite**: 1,229 unit tests and microsecond Apple Silicon vector benchmarks built directly into the binary (`make test`).
 
 ---
 
