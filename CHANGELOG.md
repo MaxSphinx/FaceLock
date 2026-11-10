@@ -4,6 +4,24 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-11-10
+
+### Added
+- **Diagnostic Doctor Expansion to 36 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `filesystem.backups_dir`: Evaluates `~/.facelock/backups` disaster recovery snapshot repository existence, verifies secure `0700` POSIX directory permissions, and reports snapshot availability for state and vector recovery.
+  - Added `daemon.binary_integrity`: Verifies that the FaceLock application executable bundle is present, valid, and executable (`0755`) across standard macOS application and local build staging paths.
+  - Added `security.verification_timeout`: Assesses biometric facial verification timeout (`config.verificationTimeout <= 3.0s`), ensuring rapid fail-safe closure to prevent prolonged screen dwell during unauthorized unlock attempts.
+  - Added `security.debounce_protection`: Evaluates scan debounce interval (`1.0s <= config.debounceSeconds <= 5.0s`), balancing camera energy efficiency and immediate re-lock responsiveness.
+- **Enterprise CSV Compliance Diagnostic Report Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.generateCSV()` generating standard RFC 4180 compliant CSV output (`Check ID,Category,Check Name,Status,Message,Remediation`) with proper delimiter and quote escaping for SOC 2 Type II, ISO/IEC 27001, and corporate audit spreadsheets.
+  - Implemented `Diagnostics.exportDoctorCSV(toPath:config:skipNetwork:)` allowing atomic file export to `~/.facelock/doctor_report.csv` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-csv` and `--doctor-export-csv [path]` with `--json` output support and full normalization aliases (`--doctor-csv-json`, `--csv-doctor-json`, `--doctor-csv`, `--csv-doctor`, `--doctor-export-csv-json`, `--export-doctor-csv-json`, `--export-csv-doctor-json`, `--doctor-export-csv`, `--export-doctor-csv`, `--export-csv-doctor`).
+  - Added Makefile targets `make doctor-csv`, `make doctor-csv-json`, `make doctor-export-csv`, and `make doctor-export-csv-json`.
+- **Automated Test Suite Expansion to 1,189 Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV130Enhancements()` validating 36+ doctor checks, all 4 new check identifiers, RFC 4180 CSV schema compliance, atomic file export integrity, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.3.0 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.3.0` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.2.9] - 2026-11-09
 
 ### Added

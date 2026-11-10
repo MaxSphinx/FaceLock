@@ -87,6 +87,7 @@ public final class FaceLockTestSuite {
         testMaintenanceV127Enhancements()
         testMaintenanceV128Enhancements()
         testMaintenanceV129Enhancements()
+        testMaintenanceV130Enhancements()
         testVectorMatchingBenchmark()
 
         let elapsed = Date().timeIntervalSince(startTime)
@@ -2387,7 +2388,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.2.9", "Config currentVersion is synchronized")
+        assertEqual(Config.currentVersion, "1.3.0", "Config currentVersion is synchronized")
 
         // 5. Test CLI Argument Normalization for Doctor Strict and Export
         assertEqual(AppDelegate.normalizeArguments(["--doctor-strict-json"]), ["--doctor-strict", "--json"], "Normalizes --doctor-strict-json")
@@ -2446,7 +2447,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.2.9", "Config currentVersion is 1.2.9")
+        assertEqual(Config.currentVersion, "1.3.0", "Config currentVersion is 1.3.0")
 
         // 5. Test CLI Argument Normalization for Doctor Markdown and Export MD
         assertEqual(AppDelegate.normalizeArguments(["--doctor-md-json"]), ["--doctor-markdown", "--json"], "Normalizes --doctor-md-json")
@@ -2505,7 +2506,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.2.9", "Config currentVersion is 1.2.9")
+        assertEqual(Config.currentVersion, "1.3.0", "Config currentVersion is 1.3.0")
 
         // 5. Test CLI Argument Normalization for Doctor HTML and Export HTML
         assertEqual(AppDelegate.normalizeArguments(["--doctor-html-json"]), ["--doctor-html", "--json"], "Normalizes --doctor-html-json")
@@ -2577,7 +2578,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 5. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.2.9", "Config currentVersion is 1.2.9")
+        assertEqual(Config.currentVersion, "1.3.0", "Config currentVersion is 1.3.0")
 
         // 6. Test CLI Argument Normalization for Doctor SARIF and Export SARIF
         assertEqual(AppDelegate.normalizeArguments(["--doctor-sarif-json"]), ["--doctor-sarif", "--json"], "Normalizes --doctor-sarif-json")
@@ -2590,6 +2591,59 @@ public final class FaceLockTestSuite {
         assertEqual(AppDelegate.normalizeArguments(["--doctor-export-sarif"]), ["--doctor-export-sarif"], "Normalizes --doctor-export-sarif")
         assertEqual(AppDelegate.normalizeArguments(["--export-doctor-sarif"]), ["--doctor-export-sarif"], "Normalizes --export-doctor-sarif")
         assertEqual(AppDelegate.normalizeArguments(["--export-sarif-doctor"]), ["--doctor-export-sarif"], "Normalizes --export-sarif-doctor")
+    }
+
+    // MARK: - 9.16 Maintenance Suite v1.3.0 (Doctor 36-Check Expansion & CSV Compliance Report Engine)
+    private func testMaintenanceV130Enhancements() {
+        print("\n▶ Test Suite: Autonomous Doctor 36-Check Expansion & CSV Compliance Report Engine (v1.3.0)")
+
+        // 1. Doctor 36-Check Coverage
+        let report = Diagnostics.runDoctor(skipNetwork: true)
+        assert(report.totalChecks >= 36, "Doctor executes at least 36 comprehensive checks (Got \(report.totalChecks))")
+        let checkIds = Set(report.checks.map { $0.id })
+        assert(checkIds.contains("filesystem.backups_dir"), "Contains 'filesystem.backups_dir' check")
+        assert(checkIds.contains("daemon.binary_integrity"), "Contains 'daemon.binary_integrity' check")
+        assert(checkIds.contains("security.verification_timeout"), "Contains 'security.verification_timeout' check")
+        assert(checkIds.contains("security.debounce_protection"), "Contains 'security.debounce_protection' check")
+
+        // 2. CSV Generation & RFC 4180 Compliance
+        let csv = report.generateCSV()
+        assert(csv.contains("Check ID,Category,Check Name,Status,Message,Remediation"), "CSV contains standard RFC 4180 header")
+        assert(csv.contains("filesystem.backups_dir"), "CSV contains backups_dir check")
+        assert(csv.contains("daemon.binary_integrity"), "CSV contains binary_integrity check")
+        assert(csv.contains("security.verification_timeout"), "CSV contains verification_timeout check")
+        assert(csv.contains("security.debounce_protection"), "CSV contains debounce_protection check")
+
+        let lines = csv.components(separatedBy: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        assert(lines.count >= 37, "CSV contains header plus at least 36 check rows (Got \(lines.count))")
+
+        // 3. Doctor CSV File Export Test
+        let tempExportPath = "/tmp/facelock_test_doc_export_\(UUID().uuidString).csv"
+        let exportResult = Diagnostics.exportDoctorCSV(toPath: tempExportPath, skipNetwork: true)
+        assert(exportResult.success, "exportDoctorCSV succeeded")
+        assertEqual(exportResult.path, tempExportPath, "exportDoctorCSV exported to expected path")
+        assert(FileManager.default.fileExists(atPath: tempExportPath), "Exported doctor CSV file exists on disk")
+        assert(exportResult.content.contains("Check ID,Category"), "Exported content matches CSV header")
+        if let data = try? Data(contentsOf: URL(fileURLWithPath: tempExportPath)),
+           let fileContent = String(data: data, encoding: .utf8) {
+            assert(fileContent.hasPrefix("Check ID,Category"), "File content starts with CSV header")
+        }
+        try? FileManager.default.removeItem(atPath: tempExportPath)
+
+        // 4. Test Version Synchronization
+        assertEqual(Config.currentVersion, "1.3.0", "Config currentVersion is 1.3.0")
+
+        // 5. Test CLI Argument Normalization for Doctor CSV and Export CSV
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-csv-json"]), ["--doctor-csv", "--json"], "Normalizes --doctor-csv-json")
+        assertEqual(AppDelegate.normalizeArguments(["--csv-doctor-json"]), ["--doctor-csv", "--json"], "Normalizes --csv-doctor-json")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-csv"]), ["--doctor-csv"], "Normalizes --doctor-csv")
+        assertEqual(AppDelegate.normalizeArguments(["--csv-doctor"]), ["--doctor-csv"], "Normalizes --csv-doctor")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-export-csv-json"]), ["--doctor-export-csv", "--json"], "Normalizes --doctor-export-csv-json")
+        assertEqual(AppDelegate.normalizeArguments(["--export-doctor-csv-json"]), ["--doctor-export-csv", "--json"], "Normalizes --export-doctor-csv-json")
+        assertEqual(AppDelegate.normalizeArguments(["--export-csv-doctor-json"]), ["--doctor-export-csv", "--json"], "Normalizes --export-csv-doctor-json")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-export-csv"]), ["--doctor-export-csv"], "Normalizes --doctor-export-csv")
+        assertEqual(AppDelegate.normalizeArguments(["--export-doctor-csv"]), ["--doctor-export-csv"], "Normalizes --export-doctor-csv")
+        assertEqual(AppDelegate.normalizeArguments(["--export-csv-doctor"]), ["--doctor-export-csv"], "Normalizes --export-csv-doctor")
     }
 
     // MARK: - 10. Performance Benchmark

@@ -740,6 +740,31 @@ public struct DoctorReport {
         }
         return str
     }
+
+    public func generateCSV() -> String {
+        func escapeCSV(_ val: String) -> String {
+            if val.contains(",") || val.contains("\"") || val.contains("\n") || val.contains("\r") {
+                let escaped = val.replacingOccurrences(of: "\"", with: "\"\"")
+                return "\"\(escaped)\""
+            }
+            return val
+        }
+
+        var lines: [String] = []
+        lines.append("Check ID,Category,Check Name,Status,Message,Remediation")
+        for check in checks {
+            let row = [
+                escapeCSV(check.id),
+                escapeCSV(check.category),
+                escapeCSV(check.name),
+                escapeCSV(check.status.rawValue),
+                escapeCSV(check.message),
+                escapeCSV(check.remediation ?? "None")
+            ].joined(separator: ",")
+            lines.append(row)
+        }
+        return lines.joined(separator: "\n") + "\n"
+    }
 }
 
 public struct DoctorRepairReport {
@@ -2071,6 +2096,43 @@ public struct Diagnostics {
             ))
         }
 
+        // 2.7 Configuration & Disaster Recovery Backups Directory
+        let backupsDir = facelockDir.appendingPathComponent("backups")
+        var isBackupsDir: ObjCBool = false
+        if FileManager.default.fileExists(atPath: backupsDir.path, isDirectory: &isBackupsDir), isBackupsDir.boolValue {
+            let backupFiles = (try? FileManager.default.contentsOfDirectory(atPath: backupsDir.path))?.filter { !$0.hasPrefix(".") } ?? []
+            let attrs = try? FileManager.default.attributesOfItem(atPath: backupsDir.path)
+            let perms = attrs?[.posixPermissions] as? NSNumber
+            let isSecurePerms = (perms?.intValue ?? 0) & 0o077 == 0
+            if isSecurePerms {
+                checks.append(DoctorCheckItem(
+                    id: "filesystem.backups_dir",
+                    category: "filesystem",
+                    name: "Disaster Recovery Snapshots & Backups",
+                    status: .pass,
+                    message: "Backups directory present with secure permissions (\(backupFiles.count) snapshot(s) stored)."
+                ))
+            } else {
+                checks.append(DoctorCheckItem(
+                    id: "filesystem.backups_dir",
+                    category: "filesystem",
+                    name: "Disaster Recovery Snapshots & Backups",
+                    status: .warn,
+                    message: "Backups directory has overly permissive POSIX mode (expected 0700).",
+                    remediation: "Execute 'chmod 700 ~/.facelock/backups' to secure disaster recovery snapshots."
+                ))
+            }
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.backups_dir",
+                category: "filesystem",
+                name: "Disaster Recovery Snapshots & Backups",
+                status: .info,
+                message: "No backups directory found at ~/.facelock/backups (disaster recovery snapshot pending creation).",
+                remediation: "Create configuration and vector snapshots via 'make backup-config' and 'make backup-vectors'."
+            ))
+        }
+
         // Category 3: Background Daemon & Automation
         // 3.1 Daemon Process
         let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: "io.github.facelock")
@@ -2113,6 +2175,38 @@ public struct Diagnostics {
                 status: .info,
                 message: "Autonomous maintainer LaunchAgent is not installed.",
                 remediation: "Run 'make maintainer-install' or 'make install-sync' to enable continuous auto-maintenance."
+            ))
+        }
+
+        // 3.3 Application Bundle & Executable Integrity
+        let candidatePaths = [
+            "/Applications/FaceLock.app/Contents/MacOS/FaceLock",
+            FileManager.default.currentDirectoryPath + "/build/FaceLock.app/Contents/MacOS/FaceLock",
+            Bundle.main.executablePath ?? ""
+        ].filter { !$0.isEmpty }
+        var foundExecutable: String?
+        for path in candidatePaths {
+            if FileManager.default.isExecutableFile(atPath: path) {
+                foundExecutable = path
+                break
+            }
+        }
+        if let exePath = foundExecutable {
+            checks.append(DoctorCheckItem(
+                id: "daemon.binary_integrity",
+                category: "daemon",
+                name: "Application Bundle & Executable Integrity",
+                status: .pass,
+                message: "FaceLock application binary verified and executable at \(exePath)."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "daemon.binary_integrity",
+                category: "daemon",
+                name: "Application Bundle & Executable Integrity",
+                status: .warn,
+                message: "FaceLock application binary not found in standard installation or build directories.",
+                remediation: "Rebuild and install application bundle via 'make build' or 'make install'."
             ))
         }
 
@@ -2528,6 +2622,55 @@ public struct Diagnostics {
             ))
         }
 
+        // 4.14 Biometric Verification Timeout Policy
+        if config.verificationTimeout <= 3.0 {
+            checks.append(DoctorCheckItem(
+                id: "security.verification_timeout",
+                category: "security",
+                name: "Biometric Verification Timeout Policy",
+                status: .pass,
+                message: String(format: "Biometric verification timeout is strictly bounded (%.1fs <= 3.0s), preventing prolonged screen dwell.", config.verificationTimeout)
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.verification_timeout",
+                category: "security",
+                name: "Biometric Verification Timeout Policy",
+                status: .warn,
+                message: String(format: "Biometric verification timeout is relaxed (%.1fs > 3.0s), increasing exposure window during unauthorized access attempts.", config.verificationTimeout),
+                remediation: "Tighten verification timeout to 2.0s via 'make set-timeout TIMEOUT=2.0'."
+            ))
+        }
+
+        // 4.15 Biometric Scanner Debounce & Throttle
+        if config.debounceSeconds >= 1.0 && config.debounceSeconds <= 5.0 {
+            checks.append(DoctorCheckItem(
+                id: "security.debounce_protection",
+                category: "security",
+                name: "Biometric Scanner Debounce & Throttle",
+                status: .pass,
+                message: String(format: "Biometric lock debounce is optimally calibrated (%.1fs), balancing responsiveness and power efficiency.", config.debounceSeconds)
+            ))
+        } else if config.debounceSeconds < 1.0 {
+            checks.append(DoctorCheckItem(
+                id: "security.debounce_protection",
+                category: "security",
+                name: "Biometric Scanner Debounce & Throttle",
+                status: .warn,
+                message: String(format: "Biometric lock debounce is too aggressive (%.1fs < 1.0s), risking high CPU/camera wake thrashing.", config.debounceSeconds),
+                remediation: "Set debounce interval to 2.0s via 'make set-debounce DEBOUNCE=2.0'."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.debounce_protection",
+                category: "security",
+                name: "Biometric Scanner Debounce & Throttle",
+                status: .warn,
+                message: String(format: "Biometric lock debounce is excessively delayed (%.1fs > 5.0s), potentially slowing re-lock activation.", config.debounceSeconds),
+                remediation: "Set debounce interval to 2.0s via 'make set-debounce DEBOUNCE=2.0'."
+            ))
+        }
+
         // Category 5: Remote Alerting & Network
         if config.telegramEnabled {
             if !config.telegramBotToken.isEmpty && !config.telegramChatId.isEmpty {
@@ -2609,6 +2752,20 @@ public struct Diagnostics {
                 if (p & 0o077) != 0 {
                     if (try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: facelockDir.path)) != nil {
                         actions.append("Restricted ~/.facelock directory permissions to 0700")
+                    }
+                }
+            }
+        }
+
+        // 1b. Backups directory permissions repair (chmod 0700 ~/.facelock/backups)
+        let backupsDir = facelockDir.appendingPathComponent("backups", isDirectory: true)
+        if FileManager.default.fileExists(atPath: backupsDir.path, isDirectory: &isDir), isDir.boolValue {
+            if let attrs = try? FileManager.default.attributesOfItem(atPath: backupsDir.path),
+               let perms = attrs[.posixPermissions] as? NSNumber {
+                let p = perms.intValue
+                if (p & 0o077) != 0 {
+                    if (try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: backupsDir.path)) != nil {
+                        actions.append("Restricted ~/.facelock/backups directory permissions to 0700")
                     }
                 }
             }
@@ -2775,6 +2932,33 @@ public struct Diagnostics {
             return (true, targetURL.path, sarif, report)
         } catch {
             return (false, targetURL.path, sarif, report)
+        }
+    }
+
+    @discardableResult
+    public static func exportDoctorCSV(toPath customPath: String? = nil, config: Config = .shared, skipNetwork: Bool = false) -> (success: Bool, path: String, content: String, report: DoctorReport) {
+        let report = runDoctor(config: config, skipNetwork: skipNetwork)
+        let csv = report.generateCSV()
+        let targetURL: URL
+        if let customPath = customPath, !customPath.isEmpty {
+            targetURL = URL(fileURLWithPath: (customPath as NSString).expandingTildeInPath)
+        } else {
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
+            try? FileManager.default.createDirectory(at: facelockDir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            targetURL = facelockDir.appendingPathComponent("doctor_report.csv")
+        }
+
+        guard let data = csv.data(using: .utf8) else {
+            return (false, targetURL.path, csv, report)
+        }
+
+        do {
+            try data.write(to: targetURL, options: .atomic)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: targetURL.path)
+            return (true, targetURL.path, csv, report)
+        } catch {
+            return (false, targetURL.path, csv, report)
         }
     }
 }

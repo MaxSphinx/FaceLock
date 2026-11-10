@@ -87,8 +87,8 @@ Built strictly in modern **Swift & native AppKit**, with **zero external package
   - Profile switcher, 3D face calibration wizard, dynamic camera switcher.
   - Interactive Incident Gallery with 24h / 7d period filtering and one-click pruning.
   - Security Audit Log viewer with category filtering, pruning, and JSONL/CSV/JSON export.
-- **🩺 32-Check Diagnostic Doctor & SARIF / HTML5 Report Suite**: Comprehensive health, biometrics, hardware, and filesystem diagnostic doctor (`make doctor`) with auto-repair (`make doctor-repair`), responsive HTML5 dashboard export (`make doctor-export-html`), and OASIS SARIF v2.1.0 security compliance export (`make doctor-export-sarif`) for GitHub Code Scanning and enterprise MDM pipelines.
-- **🧪 100% Automated Test Suite**: 1,138 unit tests and microsecond Apple Silicon vector benchmarks built directly into the binary (`make test`).
+- **🩺 36-Check Diagnostic Doctor & Multi-Engine Compliance Suite**: Comprehensive health, biometrics, hardware, and filesystem diagnostic doctor (`make doctor`) with auto-repair (`make doctor-repair`), responsive HTML5 dashboard export (`make doctor-export-html`), OASIS SARIF v2.1.0 compliance export (`make doctor-export-sarif`), and enterprise RFC 4180 CSV export (`make doctor-export-csv`) for GitHub Code Scanning, SOC 2 / ISO 27001 audit spreadsheets, and fleet MDM pipelines.
+- **🧪 100% Automated Test Suite**: 1,189 unit tests and microsecond Apple Silicon vector benchmarks built directly into the binary (`make test`).
 
 ---
 
@@ -230,6 +230,18 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --reset-camera [--json]` | Reset preferred camera selection to default front camera |
 | `facelock --diagnostics` | Run full biometric, hardware & storage diagnostics |
 | `facelock --diagnostics-gui` | Open interactive system diagnostics & healthcheck window |
+| `facelock --doctor [--json]` | Comprehensive 36-check pre-flight & runtime health diagnostic doctor |
+| `facelock --doctor-strict [--json]` | Strict mode doctor (fails with exit code 1 if any warning is detected) |
+| `facelock --doctor-repair [--json]` | Auto-remediate doctor health issues (permissions, audit, posture) |
+| `facelock --doctor-markdown [--json]` | Generate comprehensive health doctor report in Markdown format |
+| `facelock --doctor-html [--json]` | Generate responsive standalone HTML5 diagnostic dashboard |
+| `facelock --doctor-sarif [--json]` | Generate OASIS SARIF v2.1.0 security compliance report |
+| `facelock --doctor-csv [--json]` | Generate enterprise RFC 4180 CSV compliance audit report |
+| `facelock --doctor-export [path]` | Export health doctor report to JSON file |
+| `facelock --doctor-export-md [path]` | Export health doctor report to Markdown file |
+| `facelock --doctor-export-html [path]` | Export health doctor report to HTML5 dashboard file |
+| `facelock --doctor-export-sarif [path]` | Export health doctor report to SARIF v2.1.0 file |
+| `facelock --doctor-export-csv [path]` | Export health doctor report to CSV file |
 | `facelock --test-lock` | Trigger fullscreen security shield test |
 | `facelock --status` | Display daemon status and biometric template metrics |
 | `facelock --incidents [--json]` | List logged intruder incident captures and disk usage |
