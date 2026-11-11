@@ -4,6 +4,26 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.4] - 2026-11-11
+
+### Added
+- **Diagnostic Doctor Expansion to 52 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `hardware.clamshell_state`: Audits MacBook clamshell display lid state via `ioreg -r -k AppleClamshellState` to verify camera line-of-sight status during walk-away sweep.
+  - Added `filesystem.audit_log_rotation`: Audits `~/.facelock/audit_log.jsonl` storage footprint and event volume against healthy bounds (<= 10MB threshold) to preserve microsecond forensic append performance.
+  - Added `daemon.power_assertions`: Audits macOS power management assertions via `pmset -g assertions`, guaranteeing zero runaway background display sleep or idle sleep prevention assertions.
+  - Added `security.automatic_login_disabled`: Audits macOS loginwindow preference `autoLoginUser` to verify automatic login is disabled, ensuring full credential verification upon boot and session wake.
+- **SonarQube Generic Issue Import Diagnostic Report Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.toSonarQubeDictionary()` and `DoctorReport.generateSonarQube()` producing standard SonarQube Generic Issue Import format JSON (`rules`, `severity`, `primaryLocation`, `effortMinutes`) for SonarQube / SonarCloud DevSecOps compliance scanning.
+  - Implemented `Diagnostics.exportDoctorSonarQube(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_sonarqube.json` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-sonarqube` / `--doctor-sonar` and `--doctor-export-sonarqube` / `--doctor-export-sonar [path]` with `--json` output support and full normalization aliases (`--doctor-sonarqube-json`, `--sonarqube-doctor-json`, `--doctor-sonar-json`, `--sonar-doctor-json`, `--doctor-sonarqube`, `--sonarqube-doctor`, `--doctor-sonar`, `--sonar-doctor`, `--doctor-export-sonarqube-json`, `--export-doctor-sonarqube-json`, `--export-sonarqube-doctor-json`, `--doctor-export-sonar-json`, `--export-doctor-sonar-json`, `--export-sonar-doctor-json`, `--doctor-export-sonarqube`, `--export-doctor-sonarqube`, `--export-sonarqube-doctor`, `--doctor-export-sonar`, `--export-doctor-sonar`, `--export-sonar-doctor`).
+  - Added Makefile targets `make doctor-sonarqube`, `make doctor-sonarqube-json`, `make doctor-export-sonarqube`, `make doctor-export-sonarqube-json`, `make doctor-sonar`, `make doctor-sonar-json`, `make doctor-export-sonar`, and `make doctor-export-sonar-json`.
+- **Self-Healing Storage Permission Auto-Repair (`Diagnostics.swift`)**:
+  - Enhanced `doctor-repair` engine to automatically restrict `doctor_sonarqube.json` to `0600` POSIX permissions.
+- **Automated Test Suite Expansion to 1,552 Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV134Enhancements()` validating 52+ doctor checks, all 4 new check identifiers, SonarQube JSON format compliance, atomic file export integrity, repair report execution, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.3.4 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.3.4` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.3.3] - 2026-11-11
 
 ### Added

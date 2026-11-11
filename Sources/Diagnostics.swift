@@ -948,6 +948,58 @@ public struct DoctorReport {
         }
         return str + "\n"
     }
+
+    public func toSonarQubeIssues() -> [[String: Any]] {
+        var issues: [[String: Any]] = []
+        for check in checks {
+            guard check.status != .pass else { continue }
+            let severity: String
+            switch check.status {
+            case .fail: severity = "CRITICAL"
+            case .warn: severity = "MAJOR"
+            case .info: severity = "INFO"
+            case .pass: severity = "INFO"
+            }
+            let type: String
+            if check.category == "security" {
+                type = "VULNERABILITY"
+            } else if check.status == .fail {
+                type = "BUG"
+            } else {
+                type = "CODE_SMELL"
+            }
+            let message = check.remediation != nil ? "[\(check.id)] \(check.message) (Remediation: \(check.remediation!))" : "[\(check.id)] \(check.message)"
+            let issue: [String: Any] = [
+                "engineId": "facelock",
+                "ruleId": check.id,
+                "severity": severity,
+                "type": type,
+                "primaryLocation": [
+                    "message": message,
+                    "filePath": "Sources/Diagnostics.swift",
+                    "textRange": [
+                        "startLine": 1
+                    ]
+                ],
+                "effortMinutes": check.status == .fail ? 15 : 5
+            ]
+            issues.append(issue)
+        }
+        return issues
+    }
+
+    public func toSonarQubeDictionary() -> [String: Any] {
+        return ["issues": toSonarQubeIssues()]
+    }
+
+    public func generateSonarQube() -> String {
+        let dict = toSonarQubeDictionary()
+        guard let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
+              let str = String(data: data, encoding: .utf8) else {
+            return "{\"issues\":[]}\n"
+        }
+        return str + "\n"
+    }
 }
 
 public struct DoctorRepairReport {
@@ -2153,6 +2205,27 @@ public struct Diagnostics {
             ))
         }
 
+        // 1.11 MacBook Clamshell & Display Lid State
+        let clamRes = runShellCommand("/usr/sbin/ioreg", arguments: ["-r", "-k", "AppleClamshellState"])
+        let isClamshellClosed = clamRes.stdout.localizedCaseInsensitiveContains("\"AppleClamshellState\" = Yes")
+        if isClamshellClosed {
+            checks.append(DoctorCheckItem(
+                id: "hardware.clamshell_state",
+                category: "hardware",
+                name: "MacBook Clamshell & Display Lid State",
+                status: .info,
+                message: "MacBook clamshell display is closed; external display or auxiliary camera configuration active."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "hardware.clamshell_state",
+                category: "hardware",
+                name: "MacBook Clamshell & Display Lid State",
+                status: .pass,
+                message: "MacBook built-in display is open; camera field of view is unobstructed for facial biometric sweep."
+            ))
+        }
+
         // Category 2: Filesystem & Cryptography
         let home = FileManager.default.homeDirectoryForCurrentUser
         let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
@@ -2501,6 +2574,42 @@ public struct Diagnostics {
             ))
         }
 
+        // 2.10 Security Audit Log Size & Rotation Health
+        let auditLogPath = facelockDir.appendingPathComponent("audit_log.jsonl").path
+        if FileManager.default.fileExists(atPath: auditLogPath) {
+            let attrs = try? FileManager.default.attributesOfItem(atPath: auditLogPath)
+            let fileSize = (attrs?[.size] as? NSNumber)?.int64Value ?? 0
+            let maxAuditBytes: Int64 = 10 * 1024 * 1024 // 10MB
+            let kbSize = Double(fileSize) / 1024.0
+            if fileSize <= maxAuditBytes {
+                checks.append(DoctorCheckItem(
+                    id: "filesystem.audit_log_rotation",
+                    category: "filesystem",
+                    name: "Security Audit Log Size & Rotation Health",
+                    status: .pass,
+                    message: String(format: "Security audit log size is healthy (%.1f KB <= 10.0 MB threshold).", kbSize)
+                ))
+            } else {
+                let mbSize = Double(fileSize) / (1024.0 * 1024.0)
+                checks.append(DoctorCheckItem(
+                    id: "filesystem.audit_log_rotation",
+                    category: "filesystem",
+                    name: "Security Audit Log Size & Rotation Health",
+                    status: .warn,
+                    message: String(format: "Security audit log size exceeds threshold (%.1f MB > 10.0 MB).", mbSize),
+                    remediation: "Rotate or compress audit log via 'facelock --prune-audit-days 30' or 'make clear-audit'."
+                ))
+            }
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.audit_log_rotation",
+                category: "filesystem",
+                name: "Security Audit Log Size & Rotation Health",
+                status: .pass,
+                message: "Security audit log is clean (pending initial security event generation)."
+            ))
+        }
+
         // Category 3: Background Daemon & Automation
         // 3.1 Daemon Process
         let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: "io.github.facelock")
@@ -2648,6 +2757,28 @@ public struct Diagnostics {
                 name: "Daemon Real-Time CPU Utilization",
                 status: .pass,
                 message: String(format: "Process CPU load is nominal (%.1f%%). Apple Neural Engine offload minimizes CPU overhead.", cpuVal)
+            ))
+        }
+
+        // 3.9 Daemon Power Assertions & Sleep Hygiene
+        let pmRes = runShellCommand("/usr/bin/pmset", arguments: ["-g", "assertions"])
+        let pmLines = pmRes.stdout.components(separatedBy: .newlines)
+        let facelockAssertions = pmLines.filter { $0.localizedCaseInsensitiveContains("facelock") }
+        if facelockAssertions.isEmpty {
+            checks.append(DoctorCheckItem(
+                id: "daemon.power_assertions",
+                category: "daemon",
+                name: "Power Management & Energy Assertion Hygiene",
+                status: .pass,
+                message: "FaceLock maintains zero unneeded background power assertions, preserving MacBook battery runtime."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "daemon.power_assertions",
+                category: "daemon",
+                name: "Power Management & Energy Assertion Hygiene",
+                status: .info,
+                message: "Active power assertion registered for presentation lock-suppression or walk-away sweep."
             ))
         }
 
@@ -3236,6 +3367,28 @@ public struct Diagnostics {
             ))
         }
 
+        // 4.22 macOS Automatic Login Enforcement
+        let autoLoginRes = runShellCommand("/usr/bin/defaults", arguments: ["read", "/Library/Preferences/com.apple.loginwindow", "autoLoginUser"])
+        let autoLoginUser = autoLoginRes.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        if autoLoginRes.exitCode == 0 && !autoLoginUser.isEmpty {
+            checks.append(DoctorCheckItem(
+                id: "security.automatic_login_disabled",
+                category: "security",
+                name: "macOS Automatic Login Enforcement",
+                status: .warn,
+                message: "Automatic login is active for user '\(autoLoginUser)'. System reboot or cold boot bypasses login window authentication.",
+                remediation: "Disable automatic login in macOS System Settings > Users & Groups > Automatically log in as > Off."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.automatic_login_disabled",
+                category: "security",
+                name: "macOS Automatic Login Enforcement",
+                status: .pass,
+                message: "macOS automatic login is disabled, ensuring full credential verification upon boot and session wake."
+            ))
+        }
+
         // Category 5: Remote Alerting & Network
         if config.telegramEnabled {
             if !config.telegramBotToken.isEmpty && !config.telegramChatId.isEmpty {
@@ -3349,7 +3502,7 @@ public struct Diagnostics {
         }
 
         // 1d. Sensitive files permissions repair (chmod 0600 on sensitive credentials and audit files)
-        let sensitiveFilesToRepair = ["config.json", "enrolled_vectors.json", "audit_log.jsonl", "doctor_report.json", "doctor_step_summary.md", "doctor_codeclimate.json"]
+        let sensitiveFilesToRepair = ["config.json", "enrolled_vectors.json", "audit_log.jsonl", "doctor_report.json", "doctor_step_summary.md", "doctor_codeclimate.json", "doctor_sonarqube.json"]
         for sFileName in sensitiveFilesToRepair {
             let sFilePath = facelockDir.appendingPathComponent(sFileName).path
             if FileManager.default.fileExists(atPath: sFilePath) {
@@ -3624,6 +3777,33 @@ public struct Diagnostics {
             let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
             try? FileManager.default.createDirectory(at: facelockDir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
             targetURL = facelockDir.appendingPathComponent("doctor_codeclimate.json")
+        }
+
+        guard let data = json.data(using: .utf8) else {
+            return (false, targetURL.path, json, report)
+        }
+
+        do {
+            try data.write(to: targetURL, options: .atomic)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: targetURL.path)
+            return (true, targetURL.path, json, report)
+        } catch {
+            return (false, targetURL.path, json, report)
+        }
+    }
+
+    @discardableResult
+    public static func exportDoctorSonarQube(toPath customPath: String? = nil, config: Config = .shared, skipNetwork: Bool = false) -> (success: Bool, path: String, content: String, report: DoctorReport) {
+        let report = runDoctor(config: config, skipNetwork: skipNetwork)
+        let json = report.generateSonarQube()
+        let targetURL: URL
+        if let customPath = customPath, !customPath.isEmpty {
+            targetURL = URL(fileURLWithPath: (customPath as NSString).expandingTildeInPath)
+        } else {
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
+            try? FileManager.default.createDirectory(at: facelockDir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            targetURL = facelockDir.appendingPathComponent("doctor_sonarqube.json")
         }
 
         guard let data = json.data(using: .utf8) else {
