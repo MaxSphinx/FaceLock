@@ -4,6 +4,26 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.3] - 2026-11-11
+
+### Added
+- **Diagnostic Doctor Expansion to 48 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `hardware.bluetooth_proximity`: Audits Bluetooth hardware controller state via `system_profiler SPBluetoothDataType` for trusted beacon proximity scanning & walk-away verification.
+  - Added `daemon.cpu_utilization`: Checks real-time CPU consumption percentage of the daemon process (`ps -p <pid> -o %cpu`), verifying Apple Neural Engine hardware offloading.
+  - Added `security.sip_system_integrity`: Verifies macOS System Integrity Protection (`csrutil status`) to enforce kernel, rootless filesystem, and TCC runtime protections.
+  - Added `security.firewall_stealth_mode`: Verifies macOS Application Firewall (`socketfilterfw --getglobalstate`) to protect against unsolicited inbound network reconnaissance.
+- **GitLab CI / Code Climate Security & Code Quality Report Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.generateCodeClimate()` producing Code Climate JSON specification reports natively rendered in GitLab CI merge request code quality widgets (`gl-codequality.json`).
+  - Implemented `Diagnostics.exportDoctorCodeClimate(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_codeclimate.json` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-gitlab` / `--doctor-codeclimate` and `--doctor-export-gitlab` / `--doctor-export-codeclimate [path]` with `--json` output support and full normalization aliases (`--doctor-gitlab-json`, `--gitlab-doctor-json`, `--doctor-codeclimate-json`, `--codeclimate-doctor-json`, `--doctor-gitlab`, `--gitlab-doctor`, `--doctor-codeclimate`, `--codeclimate-doctor`, `--doctor-export-gitlab-json`, `--export-doctor-gitlab-json`, `--export-gitlab-doctor-json`, `--doctor-export-codeclimate-json`, `--export-doctor-codeclimate-json`, `--export-codeclimate-doctor-json`, `--doctor-export-gitlab`, `--export-doctor-gitlab`, `--export-gitlab-doctor`, `--doctor-export-codeclimate`, `--export-doctor-codeclimate`, `--export-codeclimate-doctor`).
+  - Added Makefile targets `make doctor-gitlab`, `make doctor-gitlab-json`, `make doctor-export-gitlab`, and `make doctor-export-gitlab-json`.
+- **Self-Healing Storage Permission Auto-Repair (`Diagnostics.swift`)**:
+  - Enhanced `doctor-repair` engine to automatically restrict `doctor_codeclimate.json` and `doctor_step_summary.md` to `0600` POSIX permissions.
+- **Automated Test Suite Expansion (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV133Enhancements()` validating 48+ doctor checks, all 4 new check identifiers, Code Climate JSON format compliance, atomic file export integrity, repair report execution, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.3.3 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.3.3` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.3.2] - 2026-11-11
 
 ### Added

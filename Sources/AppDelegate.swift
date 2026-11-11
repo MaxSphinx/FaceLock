@@ -349,6 +349,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor-export-gha", "--json"])
             case "--doctor-export-gha", "--export-doctor-gha", "--export-gha-doctor", "--export-doctor-summary":
                 args.append("--doctor-export-gha")
+            case "--doctor-gitlab-json", "--gitlab-doctor-json", "--doctor-codeclimate-json", "--codeclimate-doctor-json":
+                args.append(contentsOf: ["--doctor-gitlab", "--json"])
+            case "--doctor-gitlab", "--gitlab-doctor", "--doctor-codeclimate", "--codeclimate-doctor":
+                args.append("--doctor-gitlab")
+            case "--doctor-export-gitlab-json", "--export-doctor-gitlab-json", "--export-gitlab-doctor-json", "--doctor-export-codeclimate-json", "--export-doctor-codeclimate-json", "--export-codeclimate-doctor-json":
+                args.append(contentsOf: ["--doctor-export-gitlab", "--json"])
+            case "--doctor-export-gitlab", "--export-doctor-gitlab", "--export-gitlab-doctor", "--doctor-export-codeclimate", "--export-doctor-codeclimate", "--export-codeclimate-doctor":
+                args.append("--doctor-export-gitlab")
             default:
                 args.append(arg)
             }
@@ -495,6 +503,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --doctor-export-junit [path] [--json] Export doctor diagnostic report to JUnit XML file
               --doctor-gha [--json]      Generate health doctor diagnostic report as GitHub Actions Step Summary
               --doctor-export-gha [path] [--json] Export doctor diagnostic report to GitHub Actions Step Summary file
+              --doctor-gitlab [--json]   Generate health doctor diagnostic report in GitLab CI / Code Climate JSON format
+              --doctor-export-gitlab [path] [--json] Export doctor diagnostic report to GitLab CI Code Quality file
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -914,6 +924,61 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
                 } else {
                     print("✗ Failed to export doctor diagnostic report to GitHub Actions summary: \(result.path)")
+                }
+            }
+            exit(result.success ? 0 : 1)
+        }
+
+        if args.contains("--doctor-gitlab") || args.contains("--doctor-codeclimate") {
+            let report = Diagnostics.runDoctor()
+            let codeclimate = report.generateCodeClimate()
+            if args.contains("--json") {
+                let issues = report.toCodeClimateIssues()
+                let jsonDict: [String: Any] = [
+                    "version": report.version,
+                    "overallStatus": report.overallStatus,
+                    "totalChecks": report.totalChecks,
+                    "passed": report.passedCount,
+                    "warnings": report.warningCount,
+                    "failures": report.failureCount,
+                    "issueCount": issues.count,
+                    "issues": issues
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                print(codeclimate)
+            }
+            exit(report.failureCount > 0 ? 1 : 0)
+        }
+
+        if args.contains("--doctor-export-gitlab") || args.contains("--doctor-export-codeclimate") {
+            let customPath = AppDelegate.valueForOption("--doctor-export-gitlab", in: args) ?? AppDelegate.valueForOption("--doctor-export-codeclimate", in: args)
+            let result = Diagnostics.exportDoctorCodeClimate(toPath: customPath)
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "success": result.success,
+                    "path": result.path,
+                    "overallStatus": result.report.overallStatus,
+                    "totalChecks": result.report.totalChecks,
+                    "passed": result.report.passedCount,
+                    "warnings": result.report.warningCount,
+                    "failures": result.report.failureCount,
+                    "version": result.report.version,
+                    "bytesWritten": result.content.utf8.count
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                if result.success {
+                    print("✓ Doctor diagnostic health report exported to GitLab CI / Code Climate file: \(result.path)")
+                    print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
+                } else {
+                    print("✗ Failed to export doctor diagnostic report to: \(result.path)")
                 }
             }
             exit(result.success ? 0 : 1)
