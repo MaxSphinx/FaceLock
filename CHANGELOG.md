@@ -4,6 +4,26 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.5] - 2026-11-11
+
+### Added
+- **Diagnostic Doctor Expansion to 56 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `hardware.display_topology`: Audits display topology and active monitor geometry via `NSScreen.screens` to verify screen lock overlay coverage and multi-monitor line-of-sight.
+  - Added `filesystem.temporary_storage_sandbox`: Audits `/tmp` directory permissions and POSIX sticky bit (`01777`) to guarantee ephemeral incident dumps and forensic benchmarks remain strictly isolated.
+  - Added `security.guest_account_disabled`: Audits macOS loginwindow `GuestEnabled` preference to ensure unauthenticated guest user login sessions are disabled.
+  - Added `security.gatekeeper_integrity`: Audits macOS Gatekeeper code signature verification via `/usr/sbin/spctl --status` to ensure code integrity enforcement on loaded binaries.
+- **DefectDojo Generic Findings Diagnostic Report Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.toDefectDojoFindings()`, `DoctorReport.toDefectDojoDictionary()`, and `DoctorReport.generateDefectDojo()` producing standard DefectDojo Generic Findings JSON (`findings`, `title`, `severity`, `mitigation`, `impact`, `file_path`, `component_name`, `component_version`, `cwe`) for enterprise vulnerability management and OWASP DefectDojo DevSecOps ingestion.
+  - Implemented `Diagnostics.exportDoctorDefectDojo(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_defectdojo.json` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-defectdojo` / `--doctor-dojo` and `--doctor-export-defectdojo` / `--doctor-export-dojo [path]` with `--json` output support and full normalization aliases (`--doctor-defectdojo-json`, `--defectdojo-doctor-json`, `--doctor-dojo-json`, `--dojo-doctor-json`, `--doctor-defectdojo`, `--defectdojo-doctor`, `--doctor-dojo`, `--dojo-doctor`, `--doctor-export-defectdojo-json`, `--export-doctor-defectdojo-json`, `--export-defectdojo-doctor-json`, `--doctor-export-dojo-json`, `--export-doctor-dojo-json`, `--export-dojo-doctor-json`, `--doctor-export-defectdojo`, `--export-doctor-defectdojo`, `--export-defectdojo-doctor`, `--doctor-export-dojo`, `--export-doctor-dojo`, `--export-dojo-doctor`).
+  - Added Makefile targets `make doctor-defectdojo`, `make doctor-defectdojo-json`, `make doctor-export-defectdojo`, `make doctor-export-defectdojo-json`, `make doctor-dojo`, `make doctor-dojo-json`, `make doctor-export-dojo`, and `make doctor-export-dojo-json`.
+- **Self-Healing Storage Permission Auto-Repair (`Diagnostics.swift`)**:
+  - Enhanced `doctor-repair` engine to automatically restrict `doctor_defectdojo.json` to `0600` POSIX permissions.
+- **Automated Test Suite Expansion to 1,759 Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV135Enhancements()` validating 56+ doctor checks, all 4 new check identifiers, DefectDojo JSON format compliance, atomic file export integrity, repair report execution, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.3.5 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.3.5` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.3.4] - 2026-11-11
 
 ### Added

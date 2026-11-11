@@ -365,6 +365,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor-export-sonarqube", "--json"])
             case "--doctor-export-sonarqube", "--export-doctor-sonarqube", "--export-sonarqube-doctor", "--doctor-export-sonar", "--export-doctor-sonar", "--export-sonar-doctor":
                 args.append("--doctor-export-sonarqube")
+            case "--doctor-defectdojo-json", "--defectdojo-doctor-json", "--doctor-dojo-json", "--dojo-doctor-json":
+                args.append(contentsOf: ["--doctor-defectdojo", "--json"])
+            case "--doctor-defectdojo", "--defectdojo-doctor", "--doctor-dojo", "--dojo-doctor":
+                args.append("--doctor-defectdojo")
+            case "--doctor-export-defectdojo-json", "--export-doctor-defectdojo-json", "--export-defectdojo-doctor-json", "--doctor-export-dojo-json", "--export-doctor-dojo-json", "--export-dojo-doctor-json":
+                args.append(contentsOf: ["--doctor-export-defectdojo", "--json"])
+            case "--doctor-export-defectdojo", "--export-doctor-defectdojo", "--export-defectdojo-doctor", "--doctor-export-dojo", "--export-doctor-dojo", "--export-dojo-doctor":
+                args.append("--doctor-export-defectdojo")
             default:
                 args.append(arg)
             }
@@ -515,6 +523,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --doctor-export-gitlab [path] [--json] Export doctor diagnostic report to GitLab CI Code Quality file
               --doctor-sonarqube, --doctor-sonar [--json] Generate doctor report in SonarQube Generic Issue Import JSON
               --doctor-export-sonarqube, --doctor-export-sonar [path] [--json] Export doctor report to SonarQube Generic Issue Import file
+              --doctor-defectdojo, --doctor-dojo [--json] Generate doctor report in DefectDojo Generic Findings JSON
+              --doctor-export-defectdojo, --doctor-export-dojo [path] [--json] Export doctor report to DefectDojo Generic Findings file
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -1041,6 +1051,61 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 if result.success {
                     print("✓ Doctor diagnostic health report exported to SonarQube file: \(result.path)")
+                    print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
+                } else {
+                    print("✗ Failed to export doctor diagnostic report to: \(result.path)")
+                }
+            }
+            exit(result.success ? 0 : 1)
+        }
+
+        if args.contains("--doctor-defectdojo") || args.contains("--doctor-dojo") {
+            let report = Diagnostics.runDoctor()
+            let defectdojo = report.generateDefectDojo()
+            if args.contains("--json") {
+                let dict = report.toDefectDojoDictionary()
+                var jsonDict: [String: Any] = dict
+                jsonDict["version"] = report.version
+                jsonDict["overallStatus"] = report.overallStatus
+                jsonDict["totalChecks"] = report.totalChecks
+                jsonDict["passed"] = report.passedCount
+                jsonDict["warnings"] = report.warningCount
+                jsonDict["failures"] = report.failureCount
+                if let findings = dict["findings"] as? [[String: Any]] {
+                    jsonDict["findingsCount"] = findings.count
+                }
+                if let data = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                print(defectdojo)
+            }
+            exit(report.failureCount > 0 ? 1 : 0)
+        }
+
+        if args.contains("--doctor-export-defectdojo") || args.contains("--doctor-export-dojo") {
+            let customPath = AppDelegate.valueForOption("--doctor-export-defectdojo", in: args) ?? AppDelegate.valueForOption("--doctor-export-dojo", in: args)
+            let result = Diagnostics.exportDoctorDefectDojo(toPath: customPath)
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "success": result.success,
+                    "path": result.path,
+                    "overallStatus": result.report.overallStatus,
+                    "totalChecks": result.report.totalChecks,
+                    "passed": result.report.passedCount,
+                    "warnings": result.report.warningCount,
+                    "failures": result.report.failureCount,
+                    "version": result.report.version,
+                    "bytesWritten": result.content.utf8.count
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                if result.success {
+                    print("✓ Doctor diagnostic health report exported to DefectDojo file: \(result.path)")
                     print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
                 } else {
                     print("✗ Failed to export doctor diagnostic report to: \(result.path)")

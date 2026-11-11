@@ -5,7 +5,7 @@ import UniformTypeIdentifiers
 
 public final class Config: Codable {
     // Last maintenance check: 2026-11-11
-    public static let currentVersion = "1.3.4"
+    public static let currentVersion = "1.3.5"
     public static let shared = Config.load()
 
     public static let defaultProtectedBundleIdentifiers: [String] = [

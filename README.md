@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/MaxSphinx/FaceLock/releases"><img src="https://img.shields.io/github/v/release/MaxSphinx/FaceLock?style=flat-square&color=00BBF9" alt="Latest Release" /></a>
   <a href="https://github.com/MaxSphinx/FaceLock/actions"><img src="https://img.shields.io/github/actions/workflow/status/MaxSphinx/FaceLock/build.yml?branch=main&style=flat-square&label=build" alt="Build Status" /></a>
-  <img src="https://img.shields.io/badge/tests-1552%20passed%20(100%25)-brightgreen?style=flat-square" alt="Tests" />
+  <img src="https://img.shields.io/badge/tests-1759%20passed%20(100%25)-brightgreen?style=flat-square" alt="Tests" />
   <img src="https://img.shields.io/badge/platform-macOS%2014.0%2B-blue?style=flat-square" alt="Platform" />
   <img src="https://img.shields.io/badge/arch-Apple%20Silicon%20(arm64)-orange?style=flat-square" alt="Architecture" />
   <img src="https://img.shields.io/badge/swift-6.0%2B-F05138?style=flat-square&logo=swift&logoColor=white" alt="Swift" />
@@ -87,8 +87,8 @@ Built strictly in modern **Swift & native AppKit**, with **zero external package
   - Profile switcher, 3D face calibration wizard, dynamic camera switcher.
   - Interactive Incident Gallery with 24h / 7d period filtering and one-click pruning.
   - Security Audit Log viewer with category filtering, pruning, and JSONL/CSV/JSON export.
-- **🩺 52-Check Diagnostic Doctor & Multi-Engine Compliance Suite**: Comprehensive health, biometrics, hardware, and filesystem diagnostic doctor (`make doctor`) with auto-repair (`make doctor-repair`), responsive HTML5 dashboard export (`make doctor-export-html`), OASIS SARIF v2.1.0 compliance export (`make doctor-export-sarif`), enterprise RFC 4180 CSV export (`make doctor-export-csv`), CI/CD JUnit XML export (`make doctor-export-junit`), native GitHub Actions Step Summary & workflow annotations export (`make doctor-export-gha`), GitLab CI / Code Climate code quality export (`make doctor-export-gitlab`), and SonarQube Generic Issue Import JSON export (`make doctor-export-sonarqube`) for GitHub Code Scanning, GitLab CI/CD, SonarQube / SonarCloud, DevSecOps pipelines, SOC 2 / ISO 27001 audit spreadsheets, and fleet MDM pipelines.
-- **🧪 100% Automated Test Suite**: 1,552 unit tests and microsecond Apple Silicon vector benchmarks built directly into the binary (`make test`).
+- **🩺 56-Check Diagnostic Doctor & Multi-Engine Compliance Suite**: Comprehensive health, biometrics, hardware, and filesystem diagnostic doctor (`make doctor`) with auto-repair (`make doctor-repair`), responsive HTML5 dashboard export (`make doctor-export-html`), OASIS SARIF v2.1.0 compliance export (`make doctor-export-sarif`), enterprise RFC 4180 CSV export (`make doctor-export-csv`), CI/CD JUnit XML export (`make doctor-export-junit`), native GitHub Actions Step Summary & workflow annotations export (`make doctor-export-gha`), GitLab CI / Code Climate code quality export (`make doctor-export-gitlab`), SonarQube Generic Issue Import JSON export (`make doctor-export-sonarqube`), and DefectDojo Generic Findings JSON export (`make doctor-export-defectdojo`) for GitHub Code Scanning, GitLab CI/CD, SonarQube / SonarCloud, DefectDojo DevSecOps vulnerability management, SOC 2 / ISO 27001 audit spreadsheets, and fleet MDM pipelines.
+- **🧪 100% Automated Test Suite**: 1,759 unit tests and microsecond Apple Silicon vector benchmarks built directly into the binary (`make test`).
 
 ---
 
@@ -230,7 +230,7 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --reset-camera [--json]` | Reset preferred camera selection to default front camera |
 | `facelock --diagnostics` | Run full biometric, hardware & storage diagnostics |
 | `facelock --diagnostics-gui` | Open interactive system diagnostics & healthcheck window |
-| `facelock --doctor [--json]` | Comprehensive 40-check pre-flight & runtime health diagnostic doctor |
+| `facelock --doctor [--json]` | Comprehensive 56-check pre-flight & runtime health diagnostic doctor |
 | `facelock --doctor-strict [--json]` | Strict mode doctor (fails with exit code 1 if any warning is detected) |
 | `facelock --doctor-repair [--json]` | Auto-remediate doctor health issues (permissions, audit, posture) |
 | `facelock --doctor-markdown [--json]` | Generate comprehensive health doctor report in Markdown format |
@@ -239,6 +239,9 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --doctor-csv [--json]` | Generate enterprise RFC 4180 CSV compliance audit report |
 | `facelock --doctor-junit [--json]` | Generate CI/CD JUnit XML security compliance report |
 | `facelock --doctor-gha [--json]` | Generate CI/CD GitHub Actions Step Summary & workflow annotations report |
+| `facelock --doctor-gitlab [--json]` | Generate GitLab CI / Code Climate code quality JSON report |
+| `facelock --doctor-sonarqube [--json]` | Generate SonarQube Generic Issue Import JSON compliance report |
+| `facelock --doctor-defectdojo [--json]` | Generate DefectDojo Generic Findings JSON compliance report |
 | `facelock --doctor-export [path]` | Export health doctor report to JSON file |
 | `facelock --doctor-export-md [path]` | Export health doctor report to Markdown file |
 | `facelock --doctor-export-html [path]` | Export health doctor report to HTML5 dashboard file |
@@ -246,6 +249,9 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --doctor-export-csv [path]` | Export health doctor report to CSV file |
 | `facelock --doctor-export-junit [path]` | Export health doctor report to JUnit XML file |
 | `facelock --doctor-export-gha [path]` | Export health doctor report to GitHub Actions Step Summary file |
+| `facelock --doctor-export-gitlab [path]` | Export health doctor report to GitLab CI Code Quality JSON file |
+| `facelock --doctor-export-sonarqube [path]` | Export health doctor report to SonarQube Generic Issue Import JSON file |
+| `facelock --doctor-export-defectdojo [path]` | Export health doctor report to DefectDojo Generic Findings JSON file |
 | `facelock --test-lock` | Trigger fullscreen security shield test |
 | `facelock --status` | Display daemon status and biometric template metrics |
 | `facelock --incidents [--json]` | List logged intruder incident captures and disk usage |
