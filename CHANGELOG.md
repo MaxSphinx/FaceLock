@@ -4,6 +4,26 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2026-11-11
+
+### Added
+- **Diagnostic Doctor Expansion to 44 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `hardware.secure_enclave`: Verifies Apple Secure Enclave cryptographic hardware co-processor & Touch ID biometric authentication domain status via LocalAuthentication.
+  - Added `filesystem.permissions_hardened`: Audits POSIX file modes for `~/.facelock` directory and sensitive credential stores (`config.json`, `enrolled_vectors.json`, `audit_log.jsonl`) enforcing strict owner-only (`0700`/`0600`) permissions.
+  - Added `security.filevault_encryption`: Verifies APFS startup volume FileVault full-disk encryption state via `fdesetup status` to protect biometric templates at rest.
+  - Added `security.screen_saver_lock`: Verifies macOS screensaver and display sleep enforce immediate password lock without grace delay bypass window.
+- **GitHub Actions Step Summary & Annotations Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.generateGitHubActionsSummary()` producing formatted markdown step summaries for `$GITHUB_STEP_SUMMARY` and workflow commands (`::notice`, `::warning`, `::error`).
+  - Implemented `Diagnostics.exportDoctorGitHubActions(toPath:config:skipNetwork:)` enabling atomic file export to `$GITHUB_STEP_SUMMARY` or `~/.facelock/doctor_step_summary.md` with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-gha` and `--doctor-export-gha [path]` with `--json` output support and full normalization aliases (`--doctor-gha-json`, `--gha-doctor-json`, `--doctor-summary-json`, `--doctor-gha`, `--gha-doctor`, `--doctor-summary`, `--doctor-export-gha-json`, `--export-doctor-gha-json`, `--export-gha-doctor-json`, `--export-doctor-summary-json`, `--doctor-export-gha`, `--export-doctor-gha`, `--export-gha-doctor`, `--export-doctor-summary`).
+  - Added Makefile targets `make doctor-gha`, `make doctor-gha-json`, `make doctor-export-gha`, and `make doctor-export-gha-json`.
+- **Self-Healing Storage Permission Auto-Repair (`Diagnostics.swift`)**:
+  - Enhanced `doctor-repair` engine to automatically restrict sensitive credential files (`config.json`, `enrolled_vectors.json`, `audit_log.jsonl`, `doctor_report.json`) to `0600` POSIX permissions.
+- **Automated Test Suite Expansion to 1,273 Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV132Enhancements()` validating 44+ doctor checks, all 4 new check identifiers, GHA summary generation, atomic file export integrity, repair report execution, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.3.2 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.3.2` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.3.1] - 2026-11-10
 
 ### Added

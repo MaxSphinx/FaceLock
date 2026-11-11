@@ -89,6 +89,7 @@ public final class FaceLockTestSuite {
         testMaintenanceV129Enhancements()
         testMaintenanceV130Enhancements()
         testMaintenanceV131Enhancements()
+        testMaintenanceV132Enhancements()
         testVectorMatchingBenchmark()
 
         let elapsed = Date().timeIntervalSince(startTime)
@@ -2389,7 +2390,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.3.1", "Config currentVersion is synchronized")
+        assertEqual(Config.currentVersion, "1.3.2", "Config currentVersion is synchronized")
 
         // 5. Test CLI Argument Normalization for Doctor Strict and Export
         assertEqual(AppDelegate.normalizeArguments(["--doctor-strict-json"]), ["--doctor-strict", "--json"], "Normalizes --doctor-strict-json")
@@ -2448,7 +2449,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.3.1", "Config currentVersion is 1.3.1")
+        assertEqual(Config.currentVersion, "1.3.2", "Config currentVersion is 1.3.2")
 
         // 5. Test CLI Argument Normalization for Doctor Markdown and Export MD
         assertEqual(AppDelegate.normalizeArguments(["--doctor-md-json"]), ["--doctor-markdown", "--json"], "Normalizes --doctor-md-json")
@@ -2507,7 +2508,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.3.1", "Config currentVersion is 1.3.1")
+        assertEqual(Config.currentVersion, "1.3.2", "Config currentVersion is 1.3.2")
 
         // 5. Test CLI Argument Normalization for Doctor HTML and Export HTML
         assertEqual(AppDelegate.normalizeArguments(["--doctor-html-json"]), ["--doctor-html", "--json"], "Normalizes --doctor-html-json")
@@ -2579,7 +2580,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 5. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.3.1", "Config currentVersion is 1.3.1")
+        assertEqual(Config.currentVersion, "1.3.2", "Config currentVersion is 1.3.2")
 
         // 6. Test CLI Argument Normalization for Doctor SARIF and Export SARIF
         assertEqual(AppDelegate.normalizeArguments(["--doctor-sarif-json"]), ["--doctor-sarif", "--json"], "Normalizes --doctor-sarif-json")
@@ -2632,7 +2633,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.3.1", "Config currentVersion is 1.3.1")
+        assertEqual(Config.currentVersion, "1.3.2", "Config currentVersion is 1.3.2")
 
         // 5. Test CLI Argument Normalization for Doctor CSV and Export CSV
         assertEqual(AppDelegate.normalizeArguments(["--doctor-csv-json"]), ["--doctor-csv", "--json"], "Normalizes --doctor-csv-json")
@@ -2688,7 +2689,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.3.1", "Config currentVersion is 1.3.1")
+        assertEqual(Config.currentVersion, "1.3.2", "Config currentVersion is 1.3.2")
 
         // 5. Test CLI Argument Normalization for Doctor JUnit and Export JUnit
         assertEqual(AppDelegate.normalizeArguments(["--doctor-junit-json"]), ["--doctor-junit", "--json"], "Normalizes --doctor-junit-json")
@@ -2701,6 +2702,72 @@ public final class FaceLockTestSuite {
         assertEqual(AppDelegate.normalizeArguments(["--doctor-export-junit"]), ["--doctor-export-junit"], "Normalizes --doctor-export-junit")
         assertEqual(AppDelegate.normalizeArguments(["--export-doctor-junit"]), ["--doctor-export-junit"], "Normalizes --export-doctor-junit")
         assertEqual(AppDelegate.normalizeArguments(["--export-junit-doctor"]), ["--doctor-export-junit"], "Normalizes --export-junit-doctor")
+    }
+
+    // MARK: - 9.18 Maintenance Suite v1.3.2 (Doctor 44-Check Expansion & GitHub Actions Report Engine)
+    private func testMaintenanceV132Enhancements() {
+        print("\n▶ Test Suite: Autonomous Doctor 44-Check Expansion & GitHub Actions Report Engine (v1.3.2)")
+
+        // 1. Doctor 44-Check Coverage
+        let report = Diagnostics.runDoctor(skipNetwork: true)
+        assert(report.totalChecks >= 44, "Doctor executes at least 44 comprehensive checks (Got \(report.totalChecks))")
+        let checkIds = Set(report.checks.map { $0.id })
+        assert(checkIds.contains("hardware.secure_enclave"), "Contains 'hardware.secure_enclave' check")
+        assert(checkIds.contains("filesystem.permissions_hardened"), "Contains 'filesystem.permissions_hardened' check")
+        assert(checkIds.contains("security.filevault_encryption"), "Contains 'security.filevault_encryption' check")
+        assert(checkIds.contains("security.screen_saver_lock"), "Contains 'security.screen_saver_lock' check")
+
+        // 2. GitHub Actions Summary Generation & Format
+        let gha = report.generateGitHubActionsSummary()
+        assert(gha.contains("# 🩺 FaceLock Health & Diagnostic Doctor Summary"), "GHA summary contains header")
+        assert(gha.contains("> **Overall System Status**:"), "GHA summary contains status badge")
+        assert(gha.contains("> **FaceLock Version**: `v\(Config.currentVersion)`"), "GHA summary contains version")
+        assert(gha.contains("| Overall Status | Total Checks | Passed ✅ | Warnings ⚠️ | Failures ❌ | Info ℹ️ |"), "GHA summary contains metrics table")
+        assert(gha.contains("<details open>"), "GHA summary contains collapsible category details")
+        assert(gha.contains("1. Hardware & Sensors"), "GHA summary contains hardware category")
+        assert(gha.contains("2. Filesystem & Cryptography"), "GHA summary contains filesystem category")
+        assert(gha.contains("3. Background Daemon & Automation"), "GHA summary contains daemon category")
+        assert(gha.contains("4. Security Posture & Hardening"), "GHA summary contains security category")
+        assert(gha.contains("5. Remote Alerting & Network"), "GHA summary contains network category")
+        assert(gha.contains("<!-- GitHub Actions Workflow Annotations -->"), "GHA summary contains workflow annotations block")
+        assert(gha.contains("::notice title=") || gha.contains("::warning title=") || gha.contains("::error title="), "GHA summary contains workflow commands")
+
+        // 3. Doctor GHA File Export Test
+        let tempExportPath = "/tmp/facelock_test_doc_export_\(UUID().uuidString).md"
+        let exportResult = Diagnostics.exportDoctorGitHubActions(toPath: tempExportPath, skipNetwork: true)
+        assert(exportResult.success, "exportDoctorGitHubActions succeeded")
+        assertEqual(exportResult.path, tempExportPath, "exportDoctorGitHubActions exported to expected path")
+        assert(FileManager.default.fileExists(atPath: tempExportPath), "Exported doctor GHA file exists on disk")
+        assert(exportResult.content.contains("# 🩺 FaceLock Health & Diagnostic Doctor Summary"), "Exported content matches GHA summary header")
+        if let data = try? Data(contentsOf: URL(fileURLWithPath: tempExportPath)),
+           let fileContent = String(data: data, encoding: .utf8) {
+            assert(fileContent.hasPrefix("# 🩺 FaceLock"), "File content starts with FaceLock summary header")
+        }
+        try? FileManager.default.removeItem(atPath: tempExportPath)
+
+        // 4. Test Doctor Repair Execution
+        let repairReport = Diagnostics.runDoctorRepair(save: false)
+        assert(repairReport.initialReport.totalChecks >= 44, "Repair initial report contains at least 44 checks")
+        assert(repairReport.finalReport.totalChecks >= 44, "Repair final report contains at least 44 checks")
+
+        // 5. Test Version Synchronization
+        assertEqual(Config.currentVersion, "1.3.2", "Config currentVersion is 1.3.2")
+
+        // 6. Test CLI Argument Normalization for Doctor GHA and Export GHA
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-gha-json"]), ["--doctor-gha", "--json"], "Normalizes --doctor-gha-json")
+        assertEqual(AppDelegate.normalizeArguments(["--gha-doctor-json"]), ["--doctor-gha", "--json"], "Normalizes --gha-doctor-json")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-summary-json"]), ["--doctor-gha", "--json"], "Normalizes --doctor-summary-json")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-gha"]), ["--doctor-gha"], "Normalizes --doctor-gha")
+        assertEqual(AppDelegate.normalizeArguments(["--gha-doctor"]), ["--doctor-gha"], "Normalizes --gha-doctor")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-summary"]), ["--doctor-gha"], "Normalizes --doctor-summary")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-export-gha-json"]), ["--doctor-export-gha", "--json"], "Normalizes --doctor-export-gha-json")
+        assertEqual(AppDelegate.normalizeArguments(["--export-doctor-gha-json"]), ["--doctor-export-gha", "--json"], "Normalizes --export-doctor-gha-json")
+        assertEqual(AppDelegate.normalizeArguments(["--export-gha-doctor-json"]), ["--doctor-export-gha", "--json"], "Normalizes --export-gha-doctor-json")
+        assertEqual(AppDelegate.normalizeArguments(["--export-doctor-summary-json"]), ["--doctor-export-gha", "--json"], "Normalizes --export-doctor-summary-json")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-export-gha"]), ["--doctor-export-gha"], "Normalizes --doctor-export-gha")
+        assertEqual(AppDelegate.normalizeArguments(["--export-doctor-gha"]), ["--doctor-export-gha"], "Normalizes --export-doctor-gha")
+        assertEqual(AppDelegate.normalizeArguments(["--export-gha-doctor"]), ["--doctor-export-gha"], "Normalizes --export-gha-doctor")
+        assertEqual(AppDelegate.normalizeArguments(["--export-doctor-summary"]), ["--doctor-export-gha"], "Normalizes --export-doctor-summary")
     }
 
     // MARK: - 10. Performance Benchmark

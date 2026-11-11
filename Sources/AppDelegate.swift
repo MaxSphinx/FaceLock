@@ -341,6 +341,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor-export-junit", "--json"])
             case "--doctor-export-junit", "--export-doctor-junit", "--export-junit-doctor":
                 args.append("--doctor-export-junit")
+            case "--doctor-gha-json", "--gha-doctor-json", "--doctor-summary-json":
+                args.append(contentsOf: ["--doctor-gha", "--json"])
+            case "--doctor-gha", "--gha-doctor", "--doctor-summary":
+                args.append("--doctor-gha")
+            case "--doctor-export-gha-json", "--export-doctor-gha-json", "--export-gha-doctor-json", "--export-doctor-summary-json":
+                args.append(contentsOf: ["--doctor-export-gha", "--json"])
+            case "--doctor-export-gha", "--export-doctor-gha", "--export-gha-doctor", "--export-doctor-summary":
+                args.append("--doctor-export-gha")
             default:
                 args.append(arg)
             }
@@ -485,6 +493,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --doctor-export-csv [path] [--json] Export doctor diagnostic report to CSV file
               --doctor-junit [--json]    Generate health doctor diagnostic report in JUnit XML format
               --doctor-export-junit [path] [--json] Export doctor diagnostic report to JUnit XML file
+              --doctor-gha [--json]      Generate health doctor diagnostic report as GitHub Actions Step Summary
+              --doctor-export-gha [path] [--json] Export doctor diagnostic report to GitHub Actions Step Summary file
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -851,6 +861,59 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
                 } else {
                     print("✗ Failed to export doctor diagnostic report to JUnit XML: \(result.path)")
+                }
+            }
+            exit(result.success ? 0 : 1)
+        }
+
+        if args.contains("--doctor-gha") {
+            let report = Diagnostics.runDoctor()
+            let gha = report.generateGitHubActionsSummary()
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "version": report.version,
+                    "overallStatus": report.overallStatus,
+                    "totalChecks": report.totalChecks,
+                    "passed": report.passedCount,
+                    "warnings": report.warningCount,
+                    "failures": report.failureCount,
+                    "githubActionsSummary": gha
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                print(gha)
+            }
+            exit(report.failureCount > 0 ? 1 : 0)
+        }
+
+        if args.contains("--doctor-export-gha") {
+            let customPath = AppDelegate.valueForOption("--doctor-export-gha", in: args)
+            let result = Diagnostics.exportDoctorGitHubActions(toPath: customPath)
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "success": result.success,
+                    "path": result.path,
+                    "overallStatus": result.report.overallStatus,
+                    "totalChecks": result.report.totalChecks,
+                    "passed": result.report.passedCount,
+                    "warnings": result.report.warningCount,
+                    "failures": result.report.failureCount,
+                    "version": result.report.version,
+                    "bytesWritten": result.content.utf8.count
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                if result.success {
+                    print("✓ Doctor diagnostic health report exported to GitHub Actions summary: \(result.path)")
+                    print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
+                } else {
+                    print("✗ Failed to export doctor diagnostic report to GitHub Actions summary: \(result.path)")
                 }
             }
             exit(result.success ? 0 : 1)

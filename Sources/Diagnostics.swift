@@ -826,6 +826,84 @@ public struct DoctorReport {
         lines.append("</testsuites>\n")
         return lines.joined(separator: "\n")
     }
+
+    public func generateGitHubActionsSummary() -> String {
+        var gha = ""
+        gha += "# 🩺 FaceLock Health & Diagnostic Doctor Summary\n\n"
+
+        let statusBadge: String
+        switch overallStatus {
+        case "HEALTHY": statusBadge = "HEALTHY 🟢"
+        case "WARNING": statusBadge = "WARNING 🟡"
+        default:        statusBadge = "CRITICAL 🔴"
+        }
+
+        gha += "> **Overall System Status**: \(statusBadge)  \n"
+        gha += "> **FaceLock Version**: `v\(version)`  \n"
+        gha += "> **Total Evaluated Checks**: `\(totalChecks)` checks across 5 diagnostic categories  \n"
+        gha += "> **Timestamp**: `\(timestamp)`\n\n"
+
+        gha += "## 📊 Diagnostic Metrics\n\n"
+        gha += "| Overall Status | Total Checks | Passed ✅ | Warnings ⚠️ | Failures ❌ | Info ℹ️ |\n"
+        gha += "|:---:|:---:|:---:|:---:|:---:|:---:|\n"
+        gha += "| **\(overallStatus)** | `\(totalChecks)` | `\(passedCount)` | `\(warningCount)` | `\(failureCount)` | `\(infoCount)` |\n\n"
+
+        gha += "## 🛡️ Health Check Breakdown\n\n"
+        let categories: [(String, String)] = [
+            ("hardware", "1. Hardware & Sensors"),
+            ("filesystem", "2. Filesystem & Cryptography"),
+            ("daemon", "3. Background Daemon & Automation"),
+            ("security", "4. Security Posture & Hardening"),
+            ("network", "5. Remote Alerting & Network")
+        ]
+
+        for (catKey, catTitle) in categories {
+            let catChecks = checks.filter { $0.category == catKey }
+            if catChecks.isEmpty { continue }
+            gha += "<details open>\n"
+            gha += "<summary><b>\(catTitle) (\(catChecks.count) checks)</b></summary>\n\n"
+            gha += "| Status | Check ID | Name | Details |\n"
+            gha += "|:---:|---|---|---|\n"
+            for c in catChecks {
+                let badge = c.status.badge
+                let checkId = "`\(c.id)`"
+                let name = c.name
+                var details = c.message
+                if let rem = c.remediation, !rem.isEmpty {
+                    details += "<br>*(Action: \(rem))*"
+                }
+                let safeDetails = details.replacingOccurrences(of: "|", with: "\\|")
+                gha += "| \(badge) | \(checkId) | **\(name)** | \(safeDetails) |\n"
+            }
+            gha += "\n</details>\n\n"
+        }
+
+        if !remediations.isEmpty {
+            gha += "## 📋 Actionable Recommendations\n\n"
+            for (idx, rem) in remediations.enumerated() {
+                gha += "\(idx + 1). \(rem)\n"
+            }
+            gha += "\n"
+        } else {
+            gha += "## 📋 Recommendations\n\n"
+            gha += "✓ All diagnostic health checks are in optimal operational order. No action required.\n\n"
+        }
+
+        gha += "<!-- GitHub Actions Workflow Annotations -->\n"
+        if failureCount == 0 && warningCount == 0 {
+            gha += "::notice title=FaceLock Doctor::All \(totalChecks) diagnostic health checks passed successfully.\n"
+        } else {
+            for c in checks {
+                if c.status == .fail {
+                    gha += "::error title=\(c.id)::\(c.message)\n"
+                } else if c.status == .warn {
+                    gha += "::warning title=\(c.id)::\(c.message)\n"
+                }
+            }
+        }
+
+        return gha
+    }
 }
 
 public struct DoctorRepairReport {
@@ -1712,6 +1790,24 @@ public struct Diagnostics {
         print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
     }
 
+    private static func runShellCommand(_ command: String, arguments: [String] = []) -> (exitCode: Int32, stdout: String) {
+        let proc = Process()
+        proc.executableURL = URL(fileURLWithPath: command)
+        proc.arguments = arguments
+        let pipe = Pipe()
+        proc.standardOutput = pipe
+        proc.standardError = Pipe()
+        do {
+            try proc.run()
+            proc.waitUntilExit()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let out = String(data: data, encoding: .utf8) ?? ""
+            return (proc.terminationStatus, out.trimmingCharacters(in: .whitespacesAndNewlines))
+        } catch {
+            return (-1, "")
+        }
+    }
+
     public static func runDoctor(config: Config = .shared, skipNetwork: Bool = false) -> DoctorReport {
         var checks: [DoctorCheckItem] = []
 
@@ -1948,6 +2044,47 @@ public struct Diagnostics {
                 status: .info,
                 message: "Thermal state telemetry unavailable."
             ))
+        }
+
+        // 1.9 Apple Secure Enclave & Biometric Domain
+        let seContext = LAContext()
+        var seError: NSError?
+        let canAuthBiometrics = seContext.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &seError)
+        if canAuthBiometrics {
+            checks.append(DoctorCheckItem(
+                id: "hardware.secure_enclave",
+                category: "hardware",
+                name: "Apple Secure Enclave Hardware Domain",
+                status: .pass,
+                message: "Apple Secure Enclave biometric authentication domain and Touch ID sensor are operational."
+            ))
+        } else if let err = seError, err.code == LAError.biometryNotEnrolled.rawValue {
+            checks.append(DoctorCheckItem(
+                id: "hardware.secure_enclave",
+                category: "hardware",
+                name: "Apple Secure Enclave Hardware Domain",
+                status: .warn,
+                message: "Apple Secure Enclave is available, but no Touch ID fingerprints are enrolled.",
+                remediation: "Enroll fingerprint in macOS System Settings > Touch ID & Password."
+            ))
+        } else {
+            if isAppleSilicon {
+                checks.append(DoctorCheckItem(
+                    id: "hardware.secure_enclave",
+                    category: "hardware",
+                    name: "Apple Secure Enclave Hardware Domain",
+                    status: .pass,
+                    message: "Apple Silicon hardware Secure Enclave cryptographic co-processor present."
+                ))
+            } else {
+                checks.append(DoctorCheckItem(
+                    id: "hardware.secure_enclave",
+                    category: "hardware",
+                    name: "Apple Secure Enclave Hardware Domain",
+                    status: .info,
+                    message: "Secure Enclave hardware domain unavailable or unconfigured on this architecture."
+                ))
+            }
         }
 
         // Category 2: Filesystem & Cryptography
@@ -2247,6 +2384,54 @@ public struct Diagnostics {
                 status: .info,
                 message: "Automated backup directory initialized; snapshot will be archived upon configuration updates.",
                 remediation: "Optionally create initial configuration backup via 'facelock --backup-config'."
+            ))
+        }
+
+        // 2.9 Sensitive Storage POSIX Permission Hardening
+        let facelockDirPath = facelockDir.path
+        var permissionsHardened = true
+        var insecureItems: [String] = []
+
+        if FileManager.default.fileExists(atPath: facelockDirPath, isDirectory: &isDir), isDir.boolValue {
+            if let attrs = try? FileManager.default.attributesOfItem(atPath: facelockDirPath),
+               let perms = attrs[.posixPermissions] as? NSNumber {
+                if (perms.intValue & 0o077) != 0 {
+                    permissionsHardened = false
+                    insecureItems.append("~/.facelock (mode: 0\(String(perms.intValue, radix: 8)))")
+                }
+            }
+        }
+
+        let sensitiveFiles = ["config.json", "enrolled_vectors.json", "audit_log.jsonl"]
+        for sName in sensitiveFiles {
+            let sPath = facelockDir.appendingPathComponent(sName).path
+            if FileManager.default.fileExists(atPath: sPath) {
+                if let attrs = try? FileManager.default.attributesOfItem(atPath: sPath),
+                   let perms = attrs[.posixPermissions] as? NSNumber {
+                    if (perms.intValue & 0o077) != 0 {
+                        permissionsHardened = false
+                        insecureItems.append("\(sName) (mode: 0\(String(perms.intValue, radix: 8)))")
+                    }
+                }
+            }
+        }
+
+        if permissionsHardened {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.permissions_hardened",
+                category: "filesystem",
+                name: "Storage POSIX Permissions Hardening",
+                status: .pass,
+                message: "FaceLock configuration directory and sensitive credential stores enforce strict user-only POSIX permissions (0700/0600)."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.permissions_hardened",
+                category: "filesystem",
+                name: "Storage POSIX Permissions Hardening",
+                status: .warn,
+                message: "Insecure POSIX permissions detected on: \(insecureItems.joined(separator: ", ")).",
+                remediation: "Harden permissions via 'chmod 700 ~/.facelock && chmod 600 ~/.facelock/*' or execute 'facelock --doctor-repair'."
             ))
         }
 
@@ -2860,6 +3045,52 @@ public struct Diagnostics {
             message: "Camera hardware/OS green recording indicator strictly preserved per Apple Security and TCC privacy standards."
         ))
 
+        // 4.18 macOS FileVault Full-Disk Encryption
+        let fdeRes = runShellCommand("/usr/bin/fdesetup", arguments: ["status"])
+        if fdeRes.stdout.localizedCaseInsensitiveContains("FileVault is On") {
+            checks.append(DoctorCheckItem(
+                id: "security.filevault_encryption",
+                category: "security",
+                name: "FileVault Full-Disk Encryption",
+                status: .pass,
+                message: "macOS FileVault full-disk encryption (XTS-AES-128) is active on the boot APFS volume."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.filevault_encryption",
+                category: "security",
+                name: "FileVault Full-Disk Encryption",
+                status: .warn,
+                message: "FileVault full-disk encryption is inactive. Data and biometric embeddings are vulnerable to physical extraction if device is lost.",
+                remediation: "Enable FileVault encryption in macOS System Settings > Privacy & Security > FileVault."
+            ))
+        }
+
+        // 4.19 macOS Display Sleep Screen Lock Grace Period
+        let askRes = runShellCommand("/usr/bin/defaults", arguments: ["read", "com.apple.screensaver", "askForPassword"])
+        let delayRes = runShellCommand("/usr/bin/defaults", arguments: ["read", "com.apple.screensaver", "askForPasswordDelay"])
+        let askForPasswordDisabled = (askRes.exitCode == 0 && askRes.stdout.trimmingCharacters(in: .whitespacesAndNewlines) == "0")
+        let delaySeconds = Int(delayRes.stdout.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+
+        if askForPasswordDisabled || delaySeconds > 0 {
+            checks.append(DoctorCheckItem(
+                id: "security.screen_saver_lock",
+                category: "security",
+                name: "macOS Display Sleep Screen Lock Grace Period",
+                status: .warn,
+                message: "Screen lock grace delay detected (\(delaySeconds)s delay). Display sleep does not require immediate password.",
+                remediation: "Configure password requirement to immediately in macOS System Settings > Lock Screen."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.screen_saver_lock",
+                category: "security",
+                name: "macOS Display Sleep Screen Lock Grace Period",
+                status: .pass,
+                message: "macOS display sleep enforces immediate password lock without grace period bypass window."
+            ))
+        }
+
         // Category 5: Remote Alerting & Network
         if config.telegramEnabled {
             if !config.telegramBotToken.isEmpty && !config.telegramChatId.isEmpty {
@@ -2968,6 +3199,23 @@ public struct Diagnostics {
                     try? data.write(to: baselineBackup, options: .atomic)
                     try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: baselineBackup.path)
                     actions.append("Created baseline configuration backup snapshot in ~/.facelock/backups")
+                }
+            }
+        }
+
+        // 1d. Sensitive files permissions repair (chmod 0600 on sensitive credentials and audit files)
+        let sensitiveFilesToRepair = ["config.json", "enrolled_vectors.json", "audit_log.jsonl", "doctor_report.json"]
+        for sFileName in sensitiveFilesToRepair {
+            let sFilePath = facelockDir.appendingPathComponent(sFileName).path
+            if FileManager.default.fileExists(atPath: sFilePath) {
+                if let attrs = try? FileManager.default.attributesOfItem(atPath: sFilePath),
+                   let perms = attrs[.posixPermissions] as? NSNumber {
+                    let p = perms.intValue
+                    if (p & 0o077) != 0 {
+                        if (try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: sFilePath)) != nil {
+                            actions.append("Restricted ~/.facelock/\(sFileName) permissions to 0600")
+                        }
+                    }
                 }
             }
         }
@@ -3187,6 +3435,35 @@ public struct Diagnostics {
             return (true, targetURL.path, xml, report)
         } catch {
             return (false, targetURL.path, xml, report)
+        }
+    }
+
+    @discardableResult
+    public static func exportDoctorGitHubActions(toPath customPath: String? = nil, config: Config = .shared, skipNetwork: Bool = false) -> (success: Bool, path: String, content: String, report: DoctorReport) {
+        let report = runDoctor(config: config, skipNetwork: skipNetwork)
+        let gha = report.generateGitHubActionsSummary()
+        let targetURL: URL
+        if let customPath = customPath, !customPath.isEmpty {
+            targetURL = URL(fileURLWithPath: (customPath as NSString).expandingTildeInPath)
+        } else if let envPath = ProcessInfo.processInfo.environment["GITHUB_STEP_SUMMARY"], !envPath.isEmpty {
+            targetURL = URL(fileURLWithPath: (envPath as NSString).expandingTildeInPath)
+        } else {
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
+            try? FileManager.default.createDirectory(at: facelockDir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            targetURL = facelockDir.appendingPathComponent("doctor_step_summary.md")
+        }
+
+        guard let data = gha.data(using: .utf8) else {
+            return (false, targetURL.path, gha, report)
+        }
+
+        do {
+            try data.write(to: targetURL, options: .atomic)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: targetURL.path)
+            return (true, targetURL.path, gha, report)
+        } catch {
+            return (false, targetURL.path, gha, report)
         }
     }
 }
