@@ -373,6 +373,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor-export-defectdojo", "--json"])
             case "--doctor-export-defectdojo", "--export-doctor-defectdojo", "--export-defectdojo-doctor", "--doctor-export-dojo", "--export-doctor-dojo", "--export-dojo-doctor":
                 args.append("--doctor-export-defectdojo")
+            case "--doctor-cyclonedx-json", "--cyclonedx-doctor-json", "--doctor-cdx-json", "--cdx-doctor-json":
+                args.append(contentsOf: ["--doctor-cyclonedx", "--json"])
+            case "--doctor-cyclonedx", "--cyclonedx-doctor", "--doctor-cdx", "--cdx-doctor":
+                args.append("--doctor-cyclonedx")
+            case "--doctor-export-cyclonedx-json", "--export-doctor-cyclonedx-json", "--export-cyclonedx-doctor-json", "--doctor-export-cdx-json", "--export-doctor-cdx-json", "--export-cdx-doctor-json":
+                args.append(contentsOf: ["--doctor-export-cyclonedx", "--json"])
+            case "--doctor-export-cyclonedx", "--export-doctor-cyclonedx", "--export-cyclonedx-doctor", "--doctor-export-cdx", "--export-doctor-cdx", "--export-cdx-doctor":
+                args.append("--doctor-export-cyclonedx")
             default:
                 args.append(arg)
             }
@@ -525,6 +533,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --doctor-export-sonarqube, --doctor-export-sonar [path] [--json] Export doctor report to SonarQube Generic Issue Import file
               --doctor-defectdojo, --doctor-dojo [--json] Generate doctor report in DefectDojo Generic Findings JSON
               --doctor-export-defectdojo, --doctor-export-dojo [path] [--json] Export doctor report to DefectDojo Generic Findings file
+              --doctor-cyclonedx, --doctor-cdx [--json] Generate doctor report in OWASP CycloneDX 1.5 JSON
+              --doctor-export-cyclonedx, --doctor-export-cdx [path] [--json] Export doctor report to CycloneDX 1.5 BOM file
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -1106,6 +1116,61 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 if result.success {
                     print("✓ Doctor diagnostic health report exported to DefectDojo file: \(result.path)")
+                    print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
+                } else {
+                    print("✗ Failed to export doctor diagnostic report to: \(result.path)")
+                }
+            }
+            exit(result.success ? 0 : 1)
+        }
+
+        if args.contains("--doctor-cyclonedx") || args.contains("--doctor-cdx") {
+            let report = Diagnostics.runDoctor()
+            let cdx = report.generateCycloneDX()
+            if args.contains("--json") {
+                let dict = report.toCycloneDXDictionary()
+                var jsonDict: [String: Any] = dict
+                jsonDict["version"] = report.version
+                jsonDict["overallStatus"] = report.overallStatus
+                jsonDict["totalChecks"] = report.totalChecks
+                jsonDict["passed"] = report.passedCount
+                jsonDict["warnings"] = report.warningCount
+                jsonDict["failures"] = report.failureCount
+                if let vulns = dict["vulnerabilities"] as? [[String: Any]] {
+                    jsonDict["vulnerabilitiesCount"] = vulns.count
+                }
+                if let data = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                print(cdx)
+            }
+            exit(report.failureCount > 0 ? 1 : 0)
+        }
+
+        if args.contains("--doctor-export-cyclonedx") || args.contains("--doctor-export-cdx") {
+            let customPath = AppDelegate.valueForOption("--doctor-export-cyclonedx", in: args) ?? AppDelegate.valueForOption("--doctor-export-cdx", in: args)
+            let result = Diagnostics.exportDoctorCycloneDX(toPath: customPath)
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "success": result.success,
+                    "path": result.path,
+                    "overallStatus": result.report.overallStatus,
+                    "totalChecks": result.report.totalChecks,
+                    "passed": result.report.passedCount,
+                    "warnings": result.report.warningCount,
+                    "failures": result.report.failureCount,
+                    "version": result.report.version,
+                    "bytesWritten": result.content.utf8.count
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                if result.success {
+                    print("✓ Doctor diagnostic health report exported to CycloneDX BOM file: \(result.path)")
                     print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
                 } else {
                     print("✗ Failed to export doctor diagnostic report to: \(result.path)")

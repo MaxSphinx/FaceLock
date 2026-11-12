@@ -93,6 +93,7 @@ public final class FaceLockTestSuite {
         testMaintenanceV133Enhancements()
         testMaintenanceV134Enhancements()
         testMaintenanceV135Enhancements()
+        testMaintenanceV136Enhancements()
         testVectorMatchingBenchmark()
 
         let elapsed = Date().timeIntervalSince(startTime)
@@ -2393,7 +2394,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.3.5", "Config currentVersion is synchronized")
+        assertEqual(Config.currentVersion, "1.3.6", "Config currentVersion is synchronized")
 
         // 5. Test CLI Argument Normalization for Doctor Strict and Export
         assertEqual(AppDelegate.normalizeArguments(["--doctor-strict-json"]), ["--doctor-strict", "--json"], "Normalizes --doctor-strict-json")
@@ -2452,7 +2453,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.3.5", "Config currentVersion is 1.3.5")
+        assertEqual(Config.currentVersion, "1.3.6", "Config currentVersion is 1.3.5")
 
         // 5. Test CLI Argument Normalization for Doctor Markdown and Export MD
         assertEqual(AppDelegate.normalizeArguments(["--doctor-md-json"]), ["--doctor-markdown", "--json"], "Normalizes --doctor-md-json")
@@ -2511,7 +2512,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.3.5", "Config currentVersion is 1.3.5")
+        assertEqual(Config.currentVersion, "1.3.6", "Config currentVersion is 1.3.5")
 
         // 5. Test CLI Argument Normalization for Doctor HTML and Export HTML
         assertEqual(AppDelegate.normalizeArguments(["--doctor-html-json"]), ["--doctor-html", "--json"], "Normalizes --doctor-html-json")
@@ -2583,7 +2584,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 5. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.3.5", "Config currentVersion is 1.3.5")
+        assertEqual(Config.currentVersion, "1.3.6", "Config currentVersion is 1.3.5")
 
         // 6. Test CLI Argument Normalization for Doctor SARIF and Export SARIF
         assertEqual(AppDelegate.normalizeArguments(["--doctor-sarif-json"]), ["--doctor-sarif", "--json"], "Normalizes --doctor-sarif-json")
@@ -2636,7 +2637,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.3.5", "Config currentVersion is 1.3.5")
+        assertEqual(Config.currentVersion, "1.3.6", "Config currentVersion is 1.3.5")
 
         // 5. Test CLI Argument Normalization for Doctor CSV and Export CSV
         assertEqual(AppDelegate.normalizeArguments(["--doctor-csv-json"]), ["--doctor-csv", "--json"], "Normalizes --doctor-csv-json")
@@ -2692,7 +2693,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.3.5", "Config currentVersion is 1.3.5")
+        assertEqual(Config.currentVersion, "1.3.6", "Config currentVersion is 1.3.5")
 
         // 5. Test CLI Argument Normalization for Doctor JUnit and Export JUnit
         assertEqual(AppDelegate.normalizeArguments(["--doctor-junit-json"]), ["--doctor-junit", "--json"], "Normalizes --doctor-junit-json")
@@ -2754,7 +2755,7 @@ public final class FaceLockTestSuite {
         assert(repairReport.finalReport.totalChecks >= 44, "Repair final report contains at least 44 checks")
 
         // 5. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.3.5", "Config currentVersion is 1.3.5")
+        assertEqual(Config.currentVersion, "1.3.6", "Config currentVersion is 1.3.5")
 
         // 6. Test CLI Argument Normalization for Doctor GHA and Export GHA
         assertEqual(AppDelegate.normalizeArguments(["--doctor-gha-json"]), ["--doctor-gha", "--json"], "Normalizes --doctor-gha-json")
@@ -2818,7 +2819,7 @@ public final class FaceLockTestSuite {
         assert(repairReport.finalReport.totalChecks >= 48, "Repair final report contains at least 48 checks")
 
         // 5. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.3.5", "Config currentVersion is 1.3.5")
+        assertEqual(Config.currentVersion, "1.3.6", "Config currentVersion is 1.3.5")
 
         // 6. Test CLI Argument Normalization for Doctor GitLab and Export GitLab
         assertEqual(AppDelegate.normalizeArguments(["--doctor-gitlab-json"]), ["--doctor-gitlab", "--json"], "Normalizes --doctor-gitlab-json")
@@ -2892,7 +2893,7 @@ public final class FaceLockTestSuite {
         assert(repairReport.finalReport.totalChecks >= 52, "Repair final report contains at least 52 checks")
 
         // 5. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.3.5", "Config currentVersion is 1.3.5")
+        assertEqual(Config.currentVersion, "1.3.6", "Config currentVersion is 1.3.5")
 
         // 6. Test CLI Argument Normalization for Doctor SonarQube and Export SonarQube
         assertEqual(AppDelegate.normalizeArguments(["--doctor-sonarqube-json"]), ["--doctor-sonarqube", "--json"], "Normalizes --doctor-sonarqube-json")
@@ -2967,7 +2968,7 @@ public final class FaceLockTestSuite {
         assert(repairReport.finalReport.totalChecks >= 56, "Repair final report contains at least 56 checks")
 
         // 5. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.3.5", "Config currentVersion is 1.3.5")
+        assertEqual(Config.currentVersion, "1.3.6", "Config currentVersion is 1.3.5")
 
         // 6. Test CLI Argument Normalization for Doctor DefectDojo and Export DefectDojo
         assertEqual(AppDelegate.normalizeArguments(["--doctor-defectdojo-json"]), ["--doctor-defectdojo", "--json"], "Normalizes --doctor-defectdojo-json")
@@ -2990,6 +2991,83 @@ public final class FaceLockTestSuite {
         assertEqual(AppDelegate.normalizeArguments(["--doctor-export-dojo"]), ["--doctor-export-defectdojo"], "Normalizes --doctor-export-dojo")
         assertEqual(AppDelegate.normalizeArguments(["--export-doctor-dojo"]), ["--doctor-export-defectdojo"], "Normalizes --export-doctor-dojo")
         assertEqual(AppDelegate.normalizeArguments(["--export-dojo-doctor"]), ["--doctor-export-defectdojo"], "Normalizes --export-dojo-doctor")
+    }
+
+    private func testMaintenanceV136Enhancements() {
+        print("\n▶ Test Suite: Autonomous Doctor 60-Check Expansion & CycloneDX 1.5 Report Engine (v1.3.6)")
+
+        // 1. Doctor 60-Check Coverage
+        let report = Diagnostics.runDoctor(skipNetwork: true)
+        assert(report.totalChecks >= 60, "Doctor executes at least 60 comprehensive checks (Got \(report.totalChecks))")
+        let checkIds = Set(report.checks.map { $0.id })
+        assert(checkIds.contains("filesystem.crash_reports_cleanliness"), "Contains 'filesystem.crash_reports_cleanliness' check")
+        assert(checkIds.contains("daemon.file_descriptor_limit"), "Contains 'daemon.file_descriptor_limit' check")
+        assert(checkIds.contains("security.remote_login_disabled"), "Contains 'security.remote_login_disabled' check")
+        assert(checkIds.contains("security.display_sleep_timeout"), "Contains 'security.display_sleep_timeout' check")
+
+        // 2. CycloneDX 1.5 JSON Generation & Format Compliance
+        let cdx = report.generateCycloneDX()
+        assert(cdx.contains("\"bomFormat\" : \"CycloneDX\"") || cdx.contains("\"bomFormat\":\"CycloneDX\""), "CycloneDX JSON contains 'bomFormat'")
+        assert(cdx.contains("\"specVersion\" : \"1.5\"") || cdx.contains("\"specVersion\":\"1.5\""), "CycloneDX JSON contains 'specVersion'")
+        let dict = report.toCycloneDXDictionary()
+        assertEqual(dict["bomFormat"] as? String, "CycloneDX", "CycloneDX bomFormat is CycloneDX")
+        assertEqual(dict["specVersion"] as? String, "1.5", "CycloneDX specVersion is 1.5")
+        assert((dict["serialNumber"] as? String)?.hasPrefix("urn:uuid:") == true, "CycloneDX serialNumber starts with urn:uuid:")
+        assert(dict["metadata"] != nil, "Dictionary contains metadata")
+        assert(dict["vulnerabilities"] != nil, "Dictionary contains vulnerabilities array")
+
+        let vulns = report.toCycloneDXVulnerabilities()
+        for vuln in vulns {
+            assert(vuln["id"] != nil, "Vulnerability contains id")
+            assert(vuln["source"] != nil, "Vulnerability contains source")
+            assert(vuln["ratings"] != nil, "Vulnerability contains ratings")
+            assert(vuln["description"] != nil, "Vulnerability contains description")
+            assert(vuln["recommendation"] != nil, "Vulnerability contains recommendation")
+            assert(vuln["affects"] != nil, "Vulnerability contains affects")
+            assert(vuln["properties"] != nil, "Vulnerability contains properties")
+        }
+
+        // 3. Doctor CycloneDX File Export Test
+        let tempExportPath = "/tmp/facelock_test_cdx_export_\(UUID().uuidString).json"
+        let exportResult = Diagnostics.exportDoctorCycloneDX(toPath: tempExportPath, skipNetwork: true)
+        assert(exportResult.success, "exportDoctorCycloneDX succeeded")
+        assertEqual(exportResult.path, tempExportPath, "exportDoctorCycloneDX exported to expected path")
+        assert(FileManager.default.fileExists(atPath: tempExportPath), "Exported doctor CycloneDX file exists on disk")
+        if let data = try? Data(contentsOf: URL(fileURLWithPath: tempExportPath)),
+           let fileContent = String(data: data, encoding: .utf8) {
+            assert(fileContent.contains("CycloneDX"), "File content contains 'CycloneDX'")
+        }
+        try? FileManager.default.removeItem(atPath: tempExportPath)
+
+        // 4. Test Doctor Repair Execution
+        let repairReport = Diagnostics.runDoctorRepair(save: false)
+        assert(repairReport.initialReport.totalChecks >= 60, "Repair initial report contains at least 60 checks")
+        assert(repairReport.finalReport.totalChecks >= 60, "Repair final report contains at least 60 checks")
+
+        // 5. Test Version Synchronization
+        assertEqual(Config.currentVersion, "1.3.6", "Config currentVersion is 1.3.6")
+
+        // 6. Test CLI Argument Normalization for Doctor CycloneDX and Export CycloneDX
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-cyclonedx-json"]), ["--doctor-cyclonedx", "--json"], "Normalizes --doctor-cyclonedx-json")
+        assertEqual(AppDelegate.normalizeArguments(["--cyclonedx-doctor-json"]), ["--doctor-cyclonedx", "--json"], "Normalizes --cyclonedx-doctor-json")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-cdx-json"]), ["--doctor-cyclonedx", "--json"], "Normalizes --doctor-cdx-json")
+        assertEqual(AppDelegate.normalizeArguments(["--cdx-doctor-json"]), ["--doctor-cyclonedx", "--json"], "Normalizes --cdx-doctor-json")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-cyclonedx"]), ["--doctor-cyclonedx"], "Normalizes --doctor-cyclonedx")
+        assertEqual(AppDelegate.normalizeArguments(["--cyclonedx-doctor"]), ["--doctor-cyclonedx"], "Normalizes --cyclonedx-doctor")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-cdx"]), ["--doctor-cyclonedx"], "Normalizes --doctor-cdx")
+        assertEqual(AppDelegate.normalizeArguments(["--cdx-doctor"]), ["--doctor-cyclonedx"], "Normalizes --cdx-doctor")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-export-cyclonedx-json"]), ["--doctor-export-cyclonedx", "--json"], "Normalizes --doctor-export-cyclonedx-json")
+        assertEqual(AppDelegate.normalizeArguments(["--export-doctor-cyclonedx-json"]), ["--doctor-export-cyclonedx", "--json"], "Normalizes --export-doctor-cyclonedx-json")
+        assertEqual(AppDelegate.normalizeArguments(["--export-cyclonedx-doctor-json"]), ["--doctor-export-cyclonedx", "--json"], "Normalizes --export-cyclonedx-doctor-json")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-export-cdx-json"]), ["--doctor-export-cyclonedx", "--json"], "Normalizes --doctor-export-cdx-json")
+        assertEqual(AppDelegate.normalizeArguments(["--export-doctor-cdx-json"]), ["--doctor-export-cyclonedx", "--json"], "Normalizes --export-doctor-cdx-json")
+        assertEqual(AppDelegate.normalizeArguments(["--export-cdx-doctor-json"]), ["--doctor-export-cyclonedx", "--json"], "Normalizes --export-cdx-doctor-json")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-export-cyclonedx"]), ["--doctor-export-cyclonedx"], "Normalizes --doctor-export-cyclonedx")
+        assertEqual(AppDelegate.normalizeArguments(["--export-doctor-cyclonedx"]), ["--doctor-export-cyclonedx"], "Normalizes --export-doctor-cyclonedx")
+        assertEqual(AppDelegate.normalizeArguments(["--export-cyclonedx-doctor"]), ["--doctor-export-cyclonedx"], "Normalizes --export-cyclonedx-doctor")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-export-cdx"]), ["--doctor-export-cyclonedx"], "Normalizes --doctor-export-cdx")
+        assertEqual(AppDelegate.normalizeArguments(["--export-doctor-cdx"]), ["--doctor-export-cyclonedx"], "Normalizes --export-doctor-cdx")
+        assertEqual(AppDelegate.normalizeArguments(["--export-cdx-doctor"]), ["--doctor-export-cyclonedx"], "Normalizes --export-cdx-doctor")
     }
 
     // MARK: - 10. Performance Benchmark

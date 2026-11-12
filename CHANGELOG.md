@@ -4,6 +4,26 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.6] - 2026-11-12
+
+### Added
+- **Diagnostic Doctor Expansion to 60 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `filesystem.crash_reports_cleanliness`: Audits `~/Library/Logs/DiagnosticReports` for unhandled FaceLock application crashes or SIGSEGV logs to guarantee runtime stability.
+  - Added `daemon.file_descriptor_limit`: Audits active file descriptor allocation against POSIX system soft limit (`getrlimit(RLIMIT_NOFILE)`) to prevent descriptor leaks across long-running camera scan loops and cryptographic audit flushes.
+  - Added `security.remote_login_disabled`: Audits macOS SSH remote login service (`system/com.openssh.sshd`) to ensure unauthorized remote shell sessions cannot bypass physical biometric screen locks.
+  - Added `security.display_sleep_timeout`: Audits macOS display sleep idle power assertions (`pmset -g`) to ensure unattended displays automatically sleep within <= 15 minutes.
+- **OWASP CycloneDX 1.5 DevSecOps BOM / VEX Security Report Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.toCycloneDXVulnerabilities()`, `DoctorReport.toCycloneDXDictionary()`, and `DoctorReport.generateCycloneDX()` producing standard OWASP CycloneDX 1.5 JSON Software Bill of Materials & Security Findings (`bomFormat`, `specVersion`, `serialNumber`, `metadata`, `vulnerabilities`, `ratings`, `analysis`, `affects`) for DevSecOps supply chain compliance and automated ingestion into dependency-track and vulnerability scanners.
+  - Implemented `Diagnostics.exportDoctorCycloneDX(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_cyclonedx.json` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-cyclonedx` / `--doctor-cdx` and `--doctor-export-cyclonedx` / `--doctor-export-cdx [path]` with `--json` output support and full normalization aliases (`--doctor-cyclonedx-json`, `--cyclonedx-doctor-json`, `--doctor-cdx-json`, `--cdx-doctor-json`, `--doctor-cyclonedx`, `--cyclonedx-doctor`, `--doctor-cdx`, `--cdx-doctor`, `--doctor-export-cyclonedx-json`, `--export-doctor-cyclonedx-json`, `--export-cyclonedx-doctor-json`, `--doctor-export-cdx-json`, `--export-doctor-cdx-json`, `--export-cdx-doctor-json`, `--doctor-export-cyclonedx`, `--export-doctor-cyclonedx`, `--export-cyclonedx-doctor`, `--doctor-export-cdx`, `--export-doctor-cdx`, `--export-cdx-doctor`).
+  - Added Makefile targets `make doctor-cyclonedx`, `make doctor-cyclonedx-json`, `make doctor-export-cyclonedx`, `make doctor-export-cyclonedx-json`, `make doctor-cdx`, `make doctor-cdx-json`, `make doctor-export-cdx`, and `make doctor-export-cdx-json`.
+- **Self-Healing Storage Permission Auto-Repair (`Diagnostics.swift`)**:
+  - Enhanced `doctor-repair` engine to automatically restrict `doctor_cyclonedx.json` to `0600` POSIX permissions.
+- **Automated Test Suite Expansion to 1,937 Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV136Enhancements()` validating 60+ doctor checks, all 4 new check identifiers, CycloneDX 1.5 JSON format compliance, atomic file export integrity, repair report execution, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.3.6 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.3.6` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.3.5] - 2026-11-11
 
 ### Added

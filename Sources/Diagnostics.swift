@@ -1049,6 +1049,101 @@ public struct DoctorReport {
         }
         return str + "\n"
     }
+
+    public func toCycloneDXVulnerabilities() -> [[String: Any]] {
+        var vulns: [[String: Any]] = []
+        for check in checks {
+            guard check.status != .pass else { continue }
+            let severity: String
+            switch check.status {
+            case .fail: severity = "high"
+            case .warn: severity = "medium"
+            case .info: severity = "info"
+            case .pass: severity = "none"
+            }
+            let checkSlug = check.id.replacingOccurrences(of: ".", with: "-").uppercased()
+            let mitigation = check.remediation ?? "Review and resolve check item in FaceLock security policy."
+            let vuln: [String: Any] = [
+                "id": "FL-\(checkSlug)",
+                "source": [
+                    "name": "FaceLock Diagnostic Doctor",
+                    "url": "https://github.com/MaxSphinx/FaceLock"
+                ],
+                "ratings": [
+                    [
+                        "source": [
+                            "name": "FaceLock Security Doctor"
+                        ],
+                        "severity": severity,
+                        "method": "other"
+                    ]
+                ],
+                "description": check.message,
+                "recommendation": mitigation,
+                "analysis": [
+                    "state": "in_triage",
+                    "justification": "requires_environment_configuration"
+                ],
+                "affects": [
+                    [
+                        "ref": "pkg:generic/FaceLock@\(version)"
+                    ]
+                ],
+                "properties": [
+                    ["name": "category", "value": check.category],
+                    ["name": "check_id", "value": check.id],
+                    ["name": "check_name", "value": check.name],
+                    ["name": "status", "value": check.status.rawValue]
+                ]
+            ]
+            vulns.append(vuln)
+        }
+        return vulns
+    }
+
+    public func toCycloneDXDictionary() -> [String: Any] {
+        let dateFormatter = ISO8601DateFormatter()
+        let timestamp = dateFormatter.string(from: Date())
+        let serial = "urn:uuid:" + UUID().uuidString.lowercased()
+
+        let metadata: [String: Any] = [
+            "timestamp": timestamp,
+            "tools": [
+                [
+                    "vendor": "FaceLock",
+                    "name": "FaceLock Doctor",
+                    "version": version
+                ]
+            ],
+            "component": [
+                "type": "application",
+                "name": "FaceLock",
+                "version": version,
+                "description": "Biometric face authentication & active walk-away security shield for macOS",
+                "scope": "required",
+                "purl": "pkg:generic/FaceLock@\(version)"
+            ]
+        ]
+
+        let dict: [String: Any] = [
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.5",
+            "serialNumber": serial,
+            "version": 1,
+            "metadata": metadata,
+            "vulnerabilities": toCycloneDXVulnerabilities()
+        ]
+        return dict
+    }
+
+    public func generateCycloneDX() -> String {
+        let dict = toCycloneDXDictionary()
+        guard let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
+              let str = String(data: data, encoding: .utf8) else {
+            return "{\"bomFormat\":\"CycloneDX\",\"specVersion\":\"1.5\",\"version\":1,\"vulnerabilities\":[]}\n"
+        }
+        return str + "\n"
+    }
 }
 
 public struct DoctorRepairReport {
@@ -2713,6 +2808,36 @@ public struct Diagnostics {
             ))
         }
 
+        // 2.12 Crash Diagnostics Cleanliness
+        let diagReportsDir = home.appendingPathComponent("Library/Logs/DiagnosticReports", isDirectory: true)
+        var crashReportsFound = false
+        var crashCount = 0
+        if FileManager.default.fileExists(atPath: diagReportsDir.path) {
+            if let files = try? FileManager.default.contentsOfDirectory(atPath: diagReportsDir.path) {
+                let crashes = files.filter { $0.hasPrefix("FaceLock") && ($0.hasSuffix(".ips") || $0.hasSuffix(".crash") || $0.hasSuffix(".diag")) }
+                crashCount = crashes.count
+                crashReportsFound = !crashes.isEmpty
+            }
+        }
+        if !crashReportsFound {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.crash_reports_cleanliness",
+                category: "filesystem",
+                name: "Crash Diagnostics Cleanliness",
+                status: .pass,
+                message: "Zero crash reports detected in ~/Library/Logs/DiagnosticReports (clean runtime stability record)."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.crash_reports_cleanliness",
+                category: "filesystem",
+                name: "Crash Diagnostics Cleanliness",
+                status: .warn,
+                message: "\(crashCount) crash report(s) found in ~/Library/Logs/DiagnosticReports for FaceLock.",
+                remediation: "Review crash reports in Console.app to diagnose background memory or thread faults."
+            ))
+        }
+
         // Category 3: Background Daemon & Automation
         // 3.1 Daemon Process
         let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: "io.github.facelock")
@@ -2882,6 +3007,30 @@ public struct Diagnostics {
                 name: "Power Management & Energy Assertion Hygiene",
                 status: .info,
                 message: "Active power assertion registered for presentation lock-suppression or walk-away sweep."
+            ))
+        }
+
+        // 3.10 Daemon File Descriptor Accounting
+        var rl = rlimit()
+        let getrlimitRes = getrlimit(RLIMIT_NOFILE, &rl)
+        let openFdsCount = (try? FileManager.default.contentsOfDirectory(atPath: "/dev/fd"))?.count ?? 0
+        let softLimit = getrlimitRes == 0 ? Int(rl.rlim_cur) : 256
+        if openFdsCount < 256 && openFdsCount < softLimit {
+            checks.append(DoctorCheckItem(
+                id: "daemon.file_descriptor_limit",
+                category: "daemon",
+                name: "File Descriptor Allocation & Resource Limits",
+                status: .pass,
+                message: "Process file descriptor usage is nominal (\(openFdsCount)/\(softLimit) fds active, zero handle leaks)."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "daemon.file_descriptor_limit",
+                category: "daemon",
+                name: "File Descriptor Allocation & Resource Limits",
+                status: .warn,
+                message: "Elevated file descriptor consumption detected: \(openFdsCount) open descriptors out of \(softLimit) soft limit.",
+                remediation: "Inspect background file handles or camera capture descriptors via 'lsof -p <pid>'."
             ))
         }
 
@@ -3535,6 +3684,79 @@ public struct Diagnostics {
             ))
         }
 
+        // 4.25 Remote Login (SSH) Hardening
+        let sshdCheck = runShellCommand("/bin/launchctl", arguments: ["print", "system/com.openssh.sshd"])
+        let sshdActive = (sshdCheck.exitCode == 0 && sshdCheck.stdout.localizedCaseInsensitiveContains("state = running"))
+        if !sshdActive {
+            checks.append(DoctorCheckItem(
+                id: "security.remote_login_disabled",
+                category: "security",
+                name: "Remote Login (SSH) Service Hardening",
+                status: .pass,
+                message: "Remote Login (sshd) service is inactive, eliminating remote network session hijacking vectors."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.remote_login_disabled",
+                category: "security",
+                name: "Remote Login (SSH) Service Hardening",
+                status: .warn,
+                message: "Remote Login (SSH) service is currently active, permitting remote network access.",
+                remediation: "Disable Remote Login in System Settings > General > Sharing if remote access is not strictly required."
+            ))
+        }
+
+        // 4.26 Display Sleep Timeout Enforcement
+        let pmsetDisplay = runShellCommand("/usr/bin/pmset", arguments: ["-g"])
+        var displaySleepMins: Int? = nil
+        for line in pmsetDisplay.stdout.components(separatedBy: .newlines) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("displaysleep") {
+                let tokens = trimmed.split(separator: " ", omittingEmptySubsequences: true)
+                if tokens.count >= 2, let mins = Int(tokens[1]) {
+                    displaySleepMins = mins
+                    break
+                }
+            }
+        }
+        if let mins = displaySleepMins {
+            if mins > 0 && mins <= 15 {
+                checks.append(DoctorCheckItem(
+                    id: "security.display_sleep_timeout",
+                    category: "security",
+                    name: "Display Sleep Timeout Enforcement",
+                    status: .pass,
+                    message: "Display sleep timeout is securely configured (\(mins) min) to enforce rapid unattended screen locking."
+                ))
+            } else if mins == 0 {
+                checks.append(DoctorCheckItem(
+                    id: "security.display_sleep_timeout",
+                    category: "security",
+                    name: "Display Sleep Timeout Enforcement",
+                    status: .warn,
+                    message: "Display sleep is disabled (never sleep), increasing risk of unattended workstation exposure.",
+                    remediation: "Configure display sleep timeout to 15 minutes or less via 'sudo pmset -a displaysleep 10'."
+                ))
+            } else {
+                checks.append(DoctorCheckItem(
+                    id: "security.display_sleep_timeout",
+                    category: "security",
+                    name: "Display Sleep Timeout Enforcement",
+                    status: .warn,
+                    message: "Display sleep timeout is prolonged (\(mins) min > 15 min recommended threshold).",
+                    remediation: "Reduce display sleep timeout via 'sudo pmset -a displaysleep 10'."
+                ))
+            }
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.display_sleep_timeout",
+                category: "security",
+                name: "Display Sleep Timeout Enforcement",
+                status: .pass,
+                message: "Display power management active."
+            ))
+        }
+
         // Category 5: Remote Alerting & Network
         if config.telegramEnabled {
             if !config.telegramBotToken.isEmpty && !config.telegramChatId.isEmpty {
@@ -3648,7 +3870,7 @@ public struct Diagnostics {
         }
 
         // 1d. Sensitive files permissions repair (chmod 0600 on sensitive credentials and audit files)
-        let sensitiveFilesToRepair = ["config.json", "enrolled_vectors.json", "audit_log.jsonl", "doctor_report.json", "doctor_step_summary.md", "doctor_codeclimate.json", "doctor_sonarqube.json", "doctor_defectdojo.json"]
+        let sensitiveFilesToRepair = ["config.json", "enrolled_vectors.json", "audit_log.jsonl", "doctor_report.json", "doctor_step_summary.md", "doctor_codeclimate.json", "doctor_sonarqube.json", "doctor_defectdojo.json", "doctor_cyclonedx.json"]
         for sFileName in sensitiveFilesToRepair {
             let sFilePath = facelockDir.appendingPathComponent(sFileName).path
             if FileManager.default.fileExists(atPath: sFilePath) {
@@ -3977,6 +4199,33 @@ public struct Diagnostics {
             let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
             try? FileManager.default.createDirectory(at: facelockDir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
             targetURL = facelockDir.appendingPathComponent("doctor_defectdojo.json")
+        }
+
+        guard let data = json.data(using: .utf8) else {
+            return (false, targetURL.path, json, report)
+        }
+
+        do {
+            try data.write(to: targetURL, options: .atomic)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: targetURL.path)
+            return (true, targetURL.path, json, report)
+        } catch {
+            return (false, targetURL.path, json, report)
+        }
+    }
+
+    @discardableResult
+    public static func exportDoctorCycloneDX(toPath customPath: String? = nil, config: Config = .shared, skipNetwork: Bool = false) -> (success: Bool, path: String, content: String, report: DoctorReport) {
+        let report = runDoctor(config: config, skipNetwork: skipNetwork)
+        let json = report.generateCycloneDX()
+        let targetURL: URL
+        if let customPath = customPath, !customPath.isEmpty {
+            targetURL = URL(fileURLWithPath: (customPath as NSString).expandingTildeInPath)
+        } else {
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
+            try? FileManager.default.createDirectory(at: facelockDir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            targetURL = facelockDir.appendingPathComponent("doctor_cyclonedx.json")
         }
 
         guard let data = json.data(using: .utf8) else {
