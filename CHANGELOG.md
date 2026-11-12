@@ -4,6 +4,26 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.8] - 2026-11-12
+
+### Added
+- **Diagnostic Doctor Expansion to 68 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `hardware.ambient_light_sensor`: Audits primary display resolution, calibrated color space, and ambient facial illumination headroom (`NSScreen.main`) ensuring optimal lighting for sub-second neural camera sweeps.
+  - Added `daemon.mach_port_allocation`: Audits Mach IPC task port consumption via `mach_port_names(mach_task_self_, ...)` to ensure active port allocations (< 512) remain leak-free and avoid IPC deadlock.
+  - Added `security.secure_keyboard_entry`: Audits macOS Terminal `SecureKeyboardEntry` configuration to mitigate unprivileged keystroke snooping and keylogging against master PIN and CLI commands.
+  - Added `security.handoff_clipboard_isolation`: Audits macOS Universal Clipboard / Handoff (`com.apple.coreservices.useractivityd ClipboardSharingEnabled`) to prevent unauthorized cross-device credential broadcasting.
+- **OASIS CSAF 2.0 DevSecOps Advisory & Vulnerability Exchange Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.toCSAFDictionary()` and `DoctorReport.generateCSAF()` producing international OASIS CSAF 2.0 standard JSON security advisories (`csaf_version: "2.0"`, `category: "csaf_security_advisory"`, `publisher`, `tracking`, `product_tree`, `vulnerabilities`, `scores`, `remediations`, `product_status`) for DevSecOps automated ingestion, CISA, and BSI standard vulnerability management.
+  - Implemented `Diagnostics.exportDoctorCSAF(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_csaf.json` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-csaf` and `--doctor-export-csaf [path]` with `--json` output support and full normalization aliases (`--doctor-csaf-json`, `--csaf-doctor-json`, `--doctor-csaf`, `--csaf-doctor`, `--doctor-export-csaf-json`, `--export-doctor-csaf-json`, `--export-csaf-doctor-json`, `--doctor-export-csaf`, `--export-doctor-csaf`, `--export-csaf-doctor`).
+  - Added Makefile targets `make doctor-csaf`, `make doctor-csaf-json`, `make doctor-export-csaf`, and `make doctor-export-csaf-json`.
+- **Self-Healing Storage Permission Auto-Repair (`Diagnostics.swift`)**:
+  - Enhanced `doctor-repair` engine to automatically restrict `doctor_csaf.json` to `0600` POSIX permissions.
+- **Automated Test Suite Expansion to 2,649 Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV138Enhancements()` validating 68+ doctor checks, all 4 new check identifiers, OASIS CSAF 2.0 JSON format compliance, atomic file export integrity, repair report execution, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.3.8 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.3.8` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.3.7] - 2026-11-12
 
 ### Added

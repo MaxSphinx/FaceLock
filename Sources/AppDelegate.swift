@@ -389,6 +389,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor-export-spdx", "--json"])
             case "--doctor-export-spdx", "--export-doctor-spdx", "--export-spdx-doctor":
                 args.append("--doctor-export-spdx")
+            case "--doctor-csaf-json", "--csaf-doctor-json":
+                args.append(contentsOf: ["--doctor-csaf", "--json"])
+            case "--doctor-csaf", "--csaf-doctor":
+                args.append("--doctor-csaf")
+            case "--doctor-export-csaf-json", "--export-doctor-csaf-json", "--export-csaf-doctor-json":
+                args.append(contentsOf: ["--doctor-export-csaf", "--json"])
+            case "--doctor-export-csaf", "--export-doctor-csaf", "--export-csaf-doctor":
+                args.append("--doctor-export-csaf")
             default:
                 args.append(arg)
             }
@@ -545,6 +553,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --doctor-export-cyclonedx, --doctor-export-cdx [path] [--json] Export doctor report to CycloneDX 1.5 BOM file
               --doctor-spdx [--json]     Generate doctor report in SPDX 2.3 JSON (ISO/IEC 5962:2021)
               --doctor-export-spdx [path] [--json] Export doctor report to SPDX 2.3 SBOM file
+              --doctor-csaf [--json]     Generate doctor report in OASIS CSAF 2.0 JSON
+              --doctor-export-csaf [path] [--json] Export doctor report to OASIS CSAF 2.0 file
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -1236,6 +1246,61 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 if result.success {
                     print("✓ Doctor diagnostic health report exported to SPDX 2.3 file: \(result.path)")
+                    print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
+                } else {
+                    print("✗ Failed to export doctor diagnostic report to: \(result.path)")
+                }
+            }
+            exit(result.success ? 0 : 1)
+        }
+
+        if args.contains("--doctor-csaf") {
+            let report = Diagnostics.runDoctor()
+            let csaf = report.generateCSAF()
+            if args.contains("--json") {
+                let dict = report.toCSAFDictionary()
+                var jsonDict: [String: Any] = dict
+                jsonDict["version"] = report.version
+                jsonDict["overallStatus"] = report.overallStatus
+                jsonDict["totalChecks"] = report.totalChecks
+                jsonDict["passed"] = report.passedCount
+                jsonDict["warnings"] = report.warningCount
+                jsonDict["failures"] = report.failureCount
+                if let vulns = dict["vulnerabilities"] as? [[String: Any]] {
+                    jsonDict["vulnerabilitiesCount"] = vulns.count
+                }
+                if let data = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                print(csaf)
+            }
+            exit(report.failureCount > 0 ? 1 : 0)
+        }
+
+        if args.contains("--doctor-export-csaf") {
+            let customPath = AppDelegate.valueForOption("--doctor-export-csaf", in: args)
+            let result = Diagnostics.exportDoctorCSAF(toPath: customPath)
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "success": result.success,
+                    "path": result.path,
+                    "overallStatus": result.report.overallStatus,
+                    "totalChecks": result.report.totalChecks,
+                    "passed": result.report.passedCount,
+                    "warnings": result.report.warningCount,
+                    "failures": result.report.failureCount,
+                    "version": result.report.version,
+                    "bytesWritten": result.content.utf8.count
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                if result.success {
+                    print("✓ Doctor diagnostic health report exported to OASIS CSAF 2.0 file: \(result.path)")
                     print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
                 } else {
                     print("✗ Failed to export doctor diagnostic report to: \(result.path)")
