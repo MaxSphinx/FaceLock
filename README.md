@@ -87,8 +87,8 @@ Built strictly in modern **Swift & native AppKit**, with **zero external package
   - Profile switcher, 3D face calibration wizard, dynamic camera switcher.
   - Interactive Incident Gallery with 24h / 7d period filtering and one-click pruning.
   - Security Audit Log viewer with category filtering, pruning, and JSONL/CSV/JSON export.
-- **🩺 60-Check Diagnostic Doctor & Multi-Engine Compliance Suite**: Comprehensive health, biometrics, hardware, and filesystem diagnostic doctor (`make doctor`) with auto-repair (`make doctor-repair`), responsive HTML5 dashboard export (`make doctor-export-html`), OASIS SARIF v2.1.0 compliance export (`make doctor-export-sarif`), enterprise RFC 4180 CSV export (`make doctor-export-csv`), CI/CD JUnit XML export (`make doctor-export-junit`), native GitHub Actions Step Summary & workflow annotations export (`make doctor-export-gha`), GitLab CI / Code Climate code quality export (`make doctor-export-gitlab`), SonarQube Generic Issue Import JSON export (`make doctor-export-sonarqube`), DefectDojo Generic Findings JSON export (`make doctor-export-defectdojo`), and OWASP CycloneDX 1.5 DevSecOps BOM / VEX JSON export (`make doctor-export-cyclonedx`) for GitHub Code Scanning, GitLab CI/CD, SonarQube / SonarCloud, DefectDojo DevSecOps vulnerability management, CycloneDX software supply chain compliance, SOC 2 / ISO 27001 audit spreadsheets, and fleet MDM pipelines.
-- **🧪 100% Automated Test Suite**: 1,937 unit tests and microsecond Apple Silicon vector benchmarks built directly into the binary (`make test`).
+- **🩺 64-Check Diagnostic Doctor & Multi-Engine Compliance Suite**: Comprehensive health, biometrics, hardware, and filesystem diagnostic doctor (`make doctor`) with auto-repair (`make doctor-repair`), responsive HTML5 dashboard export (`make doctor-export-html`), OASIS SARIF v2.1.0 compliance export (`make doctor-export-sarif`), enterprise RFC 4180 CSV export (`make doctor-export-csv`), CI/CD JUnit XML export (`make doctor-export-junit`), native GitHub Actions Step Summary & workflow annotations export (`make doctor-export-gha`), GitLab CI / Code Climate code quality export (`make doctor-export-gitlab`), SonarQube Generic Issue Import JSON export (`make doctor-export-sonarqube`), DefectDojo Generic Findings JSON export (`make doctor-export-defectdojo`), OWASP CycloneDX 1.5 DevSecOps BOM / VEX JSON export (`make doctor-export-cyclonedx`), and ISO/IEC 5962:2021 / SPDX 2.3 SBOM & Vulnerability Specification export (`make doctor-export-spdx`) for GitHub Code Scanning, GitLab CI/CD, SonarQube / SonarCloud, DefectDojo DevSecOps vulnerability management, CycloneDX / SPDX software supply chain compliance, SOC 2 / ISO 27001 audit spreadsheets, and fleet MDM pipelines.
+- **🧪 100% Automated Test Suite**: 2,100+ unit tests and microsecond Apple Silicon vector benchmarks built directly into the binary (`make test`).
 
 ---
 
@@ -243,6 +243,7 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --doctor-sonarqube [--json]` | Generate SonarQube Generic Issue Import JSON compliance report |
 | `facelock --doctor-defectdojo [--json]` | Generate DefectDojo Generic Findings JSON compliance report |
 | `facelock --doctor-cyclonedx [--json]` | Generate OWASP CycloneDX 1.5 DevSecOps BOM JSON compliance report |
+| `facelock --doctor-spdx [--json]` | Generate ISO/IEC 5962:2021 / SPDX 2.3 DevSecOps SBOM JSON report |
 | `facelock --doctor-export [path]` | Export health doctor report to JSON file |
 | `facelock --doctor-export-md [path]` | Export health doctor report to Markdown file |
 | `facelock --doctor-export-html [path]` | Export health doctor report to HTML5 dashboard file |
@@ -254,6 +255,7 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --doctor-export-sonarqube [path]` | Export health doctor report to SonarQube Generic Issue Import JSON file |
 | `facelock --doctor-export-defectdojo [path]` | Export health doctor report to DefectDojo Generic Findings JSON file |
 | `facelock --doctor-export-cyclonedx [path]` | Export health doctor report to CycloneDX 1.5 BOM JSON file |
+| `facelock --doctor-export-spdx [path]` | Export health doctor report to SPDX 2.3 SBOM JSON file |
 | `facelock --test-lock` | Trigger fullscreen security shield test |
 | `facelock --status` | Display daemon status and biometric template metrics |
 | `facelock --incidents [--json]` | List logged intruder incident captures and disk usage |

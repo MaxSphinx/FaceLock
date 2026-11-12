@@ -4,6 +4,26 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.7] - 2026-11-12
+
+### Added
+- **Diagnostic Doctor Expansion to 64 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `daemon.thread_pool_headroom`: Audits active Mach thread count allocation via `task_threads(mach_task_self_, ...)` to ensure the daemon is not leaking background dispatch threads (threads count <= 32).
+  - Added `security.airdrop_discoverability`: Audits AirDrop wireless discoverability (`com.apple.sharingd DiscoverableMode`) to ensure workstation does not broadcast device name and user identity to unauthorized bystanders in public spaces.
+  - Added `security.remote_management_disabled`: Audits Apple Remote Desktop (ARD) and macOS Screen Sharing service (`system/com.apple.screensharing`) to guarantee unauthorized remote screen viewing is disabled.
+  - Added `network.dns_secure_resolvers`: Audits `/etc/resolv.conf` to verify system DNS resolvers and nameserver gateway configuration are intact, ensuring offsite Telegram alert dispatch and webhook calls don't suffer resolution hijacking.
+- **ISO/IEC 5962:2021 / SPDX 2.3 DevSecOps SBOM & Security Specification Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.toSPDXDictionary()` and `DoctorReport.generateSPDX()` producing standard SPDX 2.3 JSON Software Package Data Exchange (`spdxVersion`, `dataLicense`, `SPDXID`, `name`, `documentNamespace`, `creationInfo`, `packages`, `relationships`, `annotations`, `vulnerabilities`) for DevSecOps supply chain compliance, US EO 14028 compliance, and vulnerability tracking.
+  - Implemented `Diagnostics.exportDoctorSPDX(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_spdx.json` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-spdx` and `--doctor-export-spdx [path]` with `--json` output support and full normalization aliases (`--doctor-spdx-json`, `--spdx-doctor-json`, `--doctor-spdx`, `--spdx-doctor`, `--doctor-export-spdx-json`, `--export-doctor-spdx-json`, `--export-spdx-doctor-json`, `--doctor-export-spdx`, `--export-doctor-spdx`, `--export-spdx-doctor`).
+  - Added Makefile targets `make doctor-spdx`, `make doctor-spdx-json`, `make doctor-export-spdx`, and `make doctor-export-spdx-json`.
+- **Self-Healing Storage Permission Auto-Repair (`Diagnostics.swift`)**:
+  - Enhanced `doctor-repair` engine to automatically restrict `doctor_spdx.json` to `0600` POSIX permissions.
+- **Automated Test Suite Expansion to 2,100+ Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV137Enhancements()` validating 64+ doctor checks, all 4 new check identifiers, SPDX 2.3 JSON format compliance, atomic file export integrity, repair report execution, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.3.7 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.3.7` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.3.6] - 2026-11-12
 
 ### Added

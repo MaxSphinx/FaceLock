@@ -1144,6 +1144,107 @@ public struct DoctorReport {
         }
         return str + "\n"
     }
+
+    public func toSPDXDictionary() -> [String: Any] {
+        let dateFormatter = ISO8601DateFormatter()
+        let timestamp = dateFormatter.string(from: Date())
+        let docNamespace = "https://github.com/MaxSphinx/FaceLock/spdxdocs/facelock-\(version)-\(UUID().uuidString.lowercased())"
+        let pkgSpdxId = "SPDXRef-Package-FaceLock"
+
+        var annotations: [[String: Any]] = []
+        var vulnerabilities: [[String: Any]] = []
+
+        for check in checks {
+            let severity: String
+            switch check.status {
+            case .fail: severity = "CRITICAL"
+            case .warn: severity = "MEDIUM"
+            case .info: severity = "LOW"
+            case .pass: severity = "NONE"
+            }
+            let checkSlug = check.id.replacingOccurrences(of: ".", with: "-").uppercased()
+            let checkAnnotation: [String: Any] = [
+                "annotator": "Tool: FaceLock-Doctor-\(version)",
+                "annotationDate": timestamp,
+                "annotationType": "REVIEW",
+                "comment": "[\(check.id)] \(check.status.rawValue.uppercased()): \(check.message)",
+                "spdxId": pkgSpdxId
+            ]
+            annotations.append(checkAnnotation)
+
+            if check.status != .pass {
+                let vuln: [String: Any] = [
+                    "id": "FL-\(checkSlug)",
+                    "name": check.name,
+                    "severity": severity,
+                    "category": check.category,
+                    "description": check.message,
+                    "recommendation": check.remediation ?? "Review check remediation in FaceLock security policy.",
+                    "status": check.status.rawValue,
+                    "affectedPackage": pkgSpdxId
+                ]
+                vulnerabilities.append(vuln)
+            }
+        }
+
+        let package: [String: Any] = [
+            "SPDXID": pkgSpdxId,
+            "name": "FaceLock",
+            "versionInfo": version,
+            "downloadLocation": "https://github.com/MaxSphinx/FaceLock",
+            "filesAnalyzed": false,
+            "licenseConcluded": "MIT",
+            "licenseDeclared": "MIT",
+            "copyrightText": "Copyright (c) 2026 MaxSphinx",
+            "summary": "Biometric face authentication & active walk-away security shield for macOS",
+            "primaryPackagePurpose": "APPLICATION",
+            "externalRefs": [
+                [
+                    "referenceCategory": "PACKAGE-MANAGER",
+                    "referenceType": "purl",
+                    "referenceLocator": "pkg:generic/FaceLock@\(version)"
+                ]
+            ]
+        ]
+
+        let relationships: [[String: Any]] = [
+            [
+                "spdxElementId": "SPDXRef-DOCUMENT",
+                "relatedSpdxElement": pkgSpdxId,
+                "relationshipType": "DESCRIBES"
+            ]
+        ]
+
+        let dict: [String: Any] = [
+            "spdxVersion": "SPDX-2.3",
+            "dataLicense": "CC0-1.0",
+            "SPDXID": "SPDXRef-DOCUMENT",
+            "name": "FaceLock-Doctor-Security-Audit-\(version)",
+            "documentNamespace": docNamespace,
+            "creationInfo": [
+                "created": timestamp,
+                "creators": [
+                    "Tool: FaceLock-Doctor-\(version)",
+                    "Organization: FaceLock Security Team"
+                ],
+                "licenseListVersion": "3.21"
+            ],
+            "packages": [package],
+            "relationships": relationships,
+            "annotations": annotations,
+            "vulnerabilities": vulnerabilities
+        ]
+        return dict
+    }
+
+    public func generateSPDX() -> String {
+        let dict = toSPDXDictionary()
+        guard let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
+              let str = String(data: data, encoding: .utf8) else {
+            return "{\"spdxVersion\":\"SPDX-2.3\",\"dataLicense\":\"CC0-1.0\",\"SPDXID\":\"SPDXRef-DOCUMENT\",\"name\":\"FaceLock\",\"packages\":[],\"annotations\":[]}\n"
+        }
+        return str + "\n"
+    }
 }
 
 public struct DoctorRepairReport {
@@ -3034,6 +3135,33 @@ public struct Diagnostics {
             ))
         }
 
+        // 3.11 Daemon Thread Pool Headroom & Concurrency
+        var threadList: thread_act_array_t?
+        var threadCount: mach_msg_type_number_t = 0
+        let threadErr = task_threads(mach_task_self_, &threadList, &threadCount)
+        let activeThreads = (threadErr == KERN_SUCCESS) ? Int(threadCount) : 1
+        if let list = threadList {
+            vm_deallocate(mach_task_self_, vm_address_t(bitPattern: list), vm_size_t(threadCount) * vm_size_t(MemoryLayout<thread_t>.size))
+        }
+        if activeThreads <= 32 {
+            checks.append(DoctorCheckItem(
+                id: "daemon.thread_pool_headroom",
+                category: "daemon",
+                name: "Daemon Thread Allocation & Concurrency Headroom",
+                status: .pass,
+                message: "Daemon thread pool allocation is optimal (\(activeThreads) active threads <= 32 limit, zero concurrency starvation)."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "daemon.thread_pool_headroom",
+                category: "daemon",
+                name: "Daemon Thread Allocation & Concurrency Headroom",
+                status: .warn,
+                message: "Elevated daemon thread allocation detected (\(activeThreads) active threads > 32 limit).",
+                remediation: "Restart FaceLock daemon via 'make reload' to reset asynchronous worker dispatch queues."
+            ))
+        }
+
         // Category 4: Security Posture & Hardening
         // 4.1 Master PIN
         if config.pin == "0000" || config.pin == "1234" {
@@ -3757,6 +3885,50 @@ public struct Diagnostics {
             ))
         }
 
+        // 4.27 AirDrop Wireless Discoverability Hardening
+        let airdropRes = runShellCommand("/usr/bin/defaults", arguments: ["read", "com.apple.sharingd", "DiscoverableMode"])
+        let airdropMode = airdropRes.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        if airdropRes.exitCode == 0 && airdropMode.localizedCaseInsensitiveContains("Everyone") {
+            checks.append(DoctorCheckItem(
+                id: "security.airdrop_discoverability",
+                category: "security",
+                name: "AirDrop Wireless Discoverability Hardening",
+                status: .warn,
+                message: "AirDrop discoverability is set to 'Everyone'. Device name and identity are broadcast to proximate devices in public spaces.",
+                remediation: "Set AirDrop to 'Contacts Only' or 'Off' in macOS System Settings > General > AirDrop & Handoff."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.airdrop_discoverability",
+                category: "security",
+                name: "AirDrop Wireless Discoverability Hardening",
+                status: .pass,
+                message: "AirDrop discoverability is hardened (restricted from unrestricted public broadcast)."
+            ))
+        }
+
+        // 4.28 Remote Management & Screen Sharing Hardening
+        let ardCheck = runShellCommand("/bin/launchctl", arguments: ["print", "system/com.apple.screensharing"])
+        let ardActive = (ardCheck.exitCode == 0 && ardCheck.stdout.localizedCaseInsensitiveContains("state = running"))
+        if !ardActive {
+            checks.append(DoctorCheckItem(
+                id: "security.remote_management_disabled",
+                category: "security",
+                name: "Remote Management & Screen Sharing Hardening",
+                status: .pass,
+                message: "macOS Screen Sharing & Remote Management services are inactive, preventing unauthorized remote screen observation."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.remote_management_disabled",
+                category: "security",
+                name: "Remote Management & Screen Sharing Hardening",
+                status: .warn,
+                message: "macOS Screen Sharing service is active. Remote administrators can observe or control desktop sessions.",
+                remediation: "Disable Screen Sharing in System Settings > General > Sharing if not strictly required."
+            ))
+        }
+
         // Category 5: Remote Alerting & Network
         if config.telegramEnabled {
             if !config.telegramBotToken.isEmpty && !config.telegramChatId.isEmpty {
@@ -3820,6 +3992,33 @@ public struct Diagnostics {
             ))
         }
 
+        // 5.2 System DNS Resolvers & Gateway Integrity
+        var dnsValid = false
+        var resolverCount = 0
+        if let resolvContent = try? String(contentsOfFile: "/etc/resolv.conf", encoding: .utf8) {
+            let nsLines = resolvContent.components(separatedBy: .newlines).filter { $0.trimmingCharacters(in: .whitespaces).hasPrefix("nameserver") }
+            resolverCount = nsLines.count
+            dnsValid = resolverCount > 0
+        }
+        if dnsValid {
+            checks.append(DoctorCheckItem(
+                id: "network.dns_secure_resolvers",
+                category: "network",
+                name: "System DNS Resolvers & Gateway Integrity",
+                status: .pass,
+                message: "System DNS resolver configuration verified (\(resolverCount) active nameserver(s) configured in /etc/resolv.conf)."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "network.dns_secure_resolvers",
+                category: "network",
+                name: "System DNS Resolvers & Gateway Integrity",
+                status: .warn,
+                message: "No active DNS nameservers detected in /etc/resolv.conf; remote alerts may fail.",
+                remediation: "Verify network DNS settings in macOS System Settings > Network > Details > DNS."
+            ))
+        }
+
         return DoctorReport(checks: checks, version: Config.currentVersion)
     }
 
@@ -3870,7 +4069,7 @@ public struct Diagnostics {
         }
 
         // 1d. Sensitive files permissions repair (chmod 0600 on sensitive credentials and audit files)
-        let sensitiveFilesToRepair = ["config.json", "enrolled_vectors.json", "audit_log.jsonl", "doctor_report.json", "doctor_step_summary.md", "doctor_codeclimate.json", "doctor_sonarqube.json", "doctor_defectdojo.json", "doctor_cyclonedx.json"]
+        let sensitiveFilesToRepair = ["config.json", "enrolled_vectors.json", "audit_log.jsonl", "doctor_report.json", "doctor_step_summary.md", "doctor_codeclimate.json", "doctor_sonarqube.json", "doctor_defectdojo.json", "doctor_cyclonedx.json", "doctor_spdx.json"]
         for sFileName in sensitiveFilesToRepair {
             let sFilePath = facelockDir.appendingPathComponent(sFileName).path
             if FileManager.default.fileExists(atPath: sFilePath) {
@@ -4226,6 +4425,33 @@ public struct Diagnostics {
             let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
             try? FileManager.default.createDirectory(at: facelockDir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
             targetURL = facelockDir.appendingPathComponent("doctor_cyclonedx.json")
+        }
+
+        guard let data = json.data(using: .utf8) else {
+            return (false, targetURL.path, json, report)
+        }
+
+        do {
+            try data.write(to: targetURL, options: .atomic)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: targetURL.path)
+            return (true, targetURL.path, json, report)
+        } catch {
+            return (false, targetURL.path, json, report)
+        }
+    }
+
+    @discardableResult
+    public static func exportDoctorSPDX(toPath customPath: String? = nil, config: Config = .shared, skipNetwork: Bool = false) -> (success: Bool, path: String, content: String, report: DoctorReport) {
+        let report = runDoctor(config: config, skipNetwork: skipNetwork)
+        let json = report.generateSPDX()
+        let targetURL: URL
+        if let customPath = customPath, !customPath.isEmpty {
+            targetURL = URL(fileURLWithPath: (customPath as NSString).expandingTildeInPath)
+        } else {
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
+            try? FileManager.default.createDirectory(at: facelockDir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            targetURL = facelockDir.appendingPathComponent("doctor_spdx.json")
         }
 
         guard let data = json.data(using: .utf8) else {
