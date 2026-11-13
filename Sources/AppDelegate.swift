@@ -413,6 +413,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor-export-stix", "--json"])
             case "--doctor-export-stix", "--export-doctor-stix", "--export-stix-doctor":
                 args.append("--doctor-export-stix")
+            case "--doctor-attack-json", "--attack-doctor-json", "--doctor-mitre-json", "--mitre-doctor-json":
+                args.append(contentsOf: ["--doctor-attack", "--json"])
+            case "--doctor-attack", "--attack-doctor", "--doctor-mitre", "--mitre-doctor":
+                args.append("--doctor-attack")
+            case "--doctor-export-attack-json", "--export-doctor-attack-json", "--export-attack-doctor-json", "--doctor-export-mitre-json", "--export-doctor-mitre-json", "--export-mitre-doctor-json":
+                args.append(contentsOf: ["--doctor-export-attack", "--json"])
+            case "--doctor-export-attack", "--export-doctor-attack", "--export-attack-doctor", "--doctor-export-mitre", "--export-doctor-mitre", "--export-mitre-doctor":
+                args.append("--doctor-export-attack")
             default:
                 args.append(arg)
             }
@@ -575,6 +583,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --doctor-export-openvex, --doctor-export-vex [path] [--json] Export doctor report to OpenVEX 0.2.0 file
               --doctor-stix [--json]     Generate doctor report in OASIS STIX 2.1 Threat Intel JSON
               --doctor-export-stix [path] [--json] Export doctor report to OASIS STIX 2.1 file
+              --doctor-attack, --doctor-mitre [--json] Generate doctor report in MITRE ATT&CK Navigator Layer v4.5 JSON
+              --doctor-export-attack, --doctor-export-mitre [path] [--json] Export doctor report to MITRE ATT&CK Navigator Layer file
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -1431,6 +1441,60 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 if result.success {
                     print("✓ Doctor diagnostic health report exported to OASIS STIX 2.1 file: \(result.path)")
+                    print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
+                } else {
+                    print("✗ Failed to export doctor diagnostic report to: \(result.path)")
+                }
+            }
+            exit(result.success ? 0 : 1)
+        }
+
+        if args.contains("--doctor-attack") {
+            let report = Diagnostics.runDoctor()
+            let attack = report.generateATTACKLayer()
+            if args.contains("--json") {
+                let dict = report.toATTACKLayerDictionary()
+                var jsonDict: [String: Any] = dict
+                jsonDict["version"] = report.version
+                jsonDict["overallStatus"] = report.overallStatus
+                jsonDict["totalChecks"] = report.totalChecks
+                jsonDict["passed"] = report.passedCount
+                jsonDict["warnings"] = report.warningCount
+                jsonDict["failures"] = report.failureCount
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                } else {
+                    print(attack)
+                }
+            } else {
+                print(attack)
+            }
+            exit(report.failureCount > 0 ? 1 : 0)
+        }
+
+        if args.contains("--doctor-export-attack") {
+            let customPath = AppDelegate.valueForOption("--doctor-export-attack", in: args)
+            let result = Diagnostics.exportDoctorATTACK(toPath: customPath)
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "success": result.success,
+                    "path": result.path,
+                    "overallStatus": result.report.overallStatus,
+                    "totalChecks": result.report.totalChecks,
+                    "passed": result.report.passedCount,
+                    "warnings": result.report.warningCount,
+                    "failures": result.report.failureCount,
+                    "layerSpecVersion": "4.5",
+                    "exportedBytes": result.content.utf8.count
+                ]
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                }
+            } else {
+                if result.success {
+                    print("✓ Doctor diagnostic health report exported to MITRE ATT&CK Navigator Layer file: \(result.path)")
                     print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
                 } else {
                     print("✗ Failed to export doctor diagnostic report to: \(result.path)")

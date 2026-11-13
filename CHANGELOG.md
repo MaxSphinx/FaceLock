@@ -4,6 +4,26 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2026-11-13
+
+### Added
+- **Diagnostic Doctor Expansion to 80 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `hardware.battery_health_capacity`: Audits system battery capacity, charge percentage, and energy status (`pmset -g batt`) to guarantee continuous power headroom for autonomous neural sweeps on mobile MacBooks.
+  - Added `filesystem.backup_apfs_snapshots`: Audits APFS volume snapshot retention (`tmutil listlocalsnapshots /`) to verify local snapshot retention for rapid rollback and recovery of biometric vector databases and forensic incident captures.
+  - Added `daemon.memory_resident_pressure`: Audits FaceLock process resident memory footprint via Mach kernel `task_info(mach_task_self_, TASK_BASIC_INFO, ...)` ensuring memory footprint is tightly bounded (< 150 MB resident memory) under continuous Vision inference.
+  - Added `security.sip_filesystem_integrity`: Audits macOS System Integrity Protection (SIP / rootless) status via `/usr/bin/csrutil status` to ensure core OS binaries, NVRAM variables, and Apple Secure Boot integrity remain cryptographically enforced.
+- **MITRE ATT&CK® Navigator Matrix Layer v4.5 Security Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.toATTACKLayerDictionary()` and `DoctorReport.generateATTACKLayer()` producing standard MITRE ATT&CK® Navigator Matrix Layer v4.5 JSON (`domain: "enterprise-attack"`, `versions`, `gradient`, `legendItems`, `techniques`, `score`, `tactic`, `metadata`) mapping FaceLock biometric defenses and system hardening posture directly to enterprise ATT&CK techniques (T1125, T1078, T1056, T1056.001, T1222.002, T1562.001, T1562.002, T1548.003, T1490, T1499, T1005, T1040, T1021.004, T1021.005, T1105, T1071.004) for enterprise SOC, Red/Blue team ATT&CK Navigator matrix visualization, and SIEM ingestion.
+  - Implemented `Diagnostics.exportDoctorATTACK(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_attack.json` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-attack`, `--doctor-mitre`, and `--doctor-export-attack [path]` with `--json` output support and full normalization aliases (`--doctor-attack-json`, `--attack-doctor-json`, `--doctor-mitre-json`, `--mitre-doctor-json`, `--doctor-attack`, `--attack-doctor`, `--doctor-mitre`, `--mitre-doctor`, `--doctor-export-attack-json`, `--export-doctor-attack-json`, `--export-attack-doctor-json`, `--doctor-export-mitre-json`, `--export-doctor-mitre-json`, `--export-mitre-doctor-json`, `--doctor-export-attack`, `--export-doctor-attack`, `--export-attack-doctor`, `--doctor-export-mitre`, `--export-doctor-mitre`, `--export-mitre-doctor`).
+  - Added Makefile targets `make doctor-attack`, `make doctor-attack-json`, `make doctor-export-attack`, `make doctor-export-attack-json`, `make doctor-mitre`, `make doctor-mitre-json`, `make doctor-export-mitre`, and `make doctor-export-mitre-json`.
+- **Self-Healing Storage Permission Auto-Repair (`Diagnostics.swift`)**:
+  - Enhanced `doctor-repair` engine to automatically restrict `doctor_attack.json` to `0600` POSIX permissions.
+- **Automated Test Suite Expansion to 3,180+ Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV141Enhancements()` validating 80+ doctor checks, all 4 new check identifiers, MITRE ATT&CK Navigator Layer v4.5 JSON format compliance, atomic file export integrity, repair report execution, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.4.1 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.4.1` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.4.0] - 2026-11-13
 
 ### Added
