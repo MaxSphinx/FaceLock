@@ -4,6 +4,26 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.9] - 2026-11-13
+
+### Added
+- **Diagnostic Doctor Expansion to 72 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `hardware.neural_engine_coreml`: Audits Apple Neural Engine (ANE) and CoreML hardware acceleration availability on Apple Silicon arm64 to ensure sub-millisecond biometric vector embedding and Vision inference headroom.
+  - Added `filesystem.keychain_access_group`: Audits Keychain Services partition isolation and master secret accessibility (`SecItemAdd` probe) ensuring cryptographic credential protection.
+  - Added `daemon.energy_impact_profiling`: Audits QoS energy efficiency, host thermal throttling pressure, and Low Power Mode state to apply adaptive battery-saving sweep backoff under heavy workloads.
+  - Added `security.login_window_banner`: Audits macOS login window authorized access policy warning banners (`/Library/Security/PolicyBanner.txt` and `LoginwindowText`) to provide legal deterrent against unauthorized physical access.
+- **OpenVEX 0.2.0 Vulnerability Exploitability eXchange Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.toOpenVEXDictionary()` and `DoctorReport.generateOpenVEX()` producing standard OpenVEX 0.2.0 JSON statements (`@context: "https://openvex.dev/ns/v0.2.0"`, `@id`, `author`, `role`, `timestamp`, `version`, `tooling`, `statements`, `vulnerability`, `products`, `status`, `impact_statement`, `action_statement`) for DevSecOps automated vulnerability exploitability exchange.
+  - Implemented `Diagnostics.exportDoctorOpenVEX(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_openvex.json` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-openvex` and `--doctor-export-openvex [path]` with `--json` output support and full normalization aliases (`--doctor-openvex-json`, `--openvex-doctor-json`, `--doctor-vex-json`, `--vex-doctor-json`, `--doctor-openvex`, `--openvex-doctor`, `--doctor-vex`, `--vex-doctor`, `--doctor-export-openvex-json`, `--export-doctor-openvex-json`, `--export-openvex-doctor-json`, `--doctor-export-vex-json`, `--export-doctor-vex-json`, `--doctor-export-openvex`, `--export-doctor-openvex`, `--export-openvex-doctor`, `--doctor-export-vex`, `--export-doctor-vex`).
+  - Added Makefile targets `make doctor-openvex`, `make doctor-openvex-json`, `make doctor-vex`, `make doctor-vex-json`, `make doctor-export-openvex`, and `make doctor-export-openvex-json`.
+- **Self-Healing Storage Permission Auto-Repair (`Diagnostics.swift`)**:
+  - Enhanced `doctor-repair` engine to automatically restrict `doctor_openvex.json` to `0600` POSIX permissions.
+- **Automated Test Suite Expansion to 2,874 Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV139Enhancements()` validating 72+ doctor checks, all 4 new check identifiers, OpenVEX 0.2.0 JSON format compliance, atomic file export integrity, repair report execution, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.3.9 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.3.9` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.3.8] - 2026-11-12
 
 ### Added

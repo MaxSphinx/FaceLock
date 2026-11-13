@@ -397,6 +397,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor-export-csaf", "--json"])
             case "--doctor-export-csaf", "--export-doctor-csaf", "--export-csaf-doctor":
                 args.append("--doctor-export-csaf")
+            case "--doctor-openvex-json", "--openvex-doctor-json", "--doctor-vex-json", "--vex-doctor-json":
+                args.append(contentsOf: ["--doctor-openvex", "--json"])
+            case "--doctor-openvex", "--openvex-doctor", "--doctor-vex", "--vex-doctor":
+                args.append("--doctor-openvex")
+            case "--doctor-export-openvex-json", "--export-doctor-openvex-json", "--export-openvex-doctor-json", "--doctor-export-vex-json", "--export-doctor-vex-json":
+                args.append(contentsOf: ["--doctor-export-openvex", "--json"])
+            case "--doctor-export-openvex", "--export-doctor-openvex", "--export-openvex-doctor", "--doctor-export-vex", "--export-doctor-vex":
+                args.append("--doctor-export-openvex")
             default:
                 args.append(arg)
             }
@@ -555,6 +563,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --doctor-export-spdx [path] [--json] Export doctor report to SPDX 2.3 SBOM file
               --doctor-csaf [--json]     Generate doctor report in OASIS CSAF 2.0 JSON
               --doctor-export-csaf [path] [--json] Export doctor report to OASIS CSAF 2.0 file
+              --doctor-openvex, --doctor-vex [--json] Generate doctor report in OpenVEX 0.2.0 JSON
+              --doctor-export-openvex, --doctor-export-vex [path] [--json] Export doctor report to OpenVEX 0.2.0 file
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -1301,6 +1311,61 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 if result.success {
                     print("✓ Doctor diagnostic health report exported to OASIS CSAF 2.0 file: \(result.path)")
+                    print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
+                } else {
+                    print("✗ Failed to export doctor diagnostic report to: \(result.path)")
+                }
+            }
+            exit(result.success ? 0 : 1)
+        }
+
+        if args.contains("--doctor-openvex") {
+            let report = Diagnostics.runDoctor()
+            let openvex = report.generateOpenVEX()
+            if args.contains("--json") {
+                let dict = report.toOpenVEXDictionary()
+                var jsonDict: [String: Any] = dict
+                jsonDict["version"] = report.version
+                jsonDict["overallStatus"] = report.overallStatus
+                jsonDict["totalChecks"] = report.totalChecks
+                jsonDict["passed"] = report.passedCount
+                jsonDict["warnings"] = report.warningCount
+                jsonDict["failures"] = report.failureCount
+                if let stmts = dict["statements"] as? [[String: Any]] {
+                    jsonDict["statementsCount"] = stmts.count
+                }
+                if let data = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                print(openvex)
+            }
+            exit(report.failureCount > 0 ? 1 : 0)
+        }
+
+        if args.contains("--doctor-export-openvex") {
+            let customPath = AppDelegate.valueForOption("--doctor-export-openvex", in: args)
+            let result = Diagnostics.exportDoctorOpenVEX(toPath: customPath)
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "success": result.success,
+                    "path": result.path,
+                    "overallStatus": result.report.overallStatus,
+                    "totalChecks": result.report.totalChecks,
+                    "passed": result.report.passedCount,
+                    "warnings": result.report.warningCount,
+                    "failures": result.report.failureCount,
+                    "version": result.report.version,
+                    "bytesWritten": result.content.utf8.count
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                if result.success {
+                    print("✓ Doctor diagnostic health report exported to OpenVEX 0.2.0 file: \(result.path)")
                     print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
                 } else {
                     print("✗ Failed to export doctor diagnostic report to: \(result.path)")
