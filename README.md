@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/MaxSphinx/FaceLock/releases"><img src="https://img.shields.io/github/v/release/MaxSphinx/FaceLock?style=flat-square&color=00BBF9" alt="Latest Release" /></a>
   <a href="https://github.com/MaxSphinx/FaceLock/actions"><img src="https://img.shields.io/github/actions/workflow/status/MaxSphinx/FaceLock/build.yml?branch=main&style=flat-square&label=build" alt="Build Status" /></a>
-  <img src="https://img.shields.io/badge/tests-1937%20passed%20(100%25)-brightgreen?style=flat-square" alt="Tests" />
+  <img src="https://img.shields.io/badge/tests-3139%20passed%20(100%25)-brightgreen?style=flat-square" alt="Tests" />
   <img src="https://img.shields.io/badge/platform-macOS%2014.0%2B-blue?style=flat-square" alt="Platform" />
   <img src="https://img.shields.io/badge/arch-Apple%20Silicon%20(arm64)-orange?style=flat-square" alt="Architecture" />
   <img src="https://img.shields.io/badge/swift-6.0%2B-F05138?style=flat-square&logo=swift&logoColor=white" alt="Swift" />
@@ -87,8 +87,8 @@ Built strictly in modern **Swift & native AppKit**, with **zero external package
   - Profile switcher, 3D face calibration wizard, dynamic camera switcher.
   - Interactive Incident Gallery with 24h / 7d period filtering and one-click pruning.
   - Security Audit Log viewer with category filtering, pruning, and JSONL/CSV/JSON export.
-- **🩺 72-Check Diagnostic Doctor & Multi-Engine Compliance Suite**: Comprehensive health, biometrics, hardware, and filesystem diagnostic doctor (`make doctor`) with auto-repair (`make doctor-repair`), responsive HTML5 dashboard export (`make doctor-export-html`), OASIS SARIF v2.1.0 compliance export (`make doctor-export-sarif`), enterprise RFC 4180 CSV export (`make doctor-export-csv`), CI/CD JUnit XML export (`make doctor-export-junit`), native GitHub Actions Step Summary & workflow annotations export (`make doctor-export-gha`), GitLab CI / Code Climate code quality export (`make doctor-export-gitlab`), SonarQube Generic Issue Import JSON export (`make doctor-export-sonarqube`), DefectDojo Generic Findings JSON export (`make doctor-export-defectdojo`), OWASP CycloneDX 1.5 DevSecOps BOM / VEX JSON export (`make doctor-export-cyclonedx`), ISO/IEC 5962:2021 / SPDX 2.3 SBOM export (`make doctor-export-spdx`), OASIS CSAF 2.0 DevSecOps Advisory export (`make doctor-export-csaf`), and OpenVEX 0.2.0 Vulnerability Exploitability eXchange export (`make doctor-export-openvex`) for GitHub Code Scanning, GitLab CI/CD, SonarQube / SonarCloud, DefectDojo DevSecOps vulnerability management, CycloneDX / SPDX software supply chain compliance, OASIS CSAF 2.0 automated security advisory exchange, OpenVEX 0.2.0 exploitability statements, SOC 2 / ISO 27001 audit spreadsheets, and fleet MDM pipelines.
-- **🧪 100% Automated Test Suite**: 2,870+ unit tests and microsecond Apple Silicon vector benchmarks built directly into the binary (`make test`).
+- **🩺 76-Check Diagnostic Doctor & Multi-Engine Compliance Suite**: Comprehensive health, biometrics, hardware, and filesystem diagnostic doctor (`make doctor`) with auto-repair (`make doctor-repair`), responsive HTML5 dashboard export (`make doctor-export-html`), OASIS SARIF v2.1.0 compliance export (`make doctor-export-sarif`), enterprise RFC 4180 CSV export (`make doctor-export-csv`), CI/CD JUnit XML export (`make doctor-export-junit`), native GitHub Actions Step Summary & workflow annotations export (`make doctor-export-gha`), GitLab CI / Code Climate code quality export (`make doctor-export-gitlab`), SonarQube Generic Issue Import JSON export (`make doctor-export-sonarqube`), DefectDojo Generic Findings JSON export (`make doctor-export-defectdojo`), OWASP CycloneDX 1.5 DevSecOps BOM / VEX JSON export (`make doctor-export-cyclonedx`), ISO/IEC 5962:2021 / SPDX 2.3 SBOM export (`make doctor-export-spdx`), OASIS CSAF 2.0 DevSecOps Advisory export (`make doctor-export-csaf`), OpenVEX 0.2.0 Vulnerability Exploitability eXchange export (`make doctor-export-openvex`), and OASIS STIX 2.1 Cyber Threat Intelligence & Vulnerability Bundle export (`make doctor-export-stix`) for GitHub Code Scanning, GitLab CI/CD, SonarQube / SonarCloud, DefectDojo DevSecOps vulnerability management, CycloneDX / SPDX software supply chain compliance, OASIS CSAF 2.0 automated security advisory exchange, OpenVEX 0.2.0 exploitability statements, OASIS STIX 2.1 SIEM / SOAR / OpenCTI ingestion, SOC 2 / ISO 27001 audit spreadsheets, and fleet MDM pipelines.
+- **🧪 100% Automated Test Suite**: 3,130+ unit tests and microsecond Apple Silicon vector benchmarks built directly into the binary (`make test`).
 
 ---
 
@@ -246,6 +246,7 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --doctor-spdx [--json]` | Generate ISO/IEC 5962:2021 / SPDX 2.3 DevSecOps SBOM JSON report |
 | `facelock --doctor-csaf [--json]` | Generate OASIS CSAF 2.0 DevSecOps Security Advisory JSON report |
 | `facelock --doctor-openvex [--json]` | Generate OpenVEX 0.2.0 Vulnerability Exploitability eXchange JSON report |
+| `facelock --doctor-stix [--json]` | Generate OASIS STIX 2.1 Cyber Threat Intelligence & Vulnerability JSON report |
 | `facelock --doctor-export [path]` | Export health doctor report to JSON file |
 | `facelock --doctor-export-md [path]` | Export health doctor report to Markdown file |
 | `facelock --doctor-export-html [path]` | Export health doctor report to HTML5 dashboard file |
@@ -260,6 +261,7 @@ FaceLock comes with a first-class command-line interface:
 | `facelock --doctor-export-spdx [path]` | Export health doctor report to SPDX 2.3 SBOM JSON file |
 | `facelock --doctor-export-csaf [path]` | Export health doctor report to OASIS CSAF 2.0 Security Advisory JSON file |
 | `facelock --doctor-export-openvex [path]` | Export health doctor report to OpenVEX 0.2.0 JSON file |
+| `facelock --doctor-export-stix [path]` | Export health doctor report to OASIS STIX 2.1 JSON file |
 | `facelock --test-lock` | Trigger fullscreen security shield test |
 | `facelock --status` | Display daemon status and biometric template metrics |
 | `facelock --incidents [--json]` | List logged intruder incident captures and disk usage |

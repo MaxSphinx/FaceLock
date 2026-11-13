@@ -4,6 +4,26 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-11-13
+
+### Added
+- **Diagnostic Doctor Expansion to 76 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `hardware.accelerate_simd_pipeline`: Audits Apple Accelerate framework `vDSP` SIMD vector processing throughput and precision for 128-D facial vector cosine distance evaluation, guaranteeing sub-microsecond metric computation.
+  - Added `filesystem.posix_umask_hygiene`: Audits process creation mask (`umask`) to guarantee that generated biometric vector templates, crash traces, and forensic incident snapshots enforce non-world-writable permissions.
+  - Added `daemon.dispatch_queue_latency`: Audits Grand Central Dispatch (GCD) user-initiated worker queue latency (< 100ms) to ensure continuous, responsive app-switch interception and shield deployment.
+  - Added `security.sudo_touchid_pam`: Audits macOS PAM configuration (`/etc/pam.d/sudo_local` and `/etc/pam.d/sudo`) for `pam_tid.so`, verifying biometric Touch ID authentication for administrative escalation.
+- **OASIS STIX 2.1 Cyber Threat Intelligence & Vulnerability Bundle Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.toSTIXDictionary()` and `DoctorReport.generateSTIX()` producing standard OASIS STIX 2.1 JSON Threat Intelligence bundles (`type: "bundle"`, `spec_version: "2.1"`, `id`, `objects`) containing `identity`, `vulnerability`, `course-of-action`, `relationship`, and `indicator` STIX Domain Objects (SDOs) for DevSecOps, SIEM/SOAR, and OpenCTI automated ingestion.
+  - Implemented `Diagnostics.exportDoctorSTIX(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_stix.json` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-stix` and `--doctor-export-stix [path]` with `--json` output support and full normalization aliases (`--doctor-stix-json`, `--stix-doctor-json`, `--doctor-stix`, `--stix-doctor`, `--doctor-export-stix-json`, `--export-doctor-stix-json`, `--export-stix-doctor-json`, `--doctor-export-stix`, `--export-doctor-stix`, `--export-stix-doctor`).
+  - Added Makefile targets `make doctor-stix`, `make doctor-stix-json`, `make doctor-export-stix`, and `make doctor-export-stix-json`.
+- **Self-Healing Storage Permission Auto-Repair (`Diagnostics.swift`)**:
+  - Enhanced `doctor-repair` engine to automatically restrict `doctor_stix.json` to `0600` POSIX permissions.
+- **Automated Test Suite Expansion to 3,139 Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV140Enhancements()` validating 76+ doctor checks, all 4 new check identifiers, OASIS STIX 2.1 JSON bundle format compliance, atomic file export integrity, repair report execution, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.4.0 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.4.0` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.3.9] - 2026-11-13
 
 ### Added

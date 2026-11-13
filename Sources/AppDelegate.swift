@@ -405,6 +405,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor-export-openvex", "--json"])
             case "--doctor-export-openvex", "--export-doctor-openvex", "--export-openvex-doctor", "--doctor-export-vex", "--export-doctor-vex":
                 args.append("--doctor-export-openvex")
+            case "--doctor-stix-json", "--stix-doctor-json":
+                args.append(contentsOf: ["--doctor-stix", "--json"])
+            case "--doctor-stix", "--stix-doctor":
+                args.append("--doctor-stix")
+            case "--doctor-export-stix-json", "--export-doctor-stix-json", "--export-stix-doctor-json":
+                args.append(contentsOf: ["--doctor-export-stix", "--json"])
+            case "--doctor-export-stix", "--export-doctor-stix", "--export-stix-doctor":
+                args.append("--doctor-export-stix")
             default:
                 args.append(arg)
             }
@@ -565,6 +573,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --doctor-export-csaf [path] [--json] Export doctor report to OASIS CSAF 2.0 file
               --doctor-openvex, --doctor-vex [--json] Generate doctor report in OpenVEX 0.2.0 JSON
               --doctor-export-openvex, --doctor-export-vex [path] [--json] Export doctor report to OpenVEX 0.2.0 file
+              --doctor-stix [--json]     Generate doctor report in OASIS STIX 2.1 Threat Intel JSON
+              --doctor-export-stix [path] [--json] Export doctor report to OASIS STIX 2.1 file
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -1366,6 +1376,61 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 if result.success {
                     print("✓ Doctor diagnostic health report exported to OpenVEX 0.2.0 file: \(result.path)")
+                    print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
+                } else {
+                    print("✗ Failed to export doctor diagnostic report to: \(result.path)")
+                }
+            }
+            exit(result.success ? 0 : 1)
+        }
+
+        if args.contains("--doctor-stix") {
+            let report = Diagnostics.runDoctor()
+            let stix = report.generateSTIX()
+            if args.contains("--json") {
+                let dict = report.toSTIXDictionary()
+                var jsonDict: [String: Any] = dict
+                jsonDict["version"] = report.version
+                jsonDict["overallStatus"] = report.overallStatus
+                jsonDict["totalChecks"] = report.totalChecks
+                jsonDict["passed"] = report.passedCount
+                jsonDict["warnings"] = report.warningCount
+                jsonDict["failures"] = report.failureCount
+                if let objs = dict["objects"] as? [[String: Any]] {
+                    jsonDict["objectsCount"] = objs.count
+                }
+                if let data = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                print(stix)
+            }
+            exit(report.failureCount > 0 ? 1 : 0)
+        }
+
+        if args.contains("--doctor-export-stix") {
+            let customPath = AppDelegate.valueForOption("--doctor-export-stix", in: args)
+            let result = Diagnostics.exportDoctorSTIX(toPath: customPath)
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "success": result.success,
+                    "path": result.path,
+                    "overallStatus": result.report.overallStatus,
+                    "totalChecks": result.report.totalChecks,
+                    "passed": result.report.passedCount,
+                    "warnings": result.report.warningCount,
+                    "failures": result.report.failureCount,
+                    "stixSpecVersion": "2.1",
+                    "exportedBytes": result.content.utf8.count
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let str = String(data: data, encoding: .utf8) {
+                    print(str)
+                }
+            } else {
+                if result.success {
+                    print("✓ Doctor diagnostic health report exported to OASIS STIX 2.1 file: \(result.path)")
                     print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
                 } else {
                     print("✗ Failed to export doctor diagnostic report to: \(result.path)")

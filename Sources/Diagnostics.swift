@@ -1474,6 +1474,140 @@ public struct DoctorReport {
         }
         return str + "\n"
     }
+
+    public func toSTIXDictionary() -> [String: Any] {
+        let dateFormatter = ISO8601DateFormatter()
+        let timestamp = dateFormatter.string(from: Date())
+        let bundleId = "bundle--\(UUID().uuidString.lowercased())"
+        let identityId = "identity--facelock-doctor"
+
+        var objects: [[String: Any]] = []
+
+        let identityObject: [String: Any] = [
+            "type": "identity",
+            "spec_version": "2.1",
+            "id": identityId,
+            "created": timestamp,
+            "modified": timestamp,
+            "name": "FaceLock Autonomous Doctor",
+            "description": "Native biometric application shield and intrusion defense engine for macOS",
+            "identity_class": "system",
+            "sectors": ["technology", "security"],
+            "contact_information": "https://github.com/MaxSphinx/FaceLock"
+        ]
+        objects.append(identityObject)
+
+        var hasFindings = false
+        for check in checks {
+            if check.status != .pass {
+                hasFindings = true
+                let checkSlug = check.id.replacingOccurrences(of: ".", with: "-").uppercased()
+                let vulnUUID = UUID().uuidString.lowercased()
+                let vulnId = "vulnerability--\(vulnUUID)"
+
+                let vulnObject: [String: Any] = [
+                    "type": "vulnerability",
+                    "spec_version": "2.1",
+                    "id": vulnId,
+                    "created": timestamp,
+                    "modified": timestamp,
+                    "name": "[\(check.category.uppercased())] \(check.name)",
+                    "description": check.message,
+                    "created_by_ref": identityId,
+                    "external_references": [
+                        [
+                            "source_name": "facelock-doctor",
+                            "external_id": "FL-SEC-\(checkSlug)"
+                        ]
+                    ]
+                ]
+                objects.append(vulnObject)
+
+                if let remediation = check.remediation, !remediation.isEmpty {
+                    let coaUUID = UUID().uuidString.lowercased()
+                    let coaId = "course-of-action--\(coaUUID)"
+                    let coaObject: [String: Any] = [
+                        "type": "course-of-action",
+                        "spec_version": "2.1",
+                        "id": coaId,
+                        "created": timestamp,
+                        "modified": timestamp,
+                        "name": "Remediation: \(check.name)",
+                        "description": remediation,
+                        "created_by_ref": identityId
+                    ]
+                    objects.append(coaObject)
+
+                    let relObject: [String: Any] = [
+                        "type": "relationship",
+                        "spec_version": "2.1",
+                        "id": "relationship--\(UUID().uuidString.lowercased())",
+                        "created": timestamp,
+                        "modified": timestamp,
+                        "relationship_type": "mitigates",
+                        "source_ref": coaId,
+                        "target_ref": vulnId,
+                        "created_by_ref": identityId
+                    ]
+                    objects.append(relObject)
+                }
+
+                let indUUID = UUID().uuidString.lowercased()
+                let indId = "indicator--\(indUUID)"
+                let indType = (check.status == .fail) ? "malicious-activity" : "anomalous-activity"
+                let indObject: [String: Any] = [
+                    "type": "indicator",
+                    "spec_version": "2.1",
+                    "id": indId,
+                    "created": timestamp,
+                    "modified": timestamp,
+                    "name": "Posture Finding: \(check.id)",
+                    "description": check.message,
+                    "indicator_types": [indType],
+                    "pattern": "[file:name = '\(check.id)']",
+                    "pattern_type": "stix",
+                    "valid_from": timestamp,
+                    "created_by_ref": identityId
+                ]
+                objects.append(indObject)
+            }
+        }
+
+        if !hasFindings {
+            let indicatorObject: [String: Any] = [
+                "type": "indicator",
+                "spec_version": "2.1",
+                "id": "indicator--\(UUID().uuidString.lowercased())",
+                "created": timestamp,
+                "modified": timestamp,
+                "name": "Clean Biometric Security Posture",
+                "description": "All \(checks.count) FaceLock diagnostic and biometric defense checks passed successfully.",
+                "indicator_types": ["benign"],
+                "pattern": "[file:name = 'facelock.posture.clean']",
+                "pattern_type": "stix",
+                "valid_from": timestamp,
+                "created_by_ref": identityId
+            ]
+            objects.append(indicatorObject)
+        }
+
+        let dict: [String: Any] = [
+            "type": "bundle",
+            "id": bundleId,
+            "spec_version": "2.1",
+            "objects": objects
+        ]
+        return dict
+    }
+
+    public func generateSTIX() -> String {
+        let dict = toSTIXDictionary()
+        guard let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
+              let str = String(data: data, encoding: .utf8) else {
+            return "{\"type\":\"bundle\",\"spec_version\":\"2.1\",\"objects\":[]}\n"
+        }
+        return str + "\n"
+    }
 }
 
 public struct DoctorRepairReport {
@@ -2761,6 +2895,31 @@ public struct Diagnostics {
         ))
         #endif
 
+        // 1.15 Apple Accelerate SIMD & Vector Processing Pipeline
+        let testVecA: [Float] = Array(repeating: 0.5, count: 128)
+        let testVecB: [Float] = Array(repeating: 0.5, count: 128)
+        let simdStart = CFAbsoluteTimeGetCurrent()
+        let dist = FaceprintExtractor.cosineDistance(testVecA, testVecB)
+        let simdElapsedUs = (CFAbsoluteTimeGetCurrent() - simdStart) * 1_000_000.0
+        if dist < 0.001 {
+            checks.append(DoctorCheckItem(
+                id: "hardware.accelerate_simd_pipeline",
+                category: "hardware",
+                name: "Apple Accelerate SIMD & Vector Processing Pipeline",
+                status: .pass,
+                message: "vDSP SIMD vector processing hardware operational; 128-D cosine distance calculated in \(String(format: "%.2f", simdElapsedUs)) µs."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "hardware.accelerate_simd_pipeline",
+                category: "hardware",
+                name: "Apple Accelerate SIMD & Vector Processing Pipeline",
+                status: .warn,
+                message: "SIMD vector math discrepancy detected during 128-D cosine distance evaluation.",
+                remediation: "Verify Accelerate framework linkage and CPU SIMD state."
+            ))
+        }
+
         // Category 2: Filesystem & Cryptography
         let home = FileManager.default.homeDirectoryForCurrentUser
         let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
@@ -3251,6 +3410,28 @@ public struct Diagnostics {
             ))
         }
 
+        // 2.14 POSIX Process Creation umask Hygiene
+        let currentUmask = umask(0o077)
+        _ = umask(currentUmask)
+        if (currentUmask & 0o002) == 0o002 || (currentUmask & 0o022) == 0o022 || (currentUmask & 0o077) == 0o077 {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.posix_umask_hygiene",
+                category: "filesystem",
+                name: "POSIX Process Creation umask Hygiene",
+                status: .pass,
+                message: "Process creation umask (0\(String(currentUmask, radix: 8))) enforces restricted file creation permissions for biometric and forensic data."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.posix_umask_hygiene",
+                category: "filesystem",
+                name: "POSIX Process Creation umask Hygiene",
+                status: .warn,
+                message: "Process umask (0\(String(currentUmask, radix: 8))) allows world-writable file creation.",
+                remediation: "Configure umask to 0022 or 0077 in user shell profile to protect generated files."
+            ))
+        }
+
         // Category 3: Background Daemon & Automation
         // 3.1 Daemon Process
         let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: "io.github.facelock")
@@ -3526,6 +3707,34 @@ public struct Diagnostics {
                 status: .warn,
                 message: "Host system is under elevated thermal pressure (\(thermalState.rawValue)); adaptive sweep backoff applied.",
                 remediation: "Ensure adequate host ventilation and reduce background CPU load."
+            ))
+        }
+
+        // 3.11 Grand Central Dispatch (GCD) Worker Queue Latency
+        let gcdStart = DispatchTime.now()
+        let gcdSema = DispatchSemaphore(value: 0)
+        DispatchQueue.global(qos: .userInitiated).async {
+            gcdSema.signal()
+        }
+        _ = gcdSema.wait(timeout: .now() + 0.5)
+        let gcdElapsedNanos = DispatchTime.now().uptimeNanoseconds - gcdStart.uptimeNanoseconds
+        let gcdLatencyMs = Double(gcdElapsedNanos) / 1_000_000.0
+        if gcdLatencyMs < 100.0 {
+            checks.append(DoctorCheckItem(
+                id: "daemon.dispatch_queue_latency",
+                category: "daemon",
+                name: "Grand Central Dispatch (GCD) Worker Queue Latency",
+                status: .pass,
+                message: "Worker queue dispatch latency is optimal (\(String(format: "%.2f", gcdLatencyMs)) ms); sub-second app switch interception responsive."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "daemon.dispatch_queue_latency",
+                category: "daemon",
+                name: "Grand Central Dispatch (GCD) Worker Queue Latency",
+                status: .warn,
+                message: "Worker queue dispatch latency is elevated (\(String(format: "%.2f", gcdLatencyMs)) ms); thread pool saturation may delay shield deployment.",
+                remediation: "Inspect system workload and reduce concurrent CPU-intensive processes."
             ))
         }
 
@@ -4365,6 +4574,37 @@ public struct Diagnostics {
             ))
         }
 
+        // 4.34 macOS PAM Touch ID Administrative Escalation (pam_tid.so)
+        let sudoLocalPath = "/etc/pam.d/sudo_local"
+        let sudoPath = "/etc/pam.d/sudo"
+        var pamTouchIDConfigured = false
+        if let localContent = try? String(contentsOfFile: sudoLocalPath, encoding: .utf8),
+           localContent.contains("pam_tid.so") && !localContent.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("#") {
+            pamTouchIDConfigured = true
+        } else if let sudoContent = try? String(contentsOfFile: sudoPath, encoding: .utf8),
+                  sudoContent.contains("pam_tid.so") && !sudoContent.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("#") {
+            pamTouchIDConfigured = true
+        }
+
+        if pamTouchIDConfigured {
+            checks.append(DoctorCheckItem(
+                id: "security.sudo_touchid_pam",
+                category: "security",
+                name: "macOS PAM Touch ID Administrative Escalation (pam_tid.so)",
+                status: .pass,
+                message: "Touch ID PAM module (pam_tid.so) active for sudo; administrative escalation authenticated via Secure Enclave biometrics."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.sudo_touchid_pam",
+                category: "security",
+                name: "macOS PAM Touch ID Administrative Escalation (pam_tid.so)",
+                status: .info,
+                message: "Touch ID PAM module (pam_tid.so) is not configured in /etc/pam.d/sudo_local; sudo relies on standard password prompts.",
+                remediation: "Optionally copy /etc/pam.d/sudo_local.template to /etc/pam.d/sudo_local and uncomment 'pam_tid.so' to enable Touch ID sudo."
+            ))
+        }
+
         // Category 5: Remote Alerting & Network
         if config.telegramEnabled {
             if !config.telegramBotToken.isEmpty && !config.telegramChatId.isEmpty {
@@ -4505,7 +4745,7 @@ public struct Diagnostics {
         }
 
         // 1d. Sensitive files permissions repair (chmod 0600 on sensitive credentials and audit files)
-        let sensitiveFilesToRepair = ["config.json", "enrolled_vectors.json", "audit_log.jsonl", "doctor_report.json", "doctor_step_summary.md", "doctor_codeclimate.json", "doctor_sonarqube.json", "doctor_defectdojo.json", "doctor_cyclonedx.json", "doctor_spdx.json", "doctor_csaf.json", "doctor_openvex.json"]
+        let sensitiveFilesToRepair = ["config.json", "enrolled_vectors.json", "audit_log.jsonl", "doctor_report.json", "doctor_step_summary.md", "doctor_codeclimate.json", "doctor_sonarqube.json", "doctor_defectdojo.json", "doctor_cyclonedx.json", "doctor_spdx.json", "doctor_csaf.json", "doctor_openvex.json", "doctor_stix.json"]
         for sFileName in sensitiveFilesToRepair {
             let sFilePath = facelockDir.appendingPathComponent(sFileName).path
             if FileManager.default.fileExists(atPath: sFilePath) {
@@ -4942,6 +5182,33 @@ public struct Diagnostics {
             let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
             try? FileManager.default.createDirectory(at: facelockDir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
             targetURL = facelockDir.appendingPathComponent("doctor_openvex.json")
+        }
+
+        guard let data = json.data(using: .utf8) else {
+            return (false, targetURL.path, json, report)
+        }
+
+        do {
+            try data.write(to: targetURL, options: .atomic)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: targetURL.path)
+            return (true, targetURL.path, json, report)
+        } catch {
+            return (false, targetURL.path, json, report)
+        }
+    }
+
+    @discardableResult
+    public static func exportDoctorSTIX(toPath customPath: String? = nil, config: Config = .shared, skipNetwork: Bool = false) -> (success: Bool, path: String, content: String, report: DoctorReport) {
+        let report = runDoctor(config: config, skipNetwork: skipNetwork)
+        let json = report.generateSTIX()
+        let targetURL: URL
+        if let customPath = customPath, !customPath.isEmpty {
+            targetURL = URL(fileURLWithPath: (customPath as NSString).expandingTildeInPath)
+        } else {
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
+            try? FileManager.default.createDirectory(at: facelockDir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            targetURL = facelockDir.appendingPathComponent("doctor_stix.json")
         }
 
         guard let data = json.data(using: .utf8) else {
