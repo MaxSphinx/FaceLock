@@ -421,6 +421,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor-export-attack", "--json"])
             case "--doctor-export-attack", "--export-doctor-attack", "--export-attack-doctor", "--doctor-export-mitre", "--export-doctor-mitre", "--export-mitre-doctor":
                 args.append("--doctor-export-attack")
+            case "--doctor-oscal-json", "--oscal-doctor-json":
+                args.append(contentsOf: ["--doctor-oscal", "--json"])
+            case "--doctor-oscal", "--oscal-doctor":
+                args.append("--doctor-oscal")
+            case "--doctor-export-oscal-json", "--export-doctor-oscal-json", "--export-oscal-doctor-json":
+                args.append(contentsOf: ["--doctor-export-oscal", "--json"])
+            case "--doctor-export-oscal", "--export-doctor-oscal", "--export-oscal-doctor":
+                args.append("--doctor-export-oscal")
             default:
                 args.append(arg)
             }
@@ -585,6 +593,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --doctor-export-stix [path] [--json] Export doctor report to OASIS STIX 2.1 file
               --doctor-attack, --doctor-mitre [--json] Generate doctor report in MITRE ATT&CK Navigator Layer v4.5 JSON
               --doctor-export-attack, --doctor-export-mitre [path] [--json] Export doctor report to MITRE ATT&CK Navigator Layer file
+              --doctor-oscal [--json]    Generate doctor report in NIST OSCAL 1.1.0 Assessment Results JSON
+              --doctor-export-oscal [path] [--json] Export doctor report to NIST OSCAL 1.1.0 file
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -1495,6 +1505,60 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 if result.success {
                     print("✓ Doctor diagnostic health report exported to MITRE ATT&CK Navigator Layer file: \(result.path)")
+                    print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
+                } else {
+                    print("✗ Failed to export doctor diagnostic report to: \(result.path)")
+                }
+            }
+            exit(result.success ? 0 : 1)
+        }
+
+        if args.contains("--doctor-oscal") {
+            let report = Diagnostics.runDoctor()
+            let oscal = report.generateOSCAL()
+            if args.contains("--json") {
+                let dict = report.toOSCALDictionary()
+                var jsonDict: [String: Any] = dict
+                jsonDict["version"] = report.version
+                jsonDict["overallStatus"] = report.overallStatus
+                jsonDict["totalChecks"] = report.totalChecks
+                jsonDict["passed"] = report.passedCount
+                jsonDict["warnings"] = report.warningCount
+                jsonDict["failures"] = report.failureCount
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                } else {
+                    print(oscal)
+                }
+            } else {
+                print(oscal)
+            }
+            exit(report.failureCount > 0 ? 1 : 0)
+        }
+
+        if args.contains("--doctor-export-oscal") {
+            let customPath = AppDelegate.valueForOption("--doctor-export-oscal", in: args)
+            let result = Diagnostics.exportDoctorOSCAL(toPath: customPath)
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "success": result.success,
+                    "path": result.path,
+                    "overallStatus": result.report.overallStatus,
+                    "totalChecks": result.report.totalChecks,
+                    "passed": result.report.passedCount,
+                    "warnings": result.report.warningCount,
+                    "failures": result.report.failureCount,
+                    "oscalVersion": "1.1.0",
+                    "exportedBytes": result.content.utf8.count
+                ]
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                }
+            } else {
+                if result.success {
+                    print("✓ Doctor diagnostic health report exported to NIST OSCAL 1.1.0 file: \(result.path)")
                     print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
                 } else {
                     print("✗ Failed to export doctor diagnostic report to: \(result.path)")

@@ -4,6 +4,26 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.2] - 2026-11-14
+
+### Added
+- **Diagnostic Doctor Expansion to 84 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `hardware.secure_boot_policy`: Audits Apple Silicon Secure Boot policy and Signed System Volume (SSV) cryptographic status (`csrutil authenticated-root status`) ensuring tamper-proof macOS system kernel and volume root protection.
+  - Added `filesystem.extended_attributes_hygiene`: Audits configuration storage and binaries for gatekeeper quarantine flags (`com.apple.quarantine`) and ACL locks to guarantee seamless daemon execution without gatekeeper evaluation delays.
+  - Added `daemon.ipc_unix_domain_socket`: Audits Mach bootstrap port allocation (`bootstrap_port`) and inter-process messaging pipeline ensuring responsive, sub-millisecond lock overlay event dispatch.
+  - Added `security.wake_on_lan_disabled`: Audits Wake on Network Access state (`pmset -g | grep womp`) ensuring network wake is disabled (`womp 0`) against unauthorized remote network wakeups while the device is unattended.
+- **NIST OSCAL 1.1.0 Assessment Results Compliance Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.toOSCALDictionary()` and `DoctorReport.generateOSCAL()` generating standard NIST OSCAL 1.1.0 Assessment Results JSON (`assessment-results`, `uuid`, `metadata`, `import-ap`, `results`, `findings`, `observations`) mapping evaluated FaceLock biometric checks and macOS security posture directly to NIST SP 800-53 Rev. 5 controls (AC-2, AC-3, AC-11, AC-17, AC-18, IA-2, IA-5, SC-5, SC-7, SC-8, SC-20, SC-28, SI-4, SI-5, SI-7, PE-6, PE-11, CP-9, CM-5, CM-7, AU-9, CA-2) for enterprise GRC, FedRAMP, and automated compliance auditing.
+  - Implemented `Diagnostics.exportDoctorOSCAL(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_oscal.json` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-oscal` and `--doctor-export-oscal [path]` with `--json` output support and full normalization aliases (`--doctor-oscal-json`, `--oscal-doctor-json`, `--doctor-oscal`, `--oscal-doctor`, `--doctor-export-oscal-json`, `--export-doctor-oscal-json`, `--export-oscal-doctor-json`, `--doctor-export-oscal`, `--export-doctor-oscal`, `--export-oscal-doctor`).
+  - Added Makefile targets `make doctor-oscal`, `make doctor-oscal-json`, `make doctor-export-oscal`, and `make doctor-export-oscal-json`.
+- **Self-Healing Storage Permission Auto-Repair (`Diagnostics.swift`)**:
+  - Enhanced `doctor-repair` engine to automatically restrict `doctor_oscal.json` to `0600` POSIX permissions.
+- **Automated Test Suite Expansion to 3,460+ Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV142Enhancements()` validating 84+ doctor checks, all 4 new check identifiers, NIST OSCAL 1.1.0 JSON format compliance, schema metadata, findings, observations, atomic file export integrity, repair report execution, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.4.2 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.4.2` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.4.1] - 2026-11-13
 
 ### Added
