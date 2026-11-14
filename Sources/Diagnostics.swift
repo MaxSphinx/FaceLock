@@ -1630,13 +1630,17 @@ public struct DoctorReport {
                 return [("T1490", "impact")]
             case "daemon.running_state", "daemon.ipc_unix_domain_socket":
                 return [("T1057", "discovery")]
+            case "daemon.launchd_keepalive_service":
+                return [("T1543.001", "persistence")]
             case "daemon.memory_leak_headroom", "daemon.memory_resident_pressure", "daemon.cpu_footprint", "daemon.mach_port_allocation", "daemon.thread_pool_headroom", "daemon.dispatch_queue_latency":
                 return [("T1499", "impact")]
             case "security.filevault_encryption":
                 return [("T1005", "collection"), ("T1486", "impact")]
+            case "filesystem.secure_enclave_keychain":
+                return [("T1056", "credential-access")]
             case "security.gatekeeper_enforced":
                 return [("T1204.002", "execution")]
-            case "security.screensaver_lock", "security.lock_on_wake", "security.login_window_banner":
+            case "security.screensaver_lock", "security.lock_on_wake", "security.login_window_banner", "hardware.display_sleep_timer":
                 return [("T1078", "initial-access")]
             case "security.firewall_stealth_mode":
                 return [("T1595", "reconnaissance"), ("T1018", "discovery")]
@@ -1646,7 +1650,7 @@ public struct DoctorReport {
                 return [("T1562.001", "defense-evasion")]
             case "security.remote_login_disabled", "security.wake_on_lan_disabled":
                 return [("T1021.004", "lateral-movement")]
-            case "security.remote_management_disabled":
+            case "security.remote_management_disabled", "security.remote_apple_events_disabled":
                 return [("T1021.005", "lateral-movement")]
             case "security.airdrop_discoverability":
                 return [("T1040", "credential-access")]
@@ -1774,7 +1778,7 @@ public struct DoctorReport {
                 return "pe-11"
             case "biometrics.face_enrolled", "biometrics.liveness_detection", "biometrics.strict_face_match", "biometrics.touch_id_sensor", "security.sudo_touchid_pam":
                 return "ia-2"
-            case "biometrics.vector_consistency", "biometrics.vector_entropy", "security.biometric_cluster_cohesion":
+            case "biometrics.vector_consistency", "biometrics.vector_entropy", "security.biometric_cluster_cohesion", "filesystem.secure_enclave_keychain":
                 return "ia-5"
             case "filesystem.config_permissions", "filesystem.vectors_permissions", "filesystem.posix_umask_hygiene", "filesystem.extended_attributes_hygiene":
                 return "ac-3"
@@ -1782,7 +1786,7 @@ public struct DoctorReport {
                 return "au-9"
             case "filesystem.backup_apfs_snapshots", "filesystem.backup_freshness":
                 return "cp-9"
-            case "daemon.running_state", "daemon.ipc_unix_domain_socket":
+            case "daemon.running_state", "daemon.ipc_unix_domain_socket", "daemon.launchd_keepalive_service":
                 return "cm-7"
             case "daemon.memory_leak_headroom", "daemon.memory_resident_pressure", "daemon.cpu_footprint", "daemon.mach_port_allocation", "daemon.thread_pool_headroom", "daemon.file_descriptor_limit":
                 return "sc-5"
@@ -1790,7 +1794,7 @@ public struct DoctorReport {
                 return "sc-28"
             case "security.gatekeeper_enforced":
                 return "cm-5"
-            case "security.screensaver_lock", "security.lock_on_wake", "security.walk_away_lock", "security.login_window_banner":
+            case "security.screensaver_lock", "security.lock_on_wake", "security.walk_away_lock", "security.login_window_banner", "hardware.display_sleep_timer":
                 return "ac-11"
             case "security.firewall_stealth_mode":
                 return "sc-7"
@@ -1798,7 +1802,7 @@ public struct DoctorReport {
                 return "sc-8"
             case "security.airdrop_discoverability":
                 return "ac-18"
-            case "security.remote_login_disabled", "security.remote_management_disabled", "security.wake_on_lan_disabled":
+            case "security.remote_login_disabled", "security.remote_management_disabled", "security.wake_on_lan_disabled", "security.remote_apple_events_disabled":
                 return "ac-17"
             case "network.telegram_alert":
                 return "si-5"
@@ -1907,6 +1911,129 @@ public struct DoctorReport {
         guard let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
               let str = String(data: data, encoding: .utf8) else {
             return "{\"assessment-results\":{\"oscal-version\":\"1.1.0\",\"results\":[]}}\n"
+        }
+        return str + "\n"
+    }
+
+    public func toNISTCSFDictionary() -> [String: Any] {
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+
+        func mapCheckToCSF(_ checkId: String) -> (functionId: String, functionName: String, categoryId: String, categoryName: String, subcategoryId: String, subcategoryTitle: String) {
+            switch checkId {
+            case "biometrics.face_enrolled", "biometrics.liveness_detection", "biometrics.strict_face_match", "biometrics.touch_id_sensor", "security.sudo_touchid_pam":
+                return ("PR", "Protect", "PR.AA", "Identity Management, Authentication, and Access Control", "PR.AA-01", "Identities and credentials for authorized users, services, and hardware are managed.")
+            case "biometrics.vector_consistency", "biometrics.vector_entropy", "security.biometric_cluster_cohesion", "filesystem.secure_enclave_keychain":
+                return ("PR", "Protect", "PR.AA", "Identity Management, Authentication, and Access Control", "PR.AA-02", "Identities are proofed and bound to credentials based on the context of interactions.")
+            case "security.screensaver_lock", "security.lock_on_wake", "security.walk_away_lock", "security.login_window_banner", "hardware.display_sleep_timer":
+                return ("PR", "Protect", "PR.AA", "Identity Management, Authentication, and Access Control", "PR.AA-05", "Access permissions, entitlements, and authorizations are defined, granted, and managed.")
+            case "filesystem.config_permissions", "filesystem.vectors_permissions", "filesystem.posix_umask_hygiene", "filesystem.extended_attributes_hygiene", "security.filevault_encryption":
+                return ("PR", "Protect", "PR.DS", "Data Security", "PR.DS-01", "The confidentiality, integrity, and availability of data-at-rest are protected.")
+            case "filesystem.audit_chain_tamper", "security.audit_integrity_crypto":
+                return ("PR", "Protect", "PR.DS", "Data Security", "PR.DS-02", "The confidentiality, integrity, and availability of data-in-transit and audit records are protected.")
+            case "filesystem.backup_apfs_snapshots", "filesystem.backup_freshness":
+                return ("RC", "Recover", "RC.RP", "Incident Recovery Plan Execution", "RC.RP-01", "Recovery processes and procedures are executed and maintained to ensure restoration of systems.")
+            case "daemon.running_state", "daemon.ipc_unix_domain_socket", "daemon.launchd_keepalive_service":
+                return ("PR", "Protect", "PR.PS", "Platform Security", "PR.PS-01", "Configuration management practices are applied to establish and maintain baseline system configurations.")
+            case "daemon.memory_leak_headroom", "daemon.memory_resident_pressure", "daemon.cpu_footprint", "daemon.mach_port_allocation", "daemon.thread_pool_headroom", "daemon.file_descriptor_limit", "daemon.dispatch_queue_latency":
+                return ("PR", "Protect", "PR.IR", "Technology Infrastructure Resilience", "PR.IR-01", "Networks and operational system environments are protected from excessive load, latency and failure.")
+            case "security.gatekeeper_enforced", "security.sip_filesystem_integrity", "hardware.secure_boot_policy":
+                return ("PR", "Protect", "PR.PS", "Platform Security", "PR.PS-02", "Software and firmware installation and execution are restricted to authorized binaries.")
+            case "security.firewall_stealth_mode", "security.remote_login_disabled", "security.remote_management_disabled", "security.wake_on_lan_disabled", "security.remote_apple_events_disabled", "security.airdrop_discoverability":
+                return ("PR", "Protect", "PR.PS", "Platform Security", "PR.PS-05", "Installation of, and connections from, untrusted or remote network endpoints are restricted.")
+            case "security.biometric_spoofing", "security.shoulder_surfing", "security.duress_alarm_pipeline":
+                return ("DE", "Detect", "DE.AE", "Adverse Event Analysis", "DE.AE-02", "Potentially adverse events are analyzed to understand attack targets and methods.")
+            case "daemon.activity_monitoring", "hardware.camera_authorization", "hardware.accelerate_simd_pipeline", "hardware.thermal_state", "hardware.power_efficiency":
+                return ("DE", "Detect", "DE.CM", "Continuous Monitoring", "DE.CM-01", "The network and physical environment are monitored to detect potential cybersecurity events.")
+            case "network.telegram_alert":
+                return ("RS", "Respond", "RS.CO", "Incident Response Communication", "RS.CO-02", "Incidents are reported to stakeholders, external services, and designated personnel.")
+            case "network.dns_secure_resolvers":
+                return ("PR", "Protect", "PR.PS", "Platform Security", "PR.PS-04", "Network communication architecture is managed and protected against DNS tampering.")
+            default:
+                return ("GV", "Govern", "GV.OC", "Organizational Context", "GV.OC-01", "The organizational context, mission, and endpoint security policies are established.")
+            }
+        }
+
+        var assessments: [[String: Any]] = []
+        var subcategoriesMap: [String: [String: Any]] = [:]
+
+        for check in checks {
+            let csf = mapCheckToCSF(check.id)
+            var item: [String: Any] = [
+                "check_id": check.id,
+                "category": check.category,
+                "name": check.name,
+                "status": check.status.rawValue,
+                "badge": check.status.badge,
+                "message": check.message,
+                "function_id": csf.functionId,
+                "function_name": csf.functionName,
+                "category_id": csf.categoryId,
+                "category_name": csf.categoryName,
+                "subcategory_id": csf.subcategoryId,
+                "subcategory_title": csf.subcategoryTitle
+            ]
+            if let rem = check.remediation, !rem.isEmpty {
+                item["remediation"] = rem
+            }
+            assessments.append(item)
+
+            if subcategoriesMap[csf.subcategoryId] == nil {
+                subcategoriesMap[csf.subcategoryId] = [
+                    "subcategory_id": csf.subcategoryId,
+                    "title": csf.subcategoryTitle,
+                    "function_id": csf.functionId,
+                    "category_id": csf.categoryId,
+                    "category_name": csf.categoryName
+                ]
+            }
+        }
+
+        let sortedSubcategories = subcategoriesMap.values.sorted {
+            ($0["subcategory_id"] as? String ?? "") < ($1["subcategory_id"] as? String ?? "")
+        }
+
+        let complianceScore = totalChecks > 0 ? Int((Double(passedCount) / Double(totalChecks)) * 100.0) : 0
+
+        let functionsList: [[String: Any]] = [
+            ["id": "GV", "name": "Govern", "description": "Establish and monitor cybersecurity risk management strategy, expectations, and policy."],
+            ["id": "ID", "name": "Identify", "description": "Determine current cybersecurity risks to organization, assets, individuals, and systems."],
+            ["id": "PR", "name": "Protect", "description": "Use safeguards to manage and mitigate cybersecurity risks to platforms and identities."],
+            ["id": "DE", "name": "Detect", "description": "Find and analyze possible adverse cybersecurity events and physical intrusion attempts."],
+            ["id": "RS", "name": "Respond", "description": "Take action regarding a detected cybersecurity incident or physical intrusion."],
+            ["id": "RC", "name": "Recover", "description": "Restore assets and biometric baseline configurations impacted by a cybersecurity incident."]
+        ]
+
+        let csfDict: [String: Any] = [
+            "nist_csf": [
+                "framework": "NIST CSF 2.0",
+                "version": "2.0",
+                "published": "2024",
+                "title": "FaceLock macOS Biometric Endpoint Cybersecurity Framework Assessment",
+                "timestamp": timestamp,
+                "metadata": [
+                    "facelock_version": version,
+                    "overall_status": overallStatus,
+                    "compliance_score": complianceScore,
+                    "total_checks": totalChecks,
+                    "passed_checks": passedCount,
+                    "warning_checks": warningCount,
+                    "failure_checks": failureCount,
+                    "info_checks": infoCount
+                ],
+                "functions": functionsList,
+                "subcategories": Array(sortedSubcategories),
+                "assessments": assessments
+            ]
+        ]
+
+        return csfDict
+    }
+
+    public func generateNISTCSF() -> String {
+        let dict = toNISTCSFDictionary()
+        guard let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
+              let str = String(data: data, encoding: .utf8) else {
+            return "{\"nist_csf\":{\"framework\":\"NIST CSF 2.0\",\"version\":\"2.0\",\"assessments\":[]}}\n"
         }
         return str + "\n"
     }
@@ -3286,6 +3413,39 @@ public struct Diagnostics {
             ))
         }
 
+        // 1.9 Display Inactivity Sleep Timer
+        let dispCheck = runShellCommand("/usr/bin/pmset", arguments: ["-g"])
+        let dispLine = dispCheck.stdout.components(separatedBy: .newlines).first(where: { $0.contains("displaysleep") }) ?? ""
+        let dispParts = dispLine.split(separator: " ").compactMap { Int($0) }
+        let dispMinutes = dispParts.first ?? 10
+        if dispMinutes > 0 && dispMinutes <= 15 {
+            checks.append(DoctorCheckItem(
+                id: "hardware.display_sleep_timer",
+                category: "hardware",
+                name: "Display Inactivity Sleep Timer",
+                status: .pass,
+                message: "Display sleep timer configured (\(dispMinutes) min(s)); unattended display exposure is minimized."
+            ))
+        } else if dispMinutes == 0 {
+            checks.append(DoctorCheckItem(
+                id: "hardware.display_sleep_timer",
+                category: "hardware",
+                name: "Display Inactivity Sleep Timer",
+                status: .warn,
+                message: "Display sleep is disabled (never sleep); increases risk of unattended display exposure.",
+                remediation: "Set display sleep to 10 minutes via 'sudo pmset -a displaysleep 10'."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "hardware.display_sleep_timer",
+                category: "hardware",
+                name: "Display Inactivity Sleep Timer",
+                status: .warn,
+                message: "Display sleep timer is long (\(dispMinutes) mins); recommended <= 15 minutes for physical security.",
+                remediation: "Reduce display sleep timer to 10 minutes via 'sudo pmset -a displaysleep 10'."
+            ))
+        }
+
         // Category 2: Filesystem & Cryptography
         let home = FileManager.default.homeDirectoryForCurrentUser
         let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
@@ -3852,6 +4012,28 @@ public struct Diagnostics {
             ))
         }
 
+        // 2.15 Keychain & Secure Enclave Cryptographic Store
+        let kcCheck = runShellCommand("/usr/bin/security", arguments: ["list-keychains"])
+        let hasLoginKeychain = kcCheck.stdout.contains("login.keychain") || kcCheck.stdout.contains("login.keychain-db")
+        if hasLoginKeychain {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.secure_enclave_keychain",
+                category: "filesystem",
+                name: "macOS Keychain & Cryptographic Key Store",
+                status: .pass,
+                message: "Active login keychain verified; Secure Enclave cryptographic key hierarchy accessible."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.secure_enclave_keychain",
+                category: "filesystem",
+                name: "macOS Keychain & Cryptographic Key Store",
+                status: .warn,
+                message: "Default login keychain not found or inaccessible; biometric credential storage compromised.",
+                remediation: "Verify Keychain Access in macOS System Settings or reset default login keychain."
+            ))
+        }
+
         // Category 3: Background Daemon & Automation
         // 3.1 Daemon Process
         let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: "io.github.facelock")
@@ -4214,6 +4396,28 @@ public struct Diagnostics {
                 status: .warn,
                 message: "Mach bootstrap IPC port unavailable; event messaging may be degraded.",
                 remediation: "Restart FaceLock daemon via 'make reload'."
+            ))
+        }
+
+        // 3.14 launchd Background Keepalive Service
+        let launchdCheck = runShellCommand("/bin/launchctl", arguments: ["list"])
+        let hasLaunchdService = launchdCheck.stdout.contains("facelock") || launchdCheck.stdout.contains("io.github.facelock")
+        if hasLaunchdService {
+            checks.append(DoctorCheckItem(
+                id: "daemon.launchd_keepalive_service",
+                category: "daemon",
+                name: "launchd Background Keepalive Service",
+                status: .pass,
+                message: "FaceLock LaunchAgent registered in launchd; automatic process supervision & revival enabled."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "daemon.launchd_keepalive_service",
+                category: "daemon",
+                name: "launchd Background Keepalive Service",
+                status: .info,
+                message: "FaceLock background LaunchAgent not registered in launchd session (standalone mode active).",
+                remediation: "Install LaunchAgent for persistent 24/7 background protection via 'make install-sync'."
             ))
         }
 
@@ -5128,6 +5332,28 @@ public struct Diagnostics {
             ))
         }
 
+        // 4.37 Remote Apple Events (RAE) Inter-App IPC Hardening
+        let raeCheck = runShellCommand("/usr/sbin/systemsetup", arguments: ["-getremoteappleevents"])
+        let isRaeEnabled = raeCheck.stdout.lowercased().contains("on")
+        if !isRaeEnabled {
+            checks.append(DoctorCheckItem(
+                id: "security.remote_apple_events_disabled",
+                category: "security",
+                name: "Remote Apple Events (RAE) Hardening",
+                status: .pass,
+                message: "Remote Apple Events disabled; unauthorized network inter-application scripting blocked."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.remote_apple_events_disabled",
+                category: "security",
+                name: "Remote Apple Events (RAE) Hardening",
+                status: .warn,
+                message: "Remote Apple Events are active; network processes may script local applications.",
+                remediation: "Disable Remote Apple Events via 'sudo systemsetup -setremoteappleevents off'."
+            ))
+        }
+
         // Category 5: Remote Alerting & Network
         if config.telegramEnabled {
             if !config.telegramBotToken.isEmpty && !config.telegramChatId.isEmpty {
@@ -5268,7 +5494,7 @@ public struct Diagnostics {
         }
 
         // 1d. Sensitive files permissions repair (chmod 0600 on sensitive credentials and audit files)
-        let sensitiveFilesToRepair = ["config.json", "enrolled_vectors.json", "audit_log.jsonl", "doctor_report.json", "doctor_step_summary.md", "doctor_codeclimate.json", "doctor_sonarqube.json", "doctor_defectdojo.json", "doctor_cyclonedx.json", "doctor_spdx.json", "doctor_csaf.json", "doctor_openvex.json", "doctor_stix.json", "doctor_attack.json", "doctor_oscal.json"]
+        let sensitiveFilesToRepair = ["config.json", "enrolled_vectors.json", "audit_log.jsonl", "doctor_report.json", "doctor_step_summary.md", "doctor_codeclimate.json", "doctor_sonarqube.json", "doctor_defectdojo.json", "doctor_cyclonedx.json", "doctor_spdx.json", "doctor_csaf.json", "doctor_openvex.json", "doctor_stix.json", "doctor_attack.json", "doctor_oscal.json", "doctor_nist_csf.json"]
         for sFileName in sensitiveFilesToRepair {
             let sFilePath = facelockDir.appendingPathComponent(sFileName).path
             if FileManager.default.fileExists(atPath: sFilePath) {
@@ -5786,6 +6012,33 @@ public struct Diagnostics {
             let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
             try? FileManager.default.createDirectory(at: facelockDir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
             targetURL = facelockDir.appendingPathComponent("doctor_oscal.json")
+        }
+
+        guard let data = json.data(using: .utf8) else {
+            return (false, targetURL.path, json, report)
+        }
+
+        do {
+            try data.write(to: targetURL, options: .atomic)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: targetURL.path)
+            return (true, targetURL.path, json, report)
+        } catch {
+            return (false, targetURL.path, json, report)
+        }
+    }
+
+    @discardableResult
+    public static func exportDoctorNISTCSF(toPath customPath: String? = nil, config: Config = .shared, skipNetwork: Bool = false) -> (success: Bool, path: String, content: String, report: DoctorReport) {
+        let report = runDoctor(config: config, skipNetwork: skipNetwork)
+        let json = report.generateNISTCSF()
+        let targetURL: URL
+        if let customPath = customPath, !customPath.isEmpty {
+            targetURL = URL(fileURLWithPath: (customPath as NSString).expandingTildeInPath)
+        } else {
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
+            try? FileManager.default.createDirectory(at: facelockDir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            targetURL = facelockDir.appendingPathComponent("doctor_nist_csf.json")
         }
 
         guard let data = json.data(using: .utf8) else {

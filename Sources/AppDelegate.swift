@@ -429,6 +429,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor-export-oscal", "--json"])
             case "--doctor-export-oscal", "--export-doctor-oscal", "--export-oscal-doctor":
                 args.append("--doctor-export-oscal")
+            case "--doctor-csf-json", "--csf-doctor-json", "--doctor-nist-csf-json", "--nist-csf-doctor-json":
+                args.append(contentsOf: ["--doctor-csf", "--json"])
+            case "--doctor-csf", "--csf-doctor", "--doctor-nist-csf", "--nist-csf-doctor":
+                args.append("--doctor-csf")
+            case "--doctor-export-csf-json", "--export-doctor-csf-json", "--export-csf-doctor-json", "--doctor-export-nist-csf-json", "--export-doctor-nist-csf-json", "--export-nist-csf-doctor-json":
+                args.append(contentsOf: ["--doctor-export-csf", "--json"])
+            case "--doctor-export-csf", "--export-doctor-csf", "--export-csf-doctor", "--doctor-export-nist-csf", "--export-doctor-nist-csf", "--export-nist-csf-doctor":
+                args.append("--doctor-export-csf")
             default:
                 args.append(arg)
             }
@@ -595,6 +603,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --doctor-export-attack, --doctor-export-mitre [path] [--json] Export doctor report to MITRE ATT&CK Navigator Layer file
               --doctor-oscal [--json]    Generate doctor report in NIST OSCAL 1.1.0 Assessment Results JSON
               --doctor-export-oscal [path] [--json] Export doctor report to NIST OSCAL 1.1.0 file
+              --doctor-csf, --doctor-nist-csf [--json] Generate doctor report in NIST CSF 2.0 JSON
+              --doctor-export-csf, --doctor-export-nist-csf [path] [--json] Export doctor report to NIST CSF 2.0 file
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -1559,6 +1569,60 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 if result.success {
                     print("✓ Doctor diagnostic health report exported to NIST OSCAL 1.1.0 file: \(result.path)")
+                    print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
+                } else {
+                    print("✗ Failed to export doctor diagnostic report to: \(result.path)")
+                }
+            }
+            exit(result.success ? 0 : 1)
+        }
+
+        if args.contains("--doctor-csf") {
+            let report = Diagnostics.runDoctor()
+            let csf = report.generateNISTCSF()
+            if args.contains("--json") {
+                let dict = report.toNISTCSFDictionary()
+                var jsonDict: [String: Any] = dict
+                jsonDict["version"] = report.version
+                jsonDict["overallStatus"] = report.overallStatus
+                jsonDict["totalChecks"] = report.totalChecks
+                jsonDict["passed"] = report.passedCount
+                jsonDict["warnings"] = report.warningCount
+                jsonDict["failures"] = report.failureCount
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                } else {
+                    print(csf)
+                }
+            } else {
+                print(csf)
+            }
+            exit(report.failureCount > 0 ? 1 : 0)
+        }
+
+        if args.contains("--doctor-export-csf") {
+            let customPath = AppDelegate.valueForOption("--doctor-export-csf", in: args)
+            let result = Diagnostics.exportDoctorNISTCSF(toPath: customPath)
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "success": result.success,
+                    "path": result.path,
+                    "overallStatus": result.report.overallStatus,
+                    "totalChecks": result.report.totalChecks,
+                    "passed": result.report.passedCount,
+                    "warnings": result.report.warningCount,
+                    "failures": result.report.failureCount,
+                    "csfVersion": "2.0",
+                    "exportedBytes": result.content.utf8.count
+                ]
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                }
+            } else {
+                if result.success {
+                    print("✓ Doctor diagnostic health report exported to NIST CSF 2.0 file: \(result.path)")
                     print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
                 } else {
                     print("✗ Failed to export doctor diagnostic report to: \(result.path)")

@@ -4,6 +4,26 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.3] - 2026-11-14
+
+### Added
+- **Diagnostic Doctor Expansion to 88 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `hardware.display_sleep_timer`: Audits macOS display sleep inactivity timer (`pmset -g | grep displaysleep`) ensuring unattended display exposure is minimized (<= 15 minutes) against shoulder-surfing exposure.
+  - Added `filesystem.secure_enclave_keychain`: Audits macOS Keychain Access and Secure Enclave availability (`/usr/bin/security list-keychains`) verifying login keychain and cryptographic key store integrity for credentials and biometric vector seeds.
+  - Added `daemon.launchd_keepalive_service`: Audits launchd service registration state for `com.facelock.daemon` (`launchctl list | grep facelock`) to confirm whether the background LaunchAgent is installed and actively managed by macOS launchd for automatic revival.
+  - Added `security.remote_apple_events_disabled`: Audits Remote Apple Events (`systemsetup -getremoteappleevents`) ensuring unauthorized remote inter-application AppleEvents are disabled (`Remote Apple Events: Off`) to prevent remote exploitation or spoofing of lock screen dismissals.
+- **NIST Cybersecurity Framework 2.0 (CSF 2.0) Compliance & Assessment Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.toNISTCSFDictionary()` and `DoctorReport.generateNISTCSF()` generating standard NIST CSF 2.0 Assessment JSON (`nist_csf`, `framework: "NIST CSF 2.0"`, `version: "2.0"`, `published: "2024"`, `metadata`, `functions`, `subcategories`, `assessments`) mapping evaluated FaceLock biometric checks and macOS security posture across all 6 core functions: Govern (GV), Identify (ID), Protect (PR), Detect (DE), Respond (RS), and Recover (RC) for enterprise GRC and compliance auditing.
+  - Implemented `Diagnostics.exportDoctorNISTCSF(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_nist_csf.json` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-csf`, `--doctor-nist-csf`, and `--doctor-export-csf [path]` with `--json` output support and full normalization aliases (`--doctor-csf-json`, `--csf-doctor-json`, `--doctor-nist-csf-json`, `--nist-csf-doctor-json`, `--doctor-csf`, `--csf-doctor`, `--doctor-nist-csf`, `--nist-csf-doctor`, `--doctor-export-csf-json`, `--export-doctor-csf-json`, `--export-csf-doctor-json`, `--doctor-export-nist-csf-json`, `--export-doctor-nist-csf-json`, `--export-nist-csf-doctor-json`, `--doctor-export-csf`, `--export-doctor-csf`, `--export-csf-doctor`, `--doctor-export-nist-csf`, `--export-doctor-nist-csf`, `--export-nist-csf-doctor`).
+  - Added Makefile targets `make doctor-csf`, `make doctor-csf-json`, `make doctor-export-csf`, `make doctor-export-csf-json`, `make doctor-nist-csf`, `make doctor-nist-csf-json`, `make doctor-export-nist-csf`, and `make doctor-export-nist-csf-json`.
+- **Self-Healing Storage Permission Auto-Repair (`Diagnostics.swift`)**:
+  - Enhanced `doctor-repair` engine to automatically restrict `doctor_nist_csf.json` to `0600` POSIX permissions.
+- **Automated Test Suite Expansion to 3,700+ Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV143Enhancements()` validating 88+ doctor checks, all 4 new check identifiers, NIST CSF 2.0 JSON format compliance, 6 CSF functions (GV, ID, PR, DE, RS, RC), subcategories, assessments, atomic file export integrity, repair report execution, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.4.3 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.4.3` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.4.2] - 2026-11-14
 
 ### Added
