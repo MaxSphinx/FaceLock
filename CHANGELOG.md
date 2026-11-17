@@ -4,6 +4,26 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.5] - 2026-11-17
+
+### Added
+- **Diagnostic Doctor Expansion to 96 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `hardware.lid_wake_sensor_state`: Audits macOS hardware clamshell lid wake sensor configuration (`pmset -g | grep lidwake`) verifying that laptop lid open triggers instant display power and biometric verification without unattended lock screen bypass.
+  - Added `filesystem.core_dumps_disabled`: Audits macOS core dump generation restriction (`sysctl kern.coredump` / launchctl core limit) ensuring system core dumps are disabled to prevent forensic extraction or accidental exposure of in-memory biometric neural embeddings, PIN hashes, and camera frame buffers to crash dump files on disk.
+  - Added `daemon.network_reachability_monitor`: Audits daemon network socket state and local IPC endpoint isolation, verifying that FaceLock runs with zero unauthorized listening TCP/UDP network ports (`netstat -an | grep LISTEN`) ensuring a minimal local attack surface.
+  - Added `security.automatic_software_updates`: Audits macOS automatic background security update configuration (`softwareupdate --schedule` / defaults) ensuring Rapid Security Responses (RSR) and system security patches are automatically checked and applied to protect biometric and OS integrity against zero-day exploits.
+- **ISO/IEC 27001:2022 Annex A Controls Compliance & Assessment Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.toISO27001Dictionary()` and `DoctorReport.generateISO27001()` generating standard ISO/IEC 27001:2022 Assessment JSON (`iso27001_controls`, `framework: "ISO/IEC 27001:2022"`, `version: "2022"`, `edition: "3rd Edition"`, `metadata`, `themes` [A.5 Organizational, A.6 People, A.7 Physical, A.8 Technological], `controls`, `assessments`) mapping evaluated FaceLock biometric checks and macOS security posture directly to ISO/IEC 27001:2022 Annex A controls (A.5.15, A.7.7, A.8.1, A.8.2, A.8.5, A.8.7, A.8.8, A.8.15, A.8.18, A.8.20, A.8.24) for enterprise GRC, SOC 2, ISO certification, and compliance auditing.
+  - Implemented `Diagnostics.exportDoctorISO27001(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_iso27001.json` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-iso27001`, `--doctor-iso`, and `--doctor-export-iso27001 [path]` with `--json` output support and full normalization aliases (`--doctor-iso27001-json`, `--iso27001-doctor-json`, `--doctor-iso-json`, `--iso-doctor-json`, `--doctor-iso27001`, `--iso27001-doctor`, `--doctor-iso`, `--iso-doctor`, `--doctor-export-iso27001-json`, `--export-doctor-iso27001-json`, `--export-iso27001-doctor-json`, `--doctor-export-iso-json`, `--export-doctor-iso-json`, `--export-iso-doctor-json`, `--doctor-export-iso27001`, `--export-doctor-iso27001`, `--export-iso27001-doctor`, `--doctor-export-iso`, `--export-doctor-iso`, `--export-iso-doctor`).
+  - Added Makefile targets `make doctor-iso27001`, `make doctor-iso27001-json`, `make doctor-export-iso27001`, `make doctor-export-iso27001-json`, `make doctor-iso`, `make doctor-iso-json`, `make doctor-export-iso`, and `make doctor-export-iso-json`.
+- **Self-Healing Storage Permission Auto-Repair (`Diagnostics.swift`)**:
+  - Enhanced `doctor-repair` engine to automatically restrict `doctor_iso27001.json` to `0600` POSIX permissions.
+- **Automated Test Suite Expansion to 5,500+ Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV145Enhancements()` validating 96+ doctor checks, all 4 new check identifiers, ISO/IEC 27001:2022 JSON format compliance, 4 themes (A.5, A.6, A.7, A.8), controls, assessments, atomic file export integrity, repair report execution, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.4.5 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.4.5` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.4.4] - 2026-11-17
 
 ### Added

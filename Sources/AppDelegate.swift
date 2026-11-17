@@ -445,6 +445,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor-export-cis", "--json"])
             case "--doctor-export-cis", "--export-doctor-cis", "--export-cis-doctor", "--doctor-export-cis-controls", "--export-doctor-cis-controls", "--export-cis-controls-doctor":
                 args.append("--doctor-export-cis")
+            case "--doctor-iso27001-json", "--iso27001-doctor-json", "--doctor-iso-json", "--iso-doctor-json":
+                args.append(contentsOf: ["--doctor-iso27001", "--json"])
+            case "--doctor-iso27001", "--iso27001-doctor", "--doctor-iso", "--iso-doctor":
+                args.append("--doctor-iso27001")
+            case "--doctor-export-iso27001-json", "--export-doctor-iso27001-json", "--export-iso27001-doctor-json", "--doctor-export-iso-json", "--export-doctor-iso-json", "--export-iso-doctor-json":
+                args.append(contentsOf: ["--doctor-export-iso27001", "--json"])
+            case "--doctor-export-iso27001", "--export-doctor-iso27001", "--export-iso27001-doctor", "--doctor-export-iso", "--export-doctor-iso", "--export-iso-doctor":
+                args.append("--doctor-export-iso27001")
             default:
                 args.append(arg)
             }
@@ -615,6 +623,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --doctor-export-csf, --doctor-export-nist-csf [path] [--json] Export doctor report to NIST CSF 2.0 file
               --doctor-cis, --doctor-cis-controls [--json] Generate doctor report in CIS Controls v8 JSON
               --doctor-export-cis, --doctor-export-cis-controls [path] [--json] Export doctor report to CIS Controls v8 file
+              --doctor-iso27001, --doctor-iso [--json] Generate doctor report in ISO/IEC 27001:2022 Annex A JSON
+              --doctor-export-iso27001, --doctor-export-iso [path] [--json] Export doctor report to ISO/IEC 27001:2022 file
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -1491,7 +1501,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 jsonDict["passed"] = report.passedCount
                 jsonDict["warnings"] = report.warningCount
                 jsonDict["failures"] = report.failureCount
-                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
                    let jsonString = String(data: jsonData, encoding: .utf8) {
                     print(jsonString)
                 } else {
@@ -1518,7 +1528,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     "layerSpecVersion": "4.5",
                     "exportedBytes": result.content.utf8.count
                 ]
-                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
                    let jsonString = String(data: jsonData, encoding: .utf8) {
                     print(jsonString)
                 }
@@ -1545,7 +1555,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 jsonDict["passed"] = report.passedCount
                 jsonDict["warnings"] = report.warningCount
                 jsonDict["failures"] = report.failureCount
-                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
                    let jsonString = String(data: jsonData, encoding: .utf8) {
                     print(jsonString)
                 } else {
@@ -1572,7 +1582,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     "oscalVersion": "1.1.0",
                     "exportedBytes": result.content.utf8.count
                 ]
-                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
                    let jsonString = String(data: jsonData, encoding: .utf8) {
                     print(jsonString)
                 }
@@ -1599,7 +1609,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 jsonDict["passed"] = report.passedCount
                 jsonDict["warnings"] = report.warningCount
                 jsonDict["failures"] = report.failureCount
-                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
                    let jsonString = String(data: jsonData, encoding: .utf8) {
                     print(jsonString)
                 } else {
@@ -1626,7 +1636,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     "csfVersion": "2.0",
                     "exportedBytes": result.content.utf8.count
                 ]
-                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
                    let jsonString = String(data: jsonData, encoding: .utf8) {
                     print(jsonString)
                 }
@@ -1653,7 +1663,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 jsonDict["passed"] = report.passedCount
                 jsonDict["warnings"] = report.warningCount
                 jsonDict["failures"] = report.failureCount
-                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
                    let jsonString = String(data: jsonData, encoding: .utf8) {
                     print(jsonString)
                 } else {
@@ -1680,13 +1690,67 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     "cisVersion": "8.0",
                     "exportedBytes": result.content.utf8.count
                 ]
-                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
                    let jsonString = String(data: jsonData, encoding: .utf8) {
                     print(jsonString)
                 }
             } else {
                 if result.success {
                     print("✓ Doctor diagnostic health report exported to CIS Controls v8 file: \(result.path)")
+                    print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
+                } else {
+                    print("✗ Failed to export doctor diagnostic report to: \(result.path)")
+                }
+            }
+            exit(result.success ? 0 : 1)
+        }
+
+        if args.contains("--doctor-iso27001") {
+            let report = Diagnostics.runDoctor()
+            let iso = report.generateISO27001()
+            if args.contains("--json") {
+                let dict = report.toISO27001Dictionary()
+                var jsonDict: [String: Any] = dict
+                jsonDict["version"] = report.version
+                jsonDict["overallStatus"] = report.overallStatus
+                jsonDict["totalChecks"] = report.totalChecks
+                jsonDict["passed"] = report.passedCount
+                jsonDict["warnings"] = report.warningCount
+                jsonDict["failures"] = report.failureCount
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                } else {
+                    print(iso)
+                }
+            } else {
+                print(iso)
+            }
+            exit(report.failureCount > 0 ? 1 : 0)
+        }
+
+        if args.contains("--doctor-export-iso27001") {
+            let customPath = AppDelegate.valueForOption("--doctor-export-iso27001", in: args)
+            let result = Diagnostics.exportDoctorISO27001(toPath: customPath)
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "success": result.success,
+                    "path": result.path,
+                    "overallStatus": result.report.overallStatus,
+                    "totalChecks": result.report.totalChecks,
+                    "passed": result.report.passedCount,
+                    "warnings": result.report.warningCount,
+                    "failures": result.report.failureCount,
+                    "isoStandard": "ISO/IEC 27001:2022",
+                    "exportedBytes": result.content.utf8.count
+                ]
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                }
+            } else {
+                if result.success {
+                    print("✓ Doctor diagnostic health report exported to ISO/IEC 27001:2022 file: \(result.path)")
                     print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
                 } else {
                     print("✗ Failed to export doctor diagnostic report to: \(result.path)")

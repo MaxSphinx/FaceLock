@@ -102,6 +102,7 @@ public final class FaceLockTestSuite {
         testMaintenanceV142Enhancements()
         testMaintenanceV143Enhancements()
         testMaintenanceV144Enhancements()
+        testMaintenanceV145Enhancements()
         testVectorMatchingBenchmark()
 
         let elapsed = Date().timeIntervalSince(startTime)
@@ -2402,7 +2403,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.4.4", "Config currentVersion is synchronized")
+        assertEqual(Config.currentVersion, "1.4.5", "Config currentVersion is synchronized")
 
         // 5. Test CLI Argument Normalization for Doctor Strict and Export
         assertEqual(AppDelegate.normalizeArguments(["--doctor-strict-json"]), ["--doctor-strict", "--json"], "Normalizes --doctor-strict-json")
@@ -2461,7 +2462,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.4.4", "Config currentVersion is 1.4.2")
+        assertEqual(Config.currentVersion, "1.4.5", "Config currentVersion is 1.4.2")
 
         // 5. Test CLI Argument Normalization for Doctor Markdown and Export MD
         assertEqual(AppDelegate.normalizeArguments(["--doctor-md-json"]), ["--doctor-markdown", "--json"], "Normalizes --doctor-md-json")
@@ -2520,7 +2521,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.4.4", "Config currentVersion is 1.4.2")
+        assertEqual(Config.currentVersion, "1.4.5", "Config currentVersion is 1.4.2")
 
         // 5. Test CLI Argument Normalization for Doctor HTML and Export HTML
         assertEqual(AppDelegate.normalizeArguments(["--doctor-html-json"]), ["--doctor-html", "--json"], "Normalizes --doctor-html-json")
@@ -2592,7 +2593,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 5. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.4.4", "Config currentVersion is 1.4.2")
+        assertEqual(Config.currentVersion, "1.4.5", "Config currentVersion is 1.4.2")
 
         // 6. Test CLI Argument Normalization for Doctor SARIF and Export SARIF
         assertEqual(AppDelegate.normalizeArguments(["--doctor-sarif-json"]), ["--doctor-sarif", "--json"], "Normalizes --doctor-sarif-json")
@@ -2645,7 +2646,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.4.4", "Config currentVersion is 1.4.2")
+        assertEqual(Config.currentVersion, "1.4.5", "Config currentVersion is 1.4.2")
 
         // 5. Test CLI Argument Normalization for Doctor CSV and Export CSV
         assertEqual(AppDelegate.normalizeArguments(["--doctor-csv-json"]), ["--doctor-csv", "--json"], "Normalizes --doctor-csv-json")
@@ -2701,7 +2702,7 @@ public final class FaceLockTestSuite {
         try? FileManager.default.removeItem(atPath: tempExportPath)
 
         // 4. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.4.4", "Config currentVersion is 1.4.2")
+        assertEqual(Config.currentVersion, "1.4.5", "Config currentVersion is 1.4.2")
 
         // 5. Test CLI Argument Normalization for Doctor JUnit and Export JUnit
         assertEqual(AppDelegate.normalizeArguments(["--doctor-junit-json"]), ["--doctor-junit", "--json"], "Normalizes --doctor-junit-json")
@@ -2763,7 +2764,7 @@ public final class FaceLockTestSuite {
         assert(repairReport.finalReport.totalChecks >= 44, "Repair final report contains at least 44 checks")
 
         // 5. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.4.4", "Config currentVersion is 1.4.2")
+        assertEqual(Config.currentVersion, "1.4.5", "Config currentVersion is 1.4.2")
 
         // 6. Test CLI Argument Normalization for Doctor GHA and Export GHA
         assertEqual(AppDelegate.normalizeArguments(["--doctor-gha-json"]), ["--doctor-gha", "--json"], "Normalizes --doctor-gha-json")
@@ -2827,7 +2828,7 @@ public final class FaceLockTestSuite {
         assert(repairReport.finalReport.totalChecks >= 48, "Repair final report contains at least 48 checks")
 
         // 5. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.4.4", "Config currentVersion is 1.4.2")
+        assertEqual(Config.currentVersion, "1.4.5", "Config currentVersion is 1.4.2")
 
         // 6. Test CLI Argument Normalization for Doctor GitLab and Export GitLab
         assertEqual(AppDelegate.normalizeArguments(["--doctor-gitlab-json"]), ["--doctor-gitlab", "--json"], "Normalizes --doctor-gitlab-json")
@@ -2901,7 +2902,7 @@ public final class FaceLockTestSuite {
         assert(repairReport.finalReport.totalChecks >= 52, "Repair final report contains at least 52 checks")
 
         // 5. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.4.4", "Config currentVersion is 1.4.2")
+        assertEqual(Config.currentVersion, "1.4.5", "Config currentVersion is 1.4.2")
 
         // 6. Test CLI Argument Normalization for Doctor SonarQube and Export SonarQube
         assertEqual(AppDelegate.normalizeArguments(["--doctor-sonarqube-json"]), ["--doctor-sonarqube", "--json"], "Normalizes --doctor-sonarqube-json")
@@ -2976,7 +2977,7 @@ public final class FaceLockTestSuite {
         assert(repairReport.finalReport.totalChecks >= 56, "Repair final report contains at least 56 checks")
 
         // 5. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.4.4", "Config currentVersion is 1.4.2")
+        assertEqual(Config.currentVersion, "1.4.5", "Config currentVersion is 1.4.2")
 
         // 6. Test CLI Argument Normalization for Doctor DefectDojo and Export DefectDojo
         assertEqual(AppDelegate.normalizeArguments(["--doctor-defectdojo-json"]), ["--doctor-defectdojo", "--json"], "Normalizes --doctor-defectdojo-json")
@@ -3053,7 +3054,7 @@ public final class FaceLockTestSuite {
         assert(repairReport.finalReport.totalChecks >= 60, "Repair final report contains at least 60 checks")
 
         // 5. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.4.4", "Config currentVersion is 1.4.2")
+        assertEqual(Config.currentVersion, "1.4.5", "Config currentVersion is 1.4.2")
 
         // 6. Test CLI Argument Normalization for Doctor CycloneDX and Export CycloneDX
         assertEqual(AppDelegate.normalizeArguments(["--doctor-cyclonedx-json"]), ["--doctor-cyclonedx", "--json"], "Normalizes --doctor-cyclonedx-json")
@@ -3149,7 +3150,7 @@ public final class FaceLockTestSuite {
         assert(repairReport.finalReport.totalChecks >= 64, "Repair final report contains at least 64 checks")
 
         // 5. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.4.4", "Config currentVersion is 1.4.2")
+        assertEqual(Config.currentVersion, "1.4.5", "Config currentVersion is 1.4.2")
 
         // 6. Test CLI Argument Normalization for Doctor SPDX and Export SPDX
         assertEqual(AppDelegate.normalizeArguments(["--doctor-spdx-json"]), ["--doctor-spdx", "--json"], "Normalizes --doctor-spdx-json")
@@ -3227,7 +3228,7 @@ public final class FaceLockTestSuite {
         assert(repairReport.finalReport.totalChecks >= 68, "Repair final report contains at least 68 checks")
 
         // 5. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.4.4", "Config currentVersion is 1.4.2")
+        assertEqual(Config.currentVersion, "1.4.5", "Config currentVersion is 1.4.2")
 
         // 6. Test CLI Argument Normalization for Doctor CSAF and Export CSAF
         assertEqual(AppDelegate.normalizeArguments(["--doctor-csaf-json"]), ["--doctor-csaf", "--json"], "Normalizes --doctor-csaf-json")
@@ -3305,7 +3306,7 @@ public final class FaceLockTestSuite {
         assert(repairReport.finalReport.totalChecks >= 72, "Repair final report contains at least 72 checks")
 
         // 5. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.4.4", "Config currentVersion is 1.4.2")
+        assertEqual(Config.currentVersion, "1.4.5", "Config currentVersion is 1.4.2")
 
         // 6. Test CLI Argument Normalization for Doctor OpenVEX and Export OpenVEX
         assertEqual(AppDelegate.normalizeArguments(["--doctor-openvex-json"]), ["--doctor-openvex", "--json"], "Normalizes --doctor-openvex-json")
@@ -3381,7 +3382,7 @@ public final class FaceLockTestSuite {
         assert(repairReport.finalReport.totalChecks >= 76, "Repair final report contains at least 76 checks")
 
         // 5. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.4.4", "Config currentVersion is 1.4.2")
+        assertEqual(Config.currentVersion, "1.4.5", "Config currentVersion is 1.4.2")
 
         // 6. Test CLI Argument Normalization for Doctor STIX and Export STIX
         assertEqual(AppDelegate.normalizeArguments(["--doctor-stix-json"]), ["--doctor-stix", "--json"], "Normalizes --doctor-stix-json")
@@ -3461,7 +3462,7 @@ public final class FaceLockTestSuite {
         assert(repairReport.finalReport.totalChecks >= 80, "Repair final report contains at least 80 checks")
 
         // 5. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.4.4", "Config currentVersion is 1.4.2")
+        assertEqual(Config.currentVersion, "1.4.5", "Config currentVersion is 1.4.2")
 
         // 6. Test CLI Argument Normalization for Doctor ATT&CK and Export ATT&CK
         assertEqual(AppDelegate.normalizeArguments(["--doctor-attack-json"]), ["--doctor-attack", "--json"], "Normalizes --doctor-attack-json")
@@ -3565,7 +3566,7 @@ public final class FaceLockTestSuite {
         assert(repairReport.finalReport.totalChecks >= 84, "Repair final report contains at least 84 checks")
 
         // 5. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.4.4", "Config currentVersion is 1.4.3")
+        assertEqual(Config.currentVersion, "1.4.5", "Config currentVersion is 1.4.3")
 
         // 6. Test CLI Argument Normalization for Doctor OSCAL and Export OSCAL
         assertEqual(AppDelegate.normalizeArguments(["--doctor-oscal-json"]), ["--doctor-oscal", "--json"], "Normalizes --doctor-oscal-json")
@@ -3674,7 +3675,7 @@ public final class FaceLockTestSuite {
         assert(repairReport.finalReport.totalChecks >= 88, "Repair final report contains at least 88 checks")
 
         // 5. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.4.4", "Config currentVersion is 1.4.3")
+        assertEqual(Config.currentVersion, "1.4.5", "Config currentVersion is 1.4.3")
 
         // 6. Test CLI Argument Normalization for Doctor CSF and Export CSF
         assertEqual(AppDelegate.normalizeArguments(["--doctor-csf-json"]), ["--doctor-csf", "--json"], "Normalizes --doctor-csf-json")
@@ -3806,7 +3807,7 @@ public final class FaceLockTestSuite {
         assert(repairReport.finalReport.totalChecks >= 92, "Repair final report contains at least 92 checks")
 
         // 5. Test Version Synchronization
-        assertEqual(Config.currentVersion, "1.4.4", "Config currentVersion is 1.4.4")
+        assertEqual(Config.currentVersion, "1.4.5", "Config currentVersion is 1.4.4")
 
         // 6. Test CLI Argument Normalization for Doctor CIS and Export CIS
         assertEqual(AppDelegate.normalizeArguments(["--doctor-cis-json"]), ["--doctor-cis", "--json"], "Normalizes --doctor-cis-json")
@@ -3829,6 +3830,130 @@ public final class FaceLockTestSuite {
         assertEqual(AppDelegate.normalizeArguments(["--doctor-export-cis-controls"]), ["--doctor-export-cis"], "Normalizes --doctor-export-cis-controls")
         assertEqual(AppDelegate.normalizeArguments(["--export-doctor-cis-controls"]), ["--doctor-export-cis"], "Normalizes --export-doctor-cis-controls")
         assertEqual(AppDelegate.normalizeArguments(["--export-cis-controls-doctor"]), ["--doctor-export-cis"], "Normalizes --export-cis-controls-doctor")
+    }
+
+    // MARK: - Maintenance v1.4.5 Enhancements Test Suite
+    private func testMaintenanceV145Enhancements() {
+        print("\n▶ Test Suite: Autonomous Doctor 96-Check Expansion & ISO/IEC 27001:2022 Engine (v1.4.5)")
+
+        // 1. Doctor 96-Check Expansion Test
+        let doctorReport = Diagnostics.runDoctor(skipNetwork: true)
+        assert(doctorReport.totalChecks >= 96, "Doctor executes at least 96 comprehensive checks (Got \(doctorReport.totalChecks))")
+
+        let checkIds = Set(doctorReport.checks.map { $0.id })
+        assert(checkIds.contains("hardware.lid_wake_sensor_state"), "Contains 'hardware.lid_wake_sensor_state' check")
+        assert(checkIds.contains("filesystem.core_dumps_disabled"), "Contains 'filesystem.core_dumps_disabled' check")
+        assert(checkIds.contains("daemon.network_reachability_monitor"), "Contains 'daemon.network_reachability_monitor' check")
+        assert(checkIds.contains("security.automatic_software_updates"), "Contains 'security.automatic_software_updates' check")
+
+        // 2. ISO/IEC 27001:2022 Assessment JSON Compliance Test
+        let isoString = doctorReport.generateISO27001()
+        assert(isoString.contains("iso27001_controls"), "ISO 27001 contains 'iso27001_controls'")
+        assert(isoString.contains("ISO/IEC 27001:2022") || isoString.contains("ISO\\/IEC 27001:2022"), "ISO 27001 contains framework 'ISO/IEC 27001:2022'")
+        assert(isoString.contains("2022"), "ISO 27001 contains version '2022'")
+        assert(isoString.contains("3rd Edition"), "ISO 27001 contains edition '3rd Edition'")
+        assert(isoString.contains("FaceLock macOS Biometric Endpoint") && isoString.contains("27001:2022 Annex A Assessment"), "ISO 27001 contains title")
+
+        let dict = doctorReport.toISO27001Dictionary()
+        assert(dict["iso27001_controls"] != nil, "Dictionary contains 'iso27001_controls'")
+        if let iso = dict["iso27001_controls"] as? [String: Any] {
+            assertEqual(iso["framework"] as? String, "ISO/IEC 27001:2022", "Framework is ISO/IEC 27001:2022")
+            assertEqual(iso["version"] as? String, "2022", "Version is 2022")
+            assertEqual(iso["edition"] as? String, "3rd Edition", "Edition is 3rd Edition")
+
+            if let metadata = iso["metadata"] as? [String: Any] {
+                assertEqual(metadata["facelock_version"] as? String, Config.currentVersion, "Metadata version matches currentVersion")
+                assert(metadata["overall_status"] != nil, "Metadata contains overall_status")
+                assert(metadata["compliance_score"] != nil, "Metadata contains compliance_score")
+                assertEqual(metadata["total_checks"] as? Int, doctorReport.totalChecks, "Metadata total_checks matches")
+            } else {
+                assert(false, "ISO 27001 contains metadata")
+            }
+
+            if let themes = iso["themes"] as? [[String: Any]] {
+                assertEqual(themes.count, 4, "Themes array contains 4 control themes (A.5, A.6, A.7, A.8)")
+                let themeIds = Set(themes.compactMap { $0["id"] as? String })
+                assert(themeIds.contains("A.5"), "Themes include A.5 Organizational controls")
+                assert(themeIds.contains("A.6"), "Themes include A.6 People controls")
+                assert(themeIds.contains("A.7"), "Themes include A.7 Physical controls")
+                assert(themeIds.contains("A.8"), "Themes include A.8 Technological controls")
+            } else {
+                assert(false, "ISO 27001 contains themes array")
+            }
+
+            if let controls = iso["controls"] as? [[String: Any]] {
+                assert(!controls.isEmpty, "Controls array is not empty")
+                for c in controls {
+                    assert(c["control_id"] != nil, "Control contains control_id")
+                    assert(c["title"] != nil, "Control contains title")
+                    assert(c["theme_id"] != nil, "Control contains theme_id")
+                    assert(c["theme_name"] != nil, "Control contains theme_name")
+                    assert(c["category"] != nil, "Control contains category")
+                }
+            } else {
+                assert(false, "ISO 27001 contains controls array")
+            }
+
+            if let assessments = iso["assessments"] as? [[String: Any]] {
+                assert(!assessments.isEmpty, "Assessments array is not empty")
+                assertEqual(assessments.count, doctorReport.totalChecks, "Assessments count matches evaluated checks count")
+                for a in assessments {
+                    assert(a["check_id"] != nil, "Assessment contains check_id")
+                    assert(a["category"] != nil, "Assessment contains category")
+                    assert(a["status"] != nil, "Assessment contains status")
+                    assert(a["theme_id"] != nil, "Assessment contains theme_id")
+                    assert(a["theme_name"] != nil, "Assessment contains theme_name")
+                    assert(a["control_id"] != nil, "Assessment contains control_id")
+                    assert(a["control_title"] != nil, "Assessment contains control_title")
+                    assert(a["control_category"] != nil, "Assessment contains control_category")
+                }
+            } else {
+                assert(false, "ISO 27001 contains assessments array")
+            }
+        }
+
+        // 3. Doctor ISO/IEC 27001:2022 File Export Test
+        let tempExportPath = "/tmp/facelock_test_iso_export_\(UUID().uuidString).json"
+        let exportResult = Diagnostics.exportDoctorISO27001(toPath: tempExportPath, skipNetwork: true)
+        assert(exportResult.success, "exportDoctorISO27001 succeeded")
+        assertEqual(exportResult.path, tempExportPath, "exportDoctorISO27001 exported to expected path")
+        assert(FileManager.default.fileExists(atPath: tempExportPath), "Exported doctor ISO 27001 file exists on disk")
+        if let data = try? Data(contentsOf: URL(fileURLWithPath: tempExportPath)),
+           let fileContent = String(data: data, encoding: .utf8) {
+            assert(fileContent.contains("iso27001_controls"), "File content contains 'iso27001_controls'")
+            assert(fileContent.contains("ISO/IEC 27001:2022") || fileContent.contains("ISO\\/IEC 27001:2022"), "File content contains 'ISO/IEC 27001:2022'")
+        }
+        try? FileManager.default.removeItem(atPath: tempExportPath)
+
+        // 4. Test Doctor Repair Execution
+        let repairReport = Diagnostics.runDoctorRepair(save: false)
+        assert(repairReport.initialReport.totalChecks >= 96, "Repair initial report contains at least 96 checks")
+        assert(repairReport.finalReport.totalChecks >= 96, "Repair final report contains at least 96 checks")
+
+        // 5. Test Version Synchronization
+        assertEqual(Config.currentVersion, "1.4.5", "Config currentVersion is 1.4.5")
+
+        // 6. Test CLI Argument Normalization for Doctor ISO 27001 and Export ISO 27001
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-iso27001-json"]), ["--doctor-iso27001", "--json"], "Normalizes --doctor-iso27001-json")
+        assertEqual(AppDelegate.normalizeArguments(["--iso27001-doctor-json"]), ["--doctor-iso27001", "--json"], "Normalizes --iso27001-doctor-json")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-iso-json"]), ["--doctor-iso27001", "--json"], "Normalizes --doctor-iso-json")
+        assertEqual(AppDelegate.normalizeArguments(["--iso-doctor-json"]), ["--doctor-iso27001", "--json"], "Normalizes --iso-doctor-json")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-iso27001"]), ["--doctor-iso27001"], "Normalizes --doctor-iso27001")
+        assertEqual(AppDelegate.normalizeArguments(["--iso27001-doctor"]), ["--doctor-iso27001"], "Normalizes --iso27001-doctor")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-iso"]), ["--doctor-iso27001"], "Normalizes --doctor-iso")
+        assertEqual(AppDelegate.normalizeArguments(["--iso-doctor"]), ["--doctor-iso27001"], "Normalizes --iso-doctor")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-export-iso27001-json"]), ["--doctor-export-iso27001", "--json"], "Normalizes --doctor-export-iso27001-json")
+        assertEqual(AppDelegate.normalizeArguments(["--export-doctor-iso27001-json"]), ["--doctor-export-iso27001", "--json"], "Normalizes --export-doctor-iso27001-json")
+        assertEqual(AppDelegate.normalizeArguments(["--export-iso27001-doctor-json"]), ["--doctor-export-iso27001", "--json"], "Normalizes --export-iso27001-doctor-json")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-export-iso-json"]), ["--doctor-export-iso27001", "--json"], "Normalizes --doctor-export-iso-json")
+        assertEqual(AppDelegate.normalizeArguments(["--export-doctor-iso-json"]), ["--doctor-export-iso27001", "--json"], "Normalizes --export-doctor-iso-json")
+        assertEqual(AppDelegate.normalizeArguments(["--export-iso-doctor-json"]), ["--doctor-export-iso27001", "--json"], "Normalizes --export-iso-doctor-json")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-export-iso27001"]), ["--doctor-export-iso27001"], "Normalizes --doctor-export-iso27001")
+        assertEqual(AppDelegate.normalizeArguments(["--export-doctor-iso27001"]), ["--doctor-export-iso27001"], "Normalizes --export-doctor-iso27001")
+        assertEqual(AppDelegate.normalizeArguments(["--export-iso27001-doctor"]), ["--doctor-export-iso27001"], "Normalizes --export-iso27001-doctor")
+        assertEqual(AppDelegate.normalizeArguments(["--doctor-export-iso"]), ["--doctor-export-iso27001"], "Normalizes --doctor-export-iso")
+        assertEqual(AppDelegate.normalizeArguments(["--export-doctor-iso"]), ["--doctor-export-iso27001"], "Normalizes --export-doctor-iso")
+        assertEqual(AppDelegate.normalizeArguments(["--export-iso-doctor"]), ["--doctor-export-iso27001"], "Normalizes --export-iso-doctor")
     }
 
     // MARK: - 10. Performance Benchmark
