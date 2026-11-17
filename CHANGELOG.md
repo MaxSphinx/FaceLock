@@ -4,6 +4,26 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.4] - 2026-11-17
+
+### Added
+- **Diagnostic Doctor Expansion to 92 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `hardware.power_standby_mode`: Audits macOS deep hardware power standby mode (`pmset -g | grep standby`) ensuring deep sleep standby mode is enabled (`standby 1`) to preserve hardware memory isolation and encrypted hibernation readiness when unattended.
+  - Added `filesystem.encrypted_swap_virtual_memory`: Audits virtual memory swap encryption (`sysctl vm.swapusage`) ensuring macOS encrypts swap space on disk to prevent unauthorized forensic extraction of biometric facial feature vectors and secrets from virtual memory.
+  - Added `daemon.process_scheduling_priority`: Audits FaceLock process scheduling nice priority (`getpriority(PRIO_PROCESS, 0)`) verifying that real-time biometric walk-away evaluation and lock triggers run with optimal execution priority without thread starvation.
+  - Added `security.file_sharing_disabled`: Audits macOS network file sharing daemons (`launchctl list | grep -E "AppleFileServer|smbd"`) ensuring SMB and AFP remote file sharing are disabled against lateral unauthorized file system access when the endpoint is unattended.
+- **CIS Controls v8 Compliance & Assessment Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.toCISControlsDictionary()` and `DoctorReport.generateCISControls()` generating standard CIS Controls v8 Assessment JSON (`cis_controls`, `framework: "CIS Controls v8"`, `version: "8.0"`, `published: "2021"`, `metadata`, `implementation_groups` [IG1, IG2, IG3], `controls`, `safeguards`, `assessments`) mapping evaluated FaceLock biometric checks and macOS security posture directly to CIS Controls v8 (CIS-01 through CIS-17) and Implementation Groups for enterprise GRC, SOC 2, ISO 27001, and automated compliance auditing.
+  - Implemented `Diagnostics.exportDoctorCIS(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_cis_controls.json` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-cis`, `--doctor-cis-controls`, and `--doctor-export-cis [path]` with `--json` output support and full normalization aliases (`--doctor-cis-json`, `--cis-doctor-json`, `--doctor-cis-controls-json`, `--cis-controls-doctor-json`, `--doctor-cis`, `--cis-doctor`, `--doctor-cis-controls`, `--cis-controls-doctor`, `--doctor-export-cis-json`, `--export-doctor-cis-json`, `--export-cis-doctor-json`, `--doctor-export-cis-controls-json`, `--export-doctor-cis-controls-json`, `--export-cis-controls-doctor-json`, `--doctor-export-cis`, `--export-doctor-cis`, `--export-cis-doctor`, `--doctor-export-cis-controls`, `--export-doctor-cis-controls`, `--export-cis-controls-doctor`).
+  - Added Makefile targets `make doctor-cis`, `make doctor-cis-json`, `make doctor-export-cis`, `make doctor-export-cis-json`, `make doctor-cis-controls`, `make doctor-cis-controls-json`, `make doctor-export-cis-controls`, and `make doctor-export-cis-controls-json`.
+- **Self-Healing Storage Permission Auto-Repair (`Diagnostics.swift`)**:
+  - Enhanced `doctor-repair` engine to automatically restrict `doctor_cis_controls.json` to `0600` POSIX permissions.
+- **Automated Test Suite Expansion to 5,300+ Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV144Enhancements()` validating 92+ doctor checks, all 4 new check identifiers, CIS Controls v8 JSON format compliance, implementation groups (IG1, IG2, IG3), controls, safeguards, assessments, atomic file export integrity, repair report execution, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.4.4 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.4.4` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.4.3] - 2026-11-14
 
 ### Added

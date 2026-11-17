@@ -1630,17 +1630,17 @@ public struct DoctorReport {
                 return [("T1490", "impact")]
             case "daemon.running_state", "daemon.ipc_unix_domain_socket":
                 return [("T1057", "discovery")]
-            case "daemon.launchd_keepalive_service":
+            case "daemon.launchd_keepalive_service", "daemon.process_scheduling_priority":
                 return [("T1543.001", "persistence")]
             case "daemon.memory_leak_headroom", "daemon.memory_resident_pressure", "daemon.cpu_footprint", "daemon.mach_port_allocation", "daemon.thread_pool_headroom", "daemon.dispatch_queue_latency":
                 return [("T1499", "impact")]
             case "security.filevault_encryption":
                 return [("T1005", "collection"), ("T1486", "impact")]
-            case "filesystem.secure_enclave_keychain":
+            case "filesystem.secure_enclave_keychain", "filesystem.encrypted_swap_virtual_memory":
                 return [("T1056", "credential-access")]
             case "security.gatekeeper_enforced":
                 return [("T1204.002", "execution")]
-            case "security.screensaver_lock", "security.lock_on_wake", "security.login_window_banner", "hardware.display_sleep_timer":
+            case "security.screensaver_lock", "security.lock_on_wake", "security.login_window_banner", "hardware.display_sleep_timer", "hardware.power_standby_mode":
                 return [("T1078", "initial-access")]
             case "security.firewall_stealth_mode":
                 return [("T1595", "reconnaissance"), ("T1018", "discovery")]
@@ -1650,7 +1650,7 @@ public struct DoctorReport {
                 return [("T1562.001", "defense-evasion")]
             case "security.remote_login_disabled", "security.wake_on_lan_disabled":
                 return [("T1021.004", "lateral-movement")]
-            case "security.remote_management_disabled", "security.remote_apple_events_disabled":
+            case "security.remote_management_disabled", "security.remote_apple_events_disabled", "security.file_sharing_disabled":
                 return [("T1021.005", "lateral-movement")]
             case "security.airdrop_discoverability":
                 return [("T1040", "credential-access")]
@@ -1788,13 +1788,13 @@ public struct DoctorReport {
                 return "cp-9"
             case "daemon.running_state", "daemon.ipc_unix_domain_socket", "daemon.launchd_keepalive_service":
                 return "cm-7"
-            case "daemon.memory_leak_headroom", "daemon.memory_resident_pressure", "daemon.cpu_footprint", "daemon.mach_port_allocation", "daemon.thread_pool_headroom", "daemon.file_descriptor_limit":
+            case "daemon.memory_leak_headroom", "daemon.memory_resident_pressure", "daemon.cpu_footprint", "daemon.mach_port_allocation", "daemon.thread_pool_headroom", "daemon.file_descriptor_limit", "daemon.process_scheduling_priority":
                 return "sc-5"
-            case "security.filevault_encryption":
+            case "security.filevault_encryption", "filesystem.encrypted_swap_virtual_memory":
                 return "sc-28"
             case "security.gatekeeper_enforced":
                 return "cm-5"
-            case "security.screensaver_lock", "security.lock_on_wake", "security.walk_away_lock", "security.login_window_banner", "hardware.display_sleep_timer":
+            case "security.screensaver_lock", "security.lock_on_wake", "security.walk_away_lock", "security.login_window_banner", "hardware.display_sleep_timer", "hardware.power_standby_mode":
                 return "ac-11"
             case "security.firewall_stealth_mode":
                 return "sc-7"
@@ -1802,7 +1802,7 @@ public struct DoctorReport {
                 return "sc-8"
             case "security.airdrop_discoverability":
                 return "ac-18"
-            case "security.remote_login_disabled", "security.remote_management_disabled", "security.wake_on_lan_disabled", "security.remote_apple_events_disabled":
+            case "security.remote_login_disabled", "security.remote_management_disabled", "security.wake_on_lan_disabled", "security.remote_apple_events_disabled", "security.file_sharing_disabled":
                 return "ac-17"
             case "network.telegram_alert":
                 return "si-5"
@@ -1924,9 +1924,9 @@ public struct DoctorReport {
                 return ("PR", "Protect", "PR.AA", "Identity Management, Authentication, and Access Control", "PR.AA-01", "Identities and credentials for authorized users, services, and hardware are managed.")
             case "biometrics.vector_consistency", "biometrics.vector_entropy", "security.biometric_cluster_cohesion", "filesystem.secure_enclave_keychain":
                 return ("PR", "Protect", "PR.AA", "Identity Management, Authentication, and Access Control", "PR.AA-02", "Identities are proofed and bound to credentials based on the context of interactions.")
-            case "security.screensaver_lock", "security.lock_on_wake", "security.walk_away_lock", "security.login_window_banner", "hardware.display_sleep_timer":
+            case "security.screensaver_lock", "security.lock_on_wake", "security.walk_away_lock", "security.login_window_banner", "hardware.display_sleep_timer", "hardware.power_standby_mode":
                 return ("PR", "Protect", "PR.AA", "Identity Management, Authentication, and Access Control", "PR.AA-05", "Access permissions, entitlements, and authorizations are defined, granted, and managed.")
-            case "filesystem.config_permissions", "filesystem.vectors_permissions", "filesystem.posix_umask_hygiene", "filesystem.extended_attributes_hygiene", "security.filevault_encryption":
+            case "filesystem.config_permissions", "filesystem.vectors_permissions", "filesystem.posix_umask_hygiene", "filesystem.extended_attributes_hygiene", "security.filevault_encryption", "filesystem.encrypted_swap_virtual_memory":
                 return ("PR", "Protect", "PR.DS", "Data Security", "PR.DS-01", "The confidentiality, integrity, and availability of data-at-rest are protected.")
             case "filesystem.audit_chain_tamper", "security.audit_integrity_crypto":
                 return ("PR", "Protect", "PR.DS", "Data Security", "PR.DS-02", "The confidentiality, integrity, and availability of data-in-transit and audit records are protected.")
@@ -1934,11 +1934,11 @@ public struct DoctorReport {
                 return ("RC", "Recover", "RC.RP", "Incident Recovery Plan Execution", "RC.RP-01", "Recovery processes and procedures are executed and maintained to ensure restoration of systems.")
             case "daemon.running_state", "daemon.ipc_unix_domain_socket", "daemon.launchd_keepalive_service":
                 return ("PR", "Protect", "PR.PS", "Platform Security", "PR.PS-01", "Configuration management practices are applied to establish and maintain baseline system configurations.")
-            case "daemon.memory_leak_headroom", "daemon.memory_resident_pressure", "daemon.cpu_footprint", "daemon.mach_port_allocation", "daemon.thread_pool_headroom", "daemon.file_descriptor_limit", "daemon.dispatch_queue_latency":
+            case "daemon.memory_leak_headroom", "daemon.memory_resident_pressure", "daemon.cpu_footprint", "daemon.mach_port_allocation", "daemon.thread_pool_headroom", "daemon.file_descriptor_limit", "daemon.dispatch_queue_latency", "daemon.process_scheduling_priority":
                 return ("PR", "Protect", "PR.IR", "Technology Infrastructure Resilience", "PR.IR-01", "Networks and operational system environments are protected from excessive load, latency and failure.")
             case "security.gatekeeper_enforced", "security.sip_filesystem_integrity", "hardware.secure_boot_policy":
                 return ("PR", "Protect", "PR.PS", "Platform Security", "PR.PS-02", "Software and firmware installation and execution are restricted to authorized binaries.")
-            case "security.firewall_stealth_mode", "security.remote_login_disabled", "security.remote_management_disabled", "security.wake_on_lan_disabled", "security.remote_apple_events_disabled", "security.airdrop_discoverability":
+            case "security.firewall_stealth_mode", "security.remote_login_disabled", "security.remote_management_disabled", "security.wake_on_lan_disabled", "security.remote_apple_events_disabled", "security.file_sharing_disabled", "security.airdrop_discoverability":
                 return ("PR", "Protect", "PR.PS", "Platform Security", "PR.PS-05", "Installation of, and connections from, untrusted or remote network endpoints are restricted.")
             case "security.biometric_spoofing", "security.shoulder_surfing", "security.duress_alarm_pipeline":
                 return ("DE", "Detect", "DE.AE", "Adverse Event Analysis", "DE.AE-02", "Potentially adverse events are analyzed to understand attack targets and methods.")
@@ -2034,6 +2034,159 @@ public struct DoctorReport {
         guard let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
               let str = String(data: data, encoding: .utf8) else {
             return "{\"nist_csf\":{\"framework\":\"NIST CSF 2.0\",\"version\":\"2.0\",\"assessments\":[]}}\n"
+        }
+        return str + "\n"
+    }
+
+    public func toCISControlsDictionary() -> [String: Any] {
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+
+        func mapCheckToCIS(_ checkId: String) -> (controlId: String, controlName: String, safeguardId: String, safeguardTitle: String, ig: String, assetType: String) {
+            switch checkId {
+            case "hardware.architecture", "hardware.camera_device", "hardware.ambient_light_sensor", "hardware.camera_resolution", "hardware.power_standby_mode", "hardware.power_efficiency", "hardware.thermal_state":
+                return ("CIS-01", "Inventory and Control of Enterprise Assets", "1.1", "Establish and Maintain a Detailed Enterprise Asset Inventory", "IG1", "Devices")
+            case "daemon.running_state", "daemon.ipc_unix_domain_socket", "daemon.launchd_keepalive_service", "hardware.vision_framework":
+                return ("CIS-02", "Inventory and Control of Software Assets", "2.1", "Establish and Maintain a Software Inventory", "IG1", "Applications")
+            case "security.filevault_encryption", "filesystem.encrypted_swap_virtual_memory":
+                return ("CIS-03", "Data Protection", "3.11", "Encrypt Sensitive Data at Rest", "IG2", "Data")
+            case "filesystem.config_permissions", "filesystem.vectors_permissions", "filesystem.intruders_permissions", "filesystem.audit_permissions", "filesystem.posix_umask_hygiene", "filesystem.extended_attributes_hygiene", "filesystem.config_directory":
+                return ("CIS-03", "Data Protection", "3.3", "Configure Data Access Control Lists", "IG1", "Data")
+            case "filesystem.secure_enclave_keychain", "filesystem.owner_vectors_json", "filesystem.config_valid_json":
+                return ("CIS-03", "Data Protection", "3.12", "Segment Access and Segment Cryptographic Keys", "IG2", "Data")
+            case "security.sip_system_integrity", "security.sip_filesystem_integrity", "hardware.secure_boot_policy":
+                return ("CIS-04", "Secure Configuration of Enterprise Assets and Software", "4.1", "Establish and Maintain a Secure Configuration Process", "IG1", "Devices")
+            case "security.screen_saver_lock", "security.screensaver_lock", "security.display_sleep_timeout", "hardware.display_sleep_timer":
+                return ("CIS-04", "Secure Configuration of Enterprise Assets and Software", "4.3", "Configure Automatic Session Locking on Enterprise Assets", "IG1", "Devices")
+            case "security.firewall_stealth_mode", "security.remote_login_disabled", "security.remote_management_disabled", "security.wake_on_lan_disabled", "security.remote_apple_events_disabled", "security.file_sharing_disabled":
+                return ("CIS-04", "Secure Configuration of Enterprise Assets and Software", "4.8", "Uninstall or Disable Unnecessary Services on Enterprise Assets and Software", "IG1", "Network")
+            case "security.gatekeeper_integrity", "security.gatekeeper_enforced":
+                return ("CIS-04", "Secure Configuration of Enterprise Assets and Software", "4.2", "Establish and Maintain a Secure Configuration Process for Software", "IG1", "Applications")
+            case "security.automatic_login_disabled", "security.guest_account_disabled", "security.login_window_banner":
+                return ("CIS-05", "Account Management", "5.1", "Establish and Maintain an Inventory of Accounts", "IG1", "Users")
+            case "security.sudo_touchid_pam":
+                return ("CIS-05", "Account Management", "5.4", "Restrict Administrator Privileges to Dedicated Administrator Accounts", "IG1", "Users")
+            case "biometrics.face_enrolled", "biometrics.liveness_detection", "biometrics.strict_face_match", "security.strict_face_match", "hardware.touchid", "hardware.secure_enclave", "security.touchid_fallback":
+                return ("CIS-06", "Access Control Management", "6.3", "Require Multi-Factor and Biometric Authentication for Dedicated User Sessions", "IG1", "Users")
+            case "security.walk_away_lock", "security.lock_on_wake", "security.app_shield_policy", "security.verification_timeout", "security.debounce_protection":
+                return ("CIS-06", "Access Control Management", "6.5", "Require Multi-Factor Authentication or Biometric Verification on Sensitive Operations", "IG2", "Users")
+            case "security.master_pin", "security.pin_bruteforce_defense":
+                return ("CIS-06", "Access Control Management", "6.1", "Establish an Access Granting Process", "IG1", "Users")
+            case "biometrics.vector_consistency", "biometrics.vector_entropy", "security.biometric_cluster_cohesion":
+                return ("CIS-06", "Access Control Management", "6.2", "Establish an Access Revoking and Biometric Re-evaluation Process", "IG1", "Users")
+            case "filesystem.audit_chain_tamper", "security.audit_integrity_crypto":
+                return ("CIS-08", "Audit Log Management", "8.2", "Collect and Cryptographically Protect Audit Logs", "IG1", "Data")
+            case "security.incident_retention_policy", "filesystem.disk_storage_headroom":
+                return ("CIS-08", "Audit Log Management", "8.3", "Ensure Adequate Audit Log Storage Headroom and Retention", "IG1", "Data")
+            case "security.biometric_spoofing", "security.shoulder_surfing", "security.handoff_clipboard_isolation":
+                return ("CIS-10", "Malware Defenses", "10.1", "Deploy and Maintain Anti-Malware and Anti-Spoofing Defenses", "IG1", "Applications")
+            case "filesystem.backup_apfs_snapshots", "filesystem.backup_freshness", "filesystem.vectors_backup_fresh":
+                return ("CIS-11", "Data Recovery", "11.1", "Establish and Maintain a Data Recovery Process", "IG1", "Data")
+            case "network.dns_secure_resolvers", "security.airdrop_discoverability":
+                return ("CIS-12", "Network Infrastructure Management", "12.1", "Ensure Network Infrastructure is Kept Secure and Private", "IG2", "Network")
+            case "daemon.activity_monitoring", "hardware.camera_permission", "hardware.camera_authorization", "security.camera_indicator_compliance":
+                return ("CIS-13", "Network Monitoring and Defense", "13.1", "Centralize Security Alerting and Sensor Monitoring", "IG2", "Network")
+            case "network.telegram_alert", "security.duress_pin", "security.duress_alarm_pipeline", "security.audible_deterrent":
+                return ("CIS-17", "Incident Response Management", "17.1", "Designate Personnel and Automated Pipelines to Manage Incidents", "IG1", "Users")
+            default:
+                return ("CIS-04", "Secure Configuration of Enterprise Assets and Software", "4.1", "Establish and Maintain Secure System Baselines", "IG1", "Devices")
+            }
+        }
+
+        var assessments: [[String: Any]] = []
+        var safeguardsMap: [String: [String: Any]] = [:]
+
+        for check in checks {
+            let cis = mapCheckToCIS(check.id)
+            var item: [String: Any] = [
+                "check_id": check.id,
+                "category": check.category,
+                "name": check.name,
+                "status": check.status.rawValue,
+                "badge": check.status.badge,
+                "message": check.message,
+                "control_id": cis.controlId,
+                "control_name": cis.controlName,
+                "safeguard_id": cis.safeguardId,
+                "safeguard_title": cis.safeguardTitle,
+                "implementation_group": cis.ig,
+                "asset_type": cis.assetType
+            ]
+            if let rem = check.remediation, !rem.isEmpty {
+                item["remediation"] = rem
+            }
+            assessments.append(item)
+
+            if safeguardsMap[cis.safeguardId] == nil {
+                safeguardsMap[cis.safeguardId] = [
+                    "safeguard_id": cis.safeguardId,
+                    "title": cis.safeguardTitle,
+                    "control_id": cis.controlId,
+                    "control_name": cis.controlName,
+                    "implementation_group": cis.ig,
+                    "asset_type": cis.assetType
+                ]
+            }
+        }
+
+        let sortedSafeguards = safeguardsMap.values.sorted {
+            ($0["safeguard_id"] as? String ?? "") < ($1["safeguard_id"] as? String ?? "")
+        }
+
+        let complianceScore = totalChecks > 0 ? Int((Double(passedCount) / Double(totalChecks)) * 100.0) : 0
+
+        let controlsList: [[String: Any]] = [
+            ["id": "CIS-01", "name": "Inventory and Control of Enterprise Assets", "description": "Actively manage enterprise assets to detect unmanaged and unauthorized devices."],
+            ["id": "CIS-02", "name": "Inventory and Control of Software Assets", "description": "Actively manage software to detect unauthorized software installation."],
+            ["id": "CIS-03", "name": "Data Protection", "description": "Develop processes and technical controls to identify, classify, and securely protect sensitive data."],
+            ["id": "CIS-04", "name": "Secure Configuration of Enterprise Assets and Software", "description": "Establish and maintain the secure configuration of enterprise assets and software."],
+            ["id": "CIS-05", "name": "Account Management", "description": "Use processes and tools to assign and manage authorization to credentials for user accounts."],
+            ["id": "CIS-06", "name": "Access Control Management", "description": "Use processes and tools to create, assign, manage, and revoke access credentials and privileges."],
+            ["id": "CIS-08", "name": "Audit Log Management", "description": "Collect, alert, review, and retain audit logs of events that could help detect or recover from an attack."],
+            ["id": "CIS-10", "name": "Malware Defenses", "description": "Prevent or control the installation, spread, and execution of malicious applications, code, or scripts."],
+            ["id": "CIS-11", "name": "Data Recovery", "description": "Establish and maintain data recovery practices sufficient to restore in-scope enterprise assets."],
+            ["id": "CIS-12", "name": "Network Infrastructure Management", "description": "Establish, implement, and actively manage network devices to prevent attackers from exploiting vulnerabilities."],
+            ["id": "CIS-13", "name": "Network Monitoring and Defense", "description": "Operate processes and tooling to establish and maintain comprehensive network monitoring and defense."],
+            ["id": "CIS-17", "name": "Incident Response Management", "description": "Establish a program to develop and maintain an incident response capability to prepare, detect, and respond."]
+        ]
+
+        let igList: [[String: Any]] = [
+            ["id": "IG1", "name": "Implementation Group 1 (Essential Cyber Hygiene)", "description": "Foundational set of cyber defense safeguards every organization must apply to thwart common attacks."],
+            ["id": "IG2", "name": "Implementation Group 2", "description": "Defensive safeguards for organizations handling sensitive enterprise and user biometric assets."],
+            ["id": "IG3", "name": "Implementation Group 3", "description": "Advanced defensive safeguards to mitigate targeted adversarial attacks and zero-day threats."]
+        ]
+
+        let cisDict: [String: Any] = [
+            "cis_controls": [
+                "framework": "CIS Controls v8",
+                "version": "8.0",
+                "published": "2021",
+                "title": "FaceLock macOS Biometric Endpoint CIS Controls v8 Assessment",
+                "timestamp": timestamp,
+                "metadata": [
+                    "facelock_version": version,
+                    "overall_status": overallStatus,
+                    "compliance_score": complianceScore,
+                    "total_checks": totalChecks,
+                    "passed_checks": passedCount,
+                    "warning_checks": warningCount,
+                    "failure_checks": failureCount,
+                    "info_checks": infoCount
+                ],
+                "implementation_groups": igList,
+                "controls": controlsList,
+                "safeguards": Array(sortedSafeguards),
+                "assessments": assessments
+            ]
+        ]
+
+        return cisDict
+    }
+
+    public func generateCISControls() -> String {
+        let dict = toCISControlsDictionary()
+        guard let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
+              let str = String(data: data, encoding: .utf8) else {
+            return "{\"cis_controls\":{\"framework\":\"CIS Controls v8\",\"version\":\"8.0\",\"assessments\":[]}}\n"
         }
         return str + "\n"
     }
@@ -2923,20 +3076,61 @@ public struct Diagnostics {
         print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
     }
 
-    private static func runShellCommand(_ command: String, arguments: [String] = []) -> (exitCode: Int32, stdout: String) {
+    private static var shellCommandCache: [String: (timestamp: Date, result: (exitCode: Int32, stdout: String))] = [:]
+    private static let shellCommandCacheLock = NSLock()
+
+    public static func clearShellCommandCache() {
+        shellCommandCacheLock.lock()
+        shellCommandCache.removeAll()
+        shellCommandCacheLock.unlock()
+    }
+
+    private static func runShellCommand(_ command: String, arguments: [String] = [], timeoutSeconds: TimeInterval = 3.0, cacheTTL: TimeInterval = 300.0) -> (exitCode: Int32, stdout: String) {
+        let cacheKey = "\(command) \(arguments.joined(separator: " "))"
+        if cacheTTL > 0 {
+            shellCommandCacheLock.lock()
+            if let entry = shellCommandCache[cacheKey], Date().timeIntervalSince(entry.timestamp) < cacheTTL {
+                shellCommandCacheLock.unlock()
+                return entry.result
+            }
+            shellCommandCacheLock.unlock()
+        }
+
+        guard FileManager.default.isExecutableFile(atPath: command) else {
+            return (-1, "")
+        }
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: command)
         proc.arguments = arguments
         let pipe = Pipe()
         proc.standardOutput = pipe
-        proc.standardError = Pipe()
+        proc.standardError = FileHandle.nullDevice
+        proc.standardInput = FileHandle.nullDevice
+
+        let timer = DispatchSource.makeTimerSource(queue: DispatchQueue.global(qos: .utility))
+        timer.schedule(deadline: .now() + timeoutSeconds)
+        timer.setEventHandler {
+            if proc.isRunning {
+                proc.terminate()
+            }
+        }
+
         do {
             try proc.run()
-            proc.waitUntilExit()
+            timer.resume()
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            proc.waitUntilExit()
+            timer.cancel()
             let out = String(data: data, encoding: .utf8) ?? ""
-            return (proc.terminationStatus, out.trimmingCharacters(in: .whitespacesAndNewlines))
+            let result = (proc.terminationStatus, out.trimmingCharacters(in: .whitespacesAndNewlines))
+            if cacheTTL > 0 {
+                shellCommandCacheLock.lock()
+                shellCommandCache[cacheKey] = (Date(), result)
+                shellCommandCacheLock.unlock()
+            }
+            return result
         } catch {
+            timer.cancel()
             return (-1, "")
         }
     }
@@ -3443,6 +3637,29 @@ public struct Diagnostics {
                 status: .warn,
                 message: "Display sleep timer is long (\(dispMinutes) mins); recommended <= 15 minutes for physical security.",
                 remediation: "Reduce display sleep timer to 10 minutes via 'sudo pmset -a displaysleep 10'."
+            ))
+        }
+
+        // 1.10 Deep Hardware Standby Power Mode
+        let standbyLine = dispCheck.stdout.components(separatedBy: .newlines).first(where: { $0.contains("standby") && !$0.contains("standbydelay") }) ?? ""
+        let standbyParts = standbyLine.split(separator: " ").compactMap { Int($0) }
+        let standbyValue = standbyParts.first ?? 1
+        if standbyValue != 0 {
+            checks.append(DoctorCheckItem(
+                id: "hardware.power_standby_mode",
+                category: "hardware",
+                name: "Deep Hardware Standby Power Mode",
+                status: .pass,
+                message: "Deep hardware power standby active (\(standbyValue)); memory state encrypted and isolated upon prolonged sleep."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "hardware.power_standby_mode",
+                category: "hardware",
+                name: "Deep Hardware Standby Power Mode",
+                status: .warn,
+                message: "Deep hardware power standby is disabled (standby 0); increases physical memory tampering exposure.",
+                remediation: "Enable deep hardware standby via 'sudo pmset -a standby 1'."
             ))
         }
 
@@ -4034,6 +4251,28 @@ public struct Diagnostics {
             ))
         }
 
+        // 2.16 Encrypted Virtual Memory Swap Space
+        let swapCheck = runShellCommand("/usr/sbin/sysctl", arguments: ["vm.swapusage"])
+        let isSwapEncrypted = swapCheck.stdout.contains("encrypted")
+        if isSwapEncrypted {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.encrypted_swap_virtual_memory",
+                category: "filesystem",
+                name: "Encrypted Virtual Memory Swap Space",
+                status: .pass,
+                message: "Virtual memory swap encryption active; biometric neural vectors and secrets protected at rest."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.encrypted_swap_virtual_memory",
+                category: "filesystem",
+                name: "Encrypted Virtual Memory Swap Space",
+                status: .warn,
+                message: "Virtual memory swap encryption is inactive; risk of memory dumping and biometric leakage to disk.",
+                remediation: "Enable FileVault disk encryption and restart system to activate encrypted swap."
+            ))
+        }
+
         // Category 3: Background Daemon & Automation
         // 3.1 Daemon Process
         let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: "io.github.facelock")
@@ -4418,6 +4657,27 @@ public struct Diagnostics {
                 status: .info,
                 message: "FaceLock background LaunchAgent not registered in launchd session (standalone mode active).",
                 remediation: "Install LaunchAgent for persistent 24/7 background protection via 'make install-sync'."
+            ))
+        }
+
+        // 3.15 Daemon Process Scheduling & Nice Priority
+        let nicePriority = getpriority(PRIO_PROCESS, 0)
+        if nicePriority <= 5 {
+            checks.append(DoctorCheckItem(
+                id: "daemon.process_scheduling_priority",
+                category: "daemon",
+                name: "Daemon Process Scheduling Priority",
+                status: .pass,
+                message: "Process scheduling priority optimal (nice \(nicePriority)); real-time walk-away and lock triggers unstarved."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "daemon.process_scheduling_priority",
+                category: "daemon",
+                name: "Daemon Process Scheduling Priority",
+                status: .warn,
+                message: "Process scheduling priority is deprioritized (nice \(nicePriority) > 5); may delay biometric verification triggers.",
+                remediation: "Run FaceLock with default priority or via launchd LaunchAgent."
             ))
         }
 
@@ -5354,6 +5614,28 @@ public struct Diagnostics {
             ))
         }
 
+        // 4.38 Remote Network File Sharing (SMB / AFP) Hardening
+        let fileSharingCheck = runShellCommand("/bin/launchctl", arguments: ["list"])
+        let hasActiveFileSharing = fileSharingCheck.stdout.contains("AppleFileServer") || fileSharingCheck.stdout.contains("com.apple.smbd")
+        if !hasActiveFileSharing {
+            checks.append(DoctorCheckItem(
+                id: "security.file_sharing_disabled",
+                category: "security",
+                name: "Remote Network File Sharing (SMB/AFP) Hardening",
+                status: .pass,
+                message: "Local SMB and AFP network file sharing daemons disabled; lateral share access blocked."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.file_sharing_disabled",
+                category: "security",
+                name: "Remote Network File Sharing (SMB/AFP) Hardening",
+                status: .warn,
+                message: "Remote network file sharing (SMB/AFP) is active; shares accessible over local network.",
+                remediation: "Disable File Sharing in System Settings > General > Sharing."
+            ))
+        }
+
         // Category 5: Remote Alerting & Network
         if config.telegramEnabled {
             if !config.telegramBotToken.isEmpty && !config.telegramChatId.isEmpty {
@@ -5494,7 +5776,7 @@ public struct Diagnostics {
         }
 
         // 1d. Sensitive files permissions repair (chmod 0600 on sensitive credentials and audit files)
-        let sensitiveFilesToRepair = ["config.json", "enrolled_vectors.json", "audit_log.jsonl", "doctor_report.json", "doctor_step_summary.md", "doctor_codeclimate.json", "doctor_sonarqube.json", "doctor_defectdojo.json", "doctor_cyclonedx.json", "doctor_spdx.json", "doctor_csaf.json", "doctor_openvex.json", "doctor_stix.json", "doctor_attack.json", "doctor_oscal.json", "doctor_nist_csf.json"]
+        let sensitiveFilesToRepair = ["config.json", "enrolled_vectors.json", "audit_log.jsonl", "doctor_report.json", "doctor_step_summary.md", "doctor_codeclimate.json", "doctor_sonarqube.json", "doctor_defectdojo.json", "doctor_cyclonedx.json", "doctor_spdx.json", "doctor_csaf.json", "doctor_openvex.json", "doctor_stix.json", "doctor_attack.json", "doctor_oscal.json", "doctor_nist_csf.json", "doctor_cis_controls.json"]
         for sFileName in sensitiveFilesToRepair {
             let sFilePath = facelockDir.appendingPathComponent(sFileName).path
             if FileManager.default.fileExists(atPath: sFilePath) {
@@ -6039,6 +6321,33 @@ public struct Diagnostics {
             let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
             try? FileManager.default.createDirectory(at: facelockDir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
             targetURL = facelockDir.appendingPathComponent("doctor_nist_csf.json")
+        }
+
+        guard let data = json.data(using: .utf8) else {
+            return (false, targetURL.path, json, report)
+        }
+
+        do {
+            try data.write(to: targetURL, options: .atomic)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: targetURL.path)
+            return (true, targetURL.path, json, report)
+        } catch {
+            return (false, targetURL.path, json, report)
+        }
+    }
+
+    @discardableResult
+    public static func exportDoctorCIS(toPath customPath: String? = nil, config: Config = .shared, skipNetwork: Bool = false) -> (success: Bool, path: String, content: String, report: DoctorReport) {
+        let report = runDoctor(config: config, skipNetwork: skipNetwork)
+        let json = report.generateCISControls()
+        let targetURL: URL
+        if let customPath = customPath, !customPath.isEmpty {
+            targetURL = URL(fileURLWithPath: (customPath as NSString).expandingTildeInPath)
+        } else {
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
+            try? FileManager.default.createDirectory(at: facelockDir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            targetURL = facelockDir.appendingPathComponent("doctor_cis_controls.json")
         }
 
         guard let data = json.data(using: .utf8) else {

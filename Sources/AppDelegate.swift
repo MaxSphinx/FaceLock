@@ -437,6 +437,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor-export-csf", "--json"])
             case "--doctor-export-csf", "--export-doctor-csf", "--export-csf-doctor", "--doctor-export-nist-csf", "--export-doctor-nist-csf", "--export-nist-csf-doctor":
                 args.append("--doctor-export-csf")
+            case "--doctor-cis-json", "--cis-doctor-json", "--doctor-cis-controls-json", "--cis-controls-doctor-json":
+                args.append(contentsOf: ["--doctor-cis", "--json"])
+            case "--doctor-cis", "--cis-doctor", "--doctor-cis-controls", "--cis-controls-doctor":
+                args.append("--doctor-cis")
+            case "--doctor-export-cis-json", "--export-doctor-cis-json", "--export-cis-doctor-json", "--doctor-export-cis-controls-json", "--export-doctor-cis-controls-json", "--export-cis-controls-doctor-json":
+                args.append(contentsOf: ["--doctor-export-cis", "--json"])
+            case "--doctor-export-cis", "--export-doctor-cis", "--export-cis-doctor", "--doctor-export-cis-controls", "--export-doctor-cis-controls", "--export-cis-controls-doctor":
+                args.append("--doctor-export-cis")
             default:
                 args.append(arg)
             }
@@ -605,6 +613,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --doctor-export-oscal [path] [--json] Export doctor report to NIST OSCAL 1.1.0 file
               --doctor-csf, --doctor-nist-csf [--json] Generate doctor report in NIST CSF 2.0 JSON
               --doctor-export-csf, --doctor-export-nist-csf [path] [--json] Export doctor report to NIST CSF 2.0 file
+              --doctor-cis, --doctor-cis-controls [--json] Generate doctor report in CIS Controls v8 JSON
+              --doctor-export-cis, --doctor-export-cis-controls [path] [--json] Export doctor report to CIS Controls v8 file
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -1623,6 +1633,60 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 if result.success {
                     print("✓ Doctor diagnostic health report exported to NIST CSF 2.0 file: \(result.path)")
+                    print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
+                } else {
+                    print("✗ Failed to export doctor diagnostic report to: \(result.path)")
+                }
+            }
+            exit(result.success ? 0 : 1)
+        }
+
+        if args.contains("--doctor-cis") {
+            let report = Diagnostics.runDoctor()
+            let cis = report.generateCISControls()
+            if args.contains("--json") {
+                let dict = report.toCISControlsDictionary()
+                var jsonDict: [String: Any] = dict
+                jsonDict["version"] = report.version
+                jsonDict["overallStatus"] = report.overallStatus
+                jsonDict["totalChecks"] = report.totalChecks
+                jsonDict["passed"] = report.passedCount
+                jsonDict["warnings"] = report.warningCount
+                jsonDict["failures"] = report.failureCount
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                } else {
+                    print(cis)
+                }
+            } else {
+                print(cis)
+            }
+            exit(report.failureCount > 0 ? 1 : 0)
+        }
+
+        if args.contains("--doctor-export-cis") {
+            let customPath = AppDelegate.valueForOption("--doctor-export-cis", in: args)
+            let result = Diagnostics.exportDoctorCIS(toPath: customPath)
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "success": result.success,
+                    "path": result.path,
+                    "overallStatus": result.report.overallStatus,
+                    "totalChecks": result.report.totalChecks,
+                    "passed": result.report.passedCount,
+                    "warnings": result.report.warningCount,
+                    "failures": result.report.failureCount,
+                    "cisVersion": "8.0",
+                    "exportedBytes": result.content.utf8.count
+                ]
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                }
+            } else {
+                if result.success {
+                    print("✓ Doctor diagnostic health report exported to CIS Controls v8 file: \(result.path)")
                     print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
                 } else {
                     print("✗ Failed to export doctor diagnostic report to: \(result.path)")
