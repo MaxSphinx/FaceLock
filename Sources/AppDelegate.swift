@@ -453,6 +453,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor-export-iso27001", "--json"])
             case "--doctor-export-iso27001", "--export-doctor-iso27001", "--export-iso27001-doctor", "--doctor-export-iso", "--export-doctor-iso", "--export-iso-doctor":
                 args.append("--doctor-export-iso27001")
+            case "--doctor-soc2-json", "--soc2-doctor-json", "--doctor-soc-json", "--soc-doctor-json", "--doctor-soc-2-json", "--soc-2-doctor-json":
+                args.append(contentsOf: ["--doctor-soc2", "--json"])
+            case "--doctor-soc2", "--soc2-doctor", "--doctor-soc", "--soc-doctor", "--doctor-soc-2", "--soc-2-doctor":
+                args.append("--doctor-soc2")
+            case "--doctor-export-soc2-json", "--export-doctor-soc2-json", "--export-soc2-doctor-json", "--doctor-export-soc-json", "--export-doctor-soc-json", "--export-soc-doctor-json", "--doctor-export-soc-2-json", "--export-doctor-soc-2-json", "--export-soc-2-doctor-json":
+                args.append(contentsOf: ["--doctor-export-soc2", "--json"])
+            case "--doctor-export-soc2", "--export-doctor-soc2", "--export-soc2-doctor", "--doctor-export-soc", "--export-doctor-soc", "--export-soc-doctor", "--doctor-export-soc-2", "--export-doctor-soc-2", "--export-soc-2-doctor":
+                args.append("--doctor-export-soc2")
             default:
                 args.append(arg)
             }
@@ -625,6 +633,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --doctor-export-cis, --doctor-export-cis-controls [path] [--json] Export doctor report to CIS Controls v8 file
               --doctor-iso27001, --doctor-iso [--json] Generate doctor report in ISO/IEC 27001:2022 Annex A JSON
               --doctor-export-iso27001, --doctor-export-iso [path] [--json] Export doctor report to ISO/IEC 27001:2022 file
+              --doctor-soc2, --doctor-soc [--json]       Generate doctor report in AICPA SOC 2 Type II Assessment JSON
+              --doctor-export-soc2, --doctor-export-soc [path] [--json] Export doctor report to AICPA SOC 2 Type II file
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -1751,6 +1761,60 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 if result.success {
                     print("✓ Doctor diagnostic health report exported to ISO/IEC 27001:2022 file: \(result.path)")
+                    print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
+                } else {
+                    print("✗ Failed to export doctor diagnostic report to: \(result.path)")
+                }
+            }
+            exit(result.success ? 0 : 1)
+        }
+
+        if args.contains("--doctor-soc2") {
+            let report = Diagnostics.runDoctor()
+            let soc = report.generateSOC2()
+            if args.contains("--json") {
+                let dict = report.toSOC2Dictionary()
+                var jsonDict: [String: Any] = dict
+                jsonDict["version"] = report.version
+                jsonDict["overallStatus"] = report.overallStatus
+                jsonDict["totalChecks"] = report.totalChecks
+                jsonDict["passed"] = report.passedCount
+                jsonDict["warnings"] = report.warningCount
+                jsonDict["failures"] = report.failureCount
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                } else {
+                    print(soc)
+                }
+            } else {
+                print(soc)
+            }
+            exit(report.failureCount > 0 ? 1 : 0)
+        }
+
+        if args.contains("--doctor-export-soc2") {
+            let customPath = AppDelegate.valueForOption("--doctor-export-soc2", in: args)
+            let result = Diagnostics.exportDoctorSOC2(toPath: customPath)
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "success": result.success,
+                    "path": result.path,
+                    "overallStatus": result.report.overallStatus,
+                    "totalChecks": result.report.totalChecks,
+                    "passed": result.report.passedCount,
+                    "warnings": result.report.warningCount,
+                    "failures": result.report.failureCount,
+                    "framework": "AICPA SOC 2 Type II (TSC 2017)",
+                    "exportedBytes": result.content.utf8.count
+                ]
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                }
+            } else {
+                if result.success {
+                    print("✓ Doctor diagnostic health report exported to AICPA SOC 2 Type II file: \(result.path)")
                     print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
                 } else {
                     print("✗ Failed to export doctor diagnostic report to: \(result.path)")

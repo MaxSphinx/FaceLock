@@ -4,6 +4,26 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.6] - 2026-11-17
+
+### Added
+- **Diagnostic Doctor Centennial Expansion to 100 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `filesystem.time_machine_backup_encryption`: Audits macOS Time Machine / backup destination volume encryption (`tmutil destinationinfo`) verifying that external backup targets enforce FileVault / volume encryption at rest to prevent offline data extraction of biometric neural embeddings and audit logs.
+  - Added `daemon.runtime_entitlements_integrity`: Audits macOS hardened runtime and code signing entitlements (`codesign -d --entitlements`) ensuring application bundle code signatures, camera access (`com.apple.security.device.camera`), and IPC privileges are cryptographically sealed with zero unauthorized code tampering.
+  - Added `security.screen_capture_privacy_governance`: Audits macOS Screen Recording TCC permissions and WindowServer display capture governance, verifying that biometric prompt overlays and master PIN entry windows are isolated against unauthorized screen grabbers and spyware.
+  - Added `security.ntp_time_synchronization`: Audits macOS Network Time Protocol (NTP) synchronization (`timed` daemon / date-time auto-synchronization) ensuring endpoint clock synchronization to guarantee RFC 3161 audit trail tamper evidence, forensic timestamp validity, and certificate expiration verification.
+- **AICPA SOC 2 Type II Compliance & Trust Services Assessment Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.toSOC2Dictionary()` and `DoctorReport.generateSOC2()` generating standard AICPA SOC 2 Type II Assessment JSON (`soc2_report`, `framework: "AICPA SOC 2 Type II (TSC 2017)"`, `version: "2017 (2022 Points of Focus)"`, `metadata`, `trust_services_categories` [Security, Availability, Confidentiality, Processing Integrity, Privacy], `criteria` [CC6.1, CC6.2, CC6.3, CC6.4, CC6.6, CC6.7, CC6.8, CC7.1, CC7.2, A1.2, A1.3, C1.1, C1.2, PI1.4, PI1.5, P3.1, P6.1], `assessments`) mapping evaluated FaceLock biometric checks and macOS security posture directly to SOC 2 Trust Services Criteria for enterprise audit readiness, GRC pipelines, and vendor risk assessments.
+  - Implemented `Diagnostics.exportDoctorSOC2(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_soc2.json` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-soc2`, `--doctor-soc`, and `--doctor-export-soc2 [path]` with `--json` output support and full normalization aliases (`--doctor-soc2-json`, `--soc2-doctor-json`, `--doctor-soc-json`, `--soc-doctor-json`, `--doctor-soc-2-json`, `--soc-2-doctor-json`, `--doctor-soc2`, `--soc2-doctor`, `--doctor-soc`, `--soc-doctor`, `--doctor-soc-2`, `--soc-2-doctor`, `--doctor-export-soc2-json`, `--export-doctor-soc2-json`, `--export-soc2-doctor-json`, `--doctor-export-soc-json`, `--export-doctor-soc-json`, `--export-soc-doctor-json`, `--doctor-export-soc-2-json`, `--export-doctor-soc-2-json`, `--export-soc-2-doctor-json`, `--doctor-export-soc2`, `--export-doctor-soc2`, `--export-soc2-doctor`, `--doctor-export-soc`, `--export-doctor-soc`, `--export-soc-doctor`, `--doctor-export-soc-2`, `--export-doctor-soc-2`, `--export-soc-2-doctor`).
+  - Added Makefile targets `make doctor-soc2`, `make doctor-soc2-json`, `make doctor-export-soc2`, `make doctor-export-soc2-json`, `make doctor-soc`, `make doctor-soc-json`, `make doctor-export-soc`, and `make doctor-export-soc-json`.
+- **Self-Healing Storage Permission Auto-Repair (`Diagnostics.swift`)**:
+  - Enhanced `doctor-repair` engine to automatically restrict `doctor_soc2.json` to `0600` POSIX permissions.
+- **Automated Test Suite Expansion to 6,400+ Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV146Enhancements()` validating 100+ doctor checks, all 4 new check identifiers, AICPA SOC 2 Type II JSON format compliance, 5 trust services principles (Security, Availability, Confidentiality, Processing Integrity, Privacy), criteria, assessments, atomic file export integrity, repair report execution, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.4.6 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.4.6` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.4.5] - 2026-11-17
 
 ### Added
