@@ -461,6 +461,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor-export-soc2", "--json"])
             case "--doctor-export-soc2", "--export-doctor-soc2", "--export-soc2-doctor", "--doctor-export-soc", "--export-doctor-soc", "--export-soc-doctor", "--doctor-export-soc-2", "--export-doctor-soc-2", "--export-soc-2-doctor":
                 args.append("--doctor-export-soc2")
+            case "--doctor-pcidss-json", "--pcidss-doctor-json", "--doctor-pci-dss-json", "--pci-dss-doctor-json", "--doctor-pci-json", "--pci-doctor-json":
+                args.append(contentsOf: ["--doctor-pcidss", "--json"])
+            case "--doctor-pcidss", "--pcidss-doctor", "--doctor-pci-dss", "--pci-dss-doctor", "--doctor-pci", "--pci-doctor":
+                args.append("--doctor-pcidss")
+            case "--doctor-export-pcidss-json", "--export-doctor-pcidss-json", "--export-pcidss-doctor-json", "--doctor-export-pci-dss-json", "--export-doctor-pci-dss-json", "--export-pci-dss-doctor-json", "--doctor-export-pci-json", "--export-doctor-pci-json", "--export-pci-doctor-json":
+                args.append(contentsOf: ["--doctor-export-pcidss", "--json"])
+            case "--doctor-export-pcidss", "--export-doctor-pcidss", "--export-pcidss-doctor", "--doctor-export-pci-dss", "--export-doctor-pci-dss", "--export-pci-dss-doctor", "--doctor-export-pci", "--export-doctor-pci", "--export-pci-doctor":
+                args.append("--doctor-export-pcidss")
             default:
                 args.append(arg)
             }
@@ -635,6 +643,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --doctor-export-iso27001, --doctor-export-iso [path] [--json] Export doctor report to ISO/IEC 27001:2022 file
               --doctor-soc2, --doctor-soc [--json]       Generate doctor report in AICPA SOC 2 Type II Assessment JSON
               --doctor-export-soc2, --doctor-export-soc [path] [--json] Export doctor report to AICPA SOC 2 Type II file
+              --doctor-pcidss, --doctor-pci [--json]     Generate doctor report in PCI-DSS v4.0 Assessment JSON
+              --doctor-export-pcidss, --doctor-export-pci [path] [--json] Export doctor report to PCI-DSS v4.0 file
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -1815,6 +1825,60 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 if result.success {
                     print("✓ Doctor diagnostic health report exported to AICPA SOC 2 Type II file: \(result.path)")
+                    print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
+                } else {
+                    print("✗ Failed to export doctor diagnostic report to: \(result.path)")
+                }
+            }
+            exit(result.success ? 0 : 1)
+        }
+
+        if args.contains("--doctor-pcidss") {
+            let report = Diagnostics.runDoctor()
+            let pci = report.generatePCIDSS()
+            if args.contains("--json") {
+                let dict = report.toPCIDSSDictionary()
+                var jsonDict: [String: Any] = dict
+                jsonDict["version"] = report.version
+                jsonDict["overallStatus"] = report.overallStatus
+                jsonDict["totalChecks"] = report.totalChecks
+                jsonDict["passed"] = report.passedCount
+                jsonDict["warnings"] = report.warningCount
+                jsonDict["failures"] = report.failureCount
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                } else {
+                    print(pci)
+                }
+            } else {
+                print(pci)
+            }
+            exit(report.failureCount > 0 ? 1 : 0)
+        }
+
+        if args.contains("--doctor-export-pcidss") {
+            let customPath = AppDelegate.valueForOption("--doctor-export-pcidss", in: args)
+            let result = Diagnostics.exportDoctorPCIDSS(toPath: customPath)
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "success": result.success,
+                    "path": result.path,
+                    "overallStatus": result.report.overallStatus,
+                    "totalChecks": result.report.totalChecks,
+                    "passed": result.report.passedCount,
+                    "warnings": result.report.warningCount,
+                    "failures": result.report.failureCount,
+                    "framework": "PCI-DSS v4.0",
+                    "exportedBytes": result.content.utf8.count
+                ]
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                }
+            } else {
+                if result.success {
+                    print("✓ Doctor diagnostic health report exported to PCI-DSS v4.0 file: \(result.path)")
                     print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
                 } else {
                     print("✗ Failed to export doctor diagnostic report to: \(result.path)")

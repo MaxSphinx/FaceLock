@@ -1668,6 +1668,14 @@ public struct DoctorReport {
                 return [("T1113", "collection")]
             case "security.ntp_time_synchronization":
                 return [("T1070.006", "defense-evasion")]
+            case "filesystem.trash_auto_empty_retention":
+                return [("T1070.004", "defense-evasion")]
+            case "security.login_window_password_hints":
+                return [("T1552.001", "credential-access")]
+            case "security.fast_user_switching_governance":
+                return [("T1078.003", "defense-evasion")]
+            case "security.bluetooth_sharing_disabled":
+                return [("T1021.005", "lateral-movement")]
             default:
                 return [("T1082", "discovery")]
             }
@@ -1824,6 +1832,14 @@ public struct DoctorReport {
                 return "ac-3"
             case "security.ntp_time_synchronization":
                 return "au-8"
+            case "filesystem.trash_auto_empty_retention":
+                return "si-12"
+            case "security.login_window_password_hints":
+                return "ia-5"
+            case "security.fast_user_switching_governance":
+                return "ac-10"
+            case "security.bluetooth_sharing_disabled":
+                return "ac-18"
             default:
                 return "ca-2"
             }
@@ -1972,6 +1988,14 @@ public struct DoctorReport {
                 return ("PR", "Protect", "PR.AA", "Identity Management, Authentication, and Access Control", "PR.AA-05", "Access permissions, entitlements, and authorizations are defined, granted, and managed.")
             case "security.ntp_time_synchronization":
                 return ("PR", "Protect", "PR.DS", "Data Security", "PR.DS-02", "The confidentiality, integrity, and availability of data-in-transit and audit records are protected.")
+            case "filesystem.trash_auto_empty_retention":
+                return ("PR", "Protect", "PR.DS", "Data Security", "PR.DS-03", "Assets are formally managed throughout removal, transfers, and disposition.")
+            case "security.login_window_password_hints":
+                return ("PR", "Protect", "PR.AA", "Identity Management, Authentication, and Access Control", "PR.AA-01", "Identities and credentials are authenticated and managed.")
+            case "security.fast_user_switching_governance":
+                return ("PR", "Protect", "PR.AA", "Identity Management, Authentication, and Access Control", "PR.AA-05", "Access permissions, entitlements, and authorizations are defined, granted, and managed.")
+            case "security.bluetooth_sharing_disabled":
+                return ("PR", "Protect", "PR.PS", "Platform Security", "PR.PS-05", "Installation of, and connections from, untrusted or remote network endpoints are restricted.")
             default:
                 return ("GV", "Govern", "GV.OC", "Organizational Context", "GV.OC-01", "The organizational context, mission, and endpoint security policies are established.")
             }
@@ -2121,6 +2145,14 @@ public struct DoctorReport {
                 return ("CIS-03", "Data Protection", "3.3", "Configure Data Access Control Lists", "IG1", "Data")
             case "security.ntp_time_synchronization":
                 return ("CIS-08", "Audit Log Management", "8.4", "Standardize Time Synchronization", "IG1", "Data")
+            case "filesystem.trash_auto_empty_retention":
+                return ("CIS-03", "Data Protection", "3.6", "Securely Discard Data", "IG1", "Data")
+            case "security.login_window_password_hints":
+                return ("CIS-05", "Account Management", "5.2", "Use Unique Passwords and Suppress Hints", "IG1", "Users")
+            case "security.fast_user_switching_governance":
+                return ("CIS-06", "Access Control Management", "6.7", "Centralize Access Control and Session Isolation", "IG1", "Users")
+            case "security.bluetooth_sharing_disabled":
+                return ("CIS-04", "Secure Configuration of Enterprise Assets and Software", "4.8", "Uninstall or Disable Unnecessary Services on Enterprise Assets and Software", "IG1", "Network")
             default:
                 return ("CIS-04", "Secure Configuration of Enterprise Assets and Software", "4.1", "Establish and Maintain Secure System Baselines", "IG1", "Devices")
             }
@@ -2285,6 +2317,14 @@ public struct DoctorReport {
                 return ("A.8", "Technological controls", "A.8.3", "Information access restriction", "Display Privacy & Screen Governance")
             case "security.ntp_time_synchronization":
                 return ("A.8", "Technological controls", "A.8.15", "Logging", "Clock Synchronization & Audit Integrity")
+            case "filesystem.trash_auto_empty_retention":
+                return ("A.8", "Technological controls", "A.8.10", "Information deletion", "Data Sanitization & Deletion")
+            case "security.login_window_password_hints":
+                return ("A.5", "Organizational controls", "A.5.17", "Authentication information", "Credential Leakage Prevention")
+            case "security.fast_user_switching_governance":
+                return ("A.8", "Technological controls", "A.8.3", "Information access restriction", "Desktop Session Isolation")
+            case "security.bluetooth_sharing_disabled":
+                return ("A.8", "Technological controls", "A.8.20", "Network security", "Wireless Proximity Attack Surface")
             default:
                 return ("A.8", "Technological controls", "A.8.1", "User endpoint devices", "Endpoint Baseline Security")
             }
@@ -2382,13 +2422,13 @@ public struct DoctorReport {
                 return ("Security", "Common Criteria / Security", "CC6.1", "Logical Access - Infrastructure & Perimeter", "Endpoint Asset Hardening")
             case "biometrics.face_enrolled", "biometrics.liveness_detection", "biometrics.strict_face_match", "security.strict_face_match", "hardware.touchid", "hardware.secure_enclave", "security.touchid_fallback":
                 return ("Security", "Common Criteria / Security", "CC6.2", "User Authentication - Multi-Factor & Biometrics", "Biometric Authentication Controls")
-            case "security.master_pin", "security.pin_bruteforce_defense":
+            case "security.master_pin", "security.pin_bruteforce_defense", "security.login_window_password_hints":
                 return ("Security", "Common Criteria / Security", "CC6.2", "User Authentication - Multi-Factor & Biometrics", "Fallback Credential Protection")
-            case "security.app_shield_policy", "security.verification_timeout", "security.debounce_protection":
+            case "security.app_shield_policy", "security.verification_timeout", "security.debounce_protection", "security.fast_user_switching_governance":
                 return ("Security", "Common Criteria / Security", "CC6.3", "Role-Based Access & Least Privilege", "Application-Level Access Policy")
             case "security.screen_saver_lock", "security.screensaver_lock", "security.display_sleep_timeout", "hardware.display_sleep_timer", "security.walk_away_lock", "security.lock_on_wake":
                 return ("Security", "Common Criteria / Security", "CC6.4", "Physical & Environmental Access Restriction", "Unattended Workstation Auto-Lock")
-            case "security.firewall_stealth_mode", "security.remote_login_disabled", "security.remote_management_disabled", "security.wake_on_lan_disabled", "security.remote_apple_events_disabled", "security.file_sharing_disabled", "daemon.network_reachability_monitor":
+            case "security.firewall_stealth_mode", "security.remote_login_disabled", "security.remote_management_disabled", "security.wake_on_lan_disabled", "security.remote_apple_events_disabled", "security.file_sharing_disabled", "security.bluetooth_sharing_disabled", "daemon.network_reachability_monitor":
                 return ("Security", "Common Criteria / Security", "CC6.6", "Boundary Protection & Network Attack Surface", "Network Perimeter Defense")
             case "network.dns_secure_resolvers", "security.airdrop_discoverability":
                 return ("Security", "Common Criteria / Security", "CC6.7", "Data Transmission Protection & Encryption", "Secure Network Protocol & Transport")
@@ -2404,7 +2444,7 @@ public struct DoctorReport {
                 return ("Availability", "Availability Criteria", "A1.2", "Environmental & Infrastructure Resilience", "Operational Resource Availability")
             case "security.filevault_encryption", "filesystem.encrypted_swap_virtual_memory", "filesystem.core_dumps_disabled", "filesystem.time_machine_backup_encryption":
                 return ("Confidentiality", "Confidentiality Criteria", "C1.1", "Data Classification & Encryption at Rest", "Cryptographic Data Protection")
-            case "filesystem.secure_erase_pipeline", "security.incident_retention_policy":
+            case "filesystem.secure_erase_pipeline", "security.incident_retention_policy", "filesystem.trash_auto_empty_retention":
                 return ("Confidentiality", "Confidentiality Criteria", "C1.2", "Confidential Data Retention & Secure Disposal", "Data Destruction & Shredding")
             case "biometrics.vector_consistency", "biometrics.vector_entropy", "security.biometric_cluster_cohesion", "hardware.neural_engine_coreml", "hardware.accelerate_simd_pipeline":
                 return ("Processing Integrity", "Processing Integrity Criteria", "PI1.4", "Processing Accuracy & Completeness", "Neural Inference Accuracy")
@@ -2498,6 +2538,122 @@ public struct DoctorReport {
         guard let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
               let str = String(data: data, encoding: .utf8) else {
             return "{\"soc2_report\":{\"framework\":\"AICPA SOC 2 Type II (TSC 2017)\",\"version\":\"2017\",\"assessments\":[]}}\n"
+        }
+        return str + "\n"
+    }
+
+    // MARK: - PCI-DSS v4.0 (Payment Card Industry Data Security Standard) Assessment Engine
+    public func toPCIDSSDictionary() -> [String: Any] {
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+
+        func mapCheckToPCIDSS(_ checkId: String) -> (requirementId: String, requirementTitle: String, subRequirementId: String, subRequirementTitle: String, principalGoal: String) {
+            switch checkId {
+            case "security.firewall_stealth_mode", "security.remote_login_disabled", "security.remote_management_disabled", "security.wake_on_lan_disabled", "security.remote_apple_events_disabled", "security.file_sharing_disabled", "security.bluetooth_sharing_disabled", "daemon.network_reachability_monitor":
+                return ("Req 1", "Install and Maintain Network Security Controls", "1.2", "Network Connections and Traffic Restrictions", "Build and Maintain a Secure Network and Systems")
+            case "security.sip_system_integrity", "security.sip_filesystem_integrity", "security.gatekeeper_integrity", "security.gatekeeper_enforced", "hardware.secure_boot_policy", "security.automatic_software_updates", "security.automatic_login_disabled", "security.guest_account_disabled", "security.login_window_banner", "security.fast_user_switching_governance":
+                return ("Req 2", "Apply Secure Configurations to All System Components", "2.2", "System Component Configuration Standards & Hardening", "Build and Maintain a Secure Network and Systems")
+            case "security.filevault_encryption", "filesystem.encrypted_swap_virtual_memory", "filesystem.core_dumps_disabled", "filesystem.time_machine_backup_encryption", "filesystem.trash_auto_empty_retention", "filesystem.secure_erase_pipeline", "security.incident_retention_policy", "filesystem.directory", "filesystem.config_permissions", "filesystem.vectors_permissions", "filesystem.intruders_permissions", "filesystem.audit_permissions", "filesystem.posix_umask_hygiene", "filesystem.extended_attributes_hygiene", "filesystem.config_directory", "filesystem.owner_vectors_json", "filesystem.config_valid_json", "filesystem.secure_enclave_keychain", "filesystem.backups_dir", "filesystem.backup_freshness", "filesystem.vectors_backup_fresh", "filesystem.backup_apfs_snapshots":
+                return ("Req 3", "Protect Stored Account Data", "3.4", "Cryptographic Protection of Sensitive Data at Rest", "Protect Account Data")
+            case "network.dns_secure_resolvers", "network.telegram_alert", "security.airdrop_discoverability":
+                return ("Req 4", "Protect Cardholder Data with Strong Cryptography During Transmission", "4.1", "Data Transmission Protection Over Open, Public Networks", "Protect Account Data")
+            case "security.biometric_spoofing", "security.shoulder_surfing", "security.handoff_clipboard_isolation", "security.screen_capture_privacy_governance":
+                return ("Req 5", "Protect All Systems and Networks from Malicious Software", "5.2", "Anti-Malware & Eavesdropping Defenses Active", "Maintain a Vulnerability Management Program")
+            case "daemon.runtime_entitlements_integrity", "daemon.binary_integrity", "daemon.process", "daemon.launchagent", "daemon.launchd_keepalive_service", "daemon.memory_footprint", "daemon.cpu_utilization", "daemon.power_assertions", "daemon.file_descriptor_limit", "daemon.thread_pool_headroom", "daemon.mach_port_allocation", "daemon.energy_impact_profiling", "daemon.dispatch_queue_latency", "daemon.memory_resident_pressure", "daemon.ipc_unix_domain_socket", "daemon.process_scheduling_priority", "filesystem.temporary_storage_sandbox", "filesystem.crash_reports_cleanliness", "filesystem.keychain_access_group":
+                return ("Req 6", "Develop and Maintain Secure Systems and Software", "6.3", "Security Vulnerability Mitigation & Software Integrity", "Maintain a Vulnerability Management Program")
+            case "security.app_shield_policy", "security.verification_timeout", "security.debounce_protection":
+                return ("Req 7", "Restrict Access to System Components by Business Need to Know", "7.2", "Least Privilege & Application Shield Authorization", "Implement Strong Access Control Measures")
+            case "biometrics.face_enrolled", "biometrics.liveness_detection", "biometrics.strict_face_match", "security.strict_face_match", "hardware.touchid", "hardware.secure_enclave", "security.touchid_fallback", "security.master_pin", "security.pin_bruteforce_defense", "security.login_window_password_hints", "security.sudo_touchid_pam", "security.secure_keyboard_entry", "biometrics.vector_consistency", "biometrics.vector_entropy", "security.biometric_cluster_cohesion":
+                return ("Req 8", "Identify Users and Authenticate Access to System Components", "8.3", "Multi-Factor & Biometric User Authentication", "Implement Strong Access Control Measures")
+            case "security.screen_saver_lock", "security.screensaver_lock", "security.display_sleep_timeout", "hardware.display_sleep_timer", "security.walk_away_lock", "security.lock_on_wake", "hardware.lid_wake_sensor_state", "hardware.clamshell_state", "hardware.bluetooth_proximity", "hardware.power_standby_mode":
+                return ("Req 9", "Restrict Physical Access to System Components", "9.4", "Unattended Workstation Auto-Lock & Physical Separation", "Implement Strong Access Control Measures")
+            case "filesystem.audit_chain_tamper", "security.audit_integrity_crypto", "filesystem.audit_integrity", "security.ntp_time_synchronization", "filesystem.audit_log_rotation", "security.duress_pin", "security.duress_alarm_pipeline", "security.audible_deterrent", "security.camera_indicator_compliance", "security.posture_score":
+                return ("Req 10", "Log and Monitor All Access to System Components", "10.2", "Tamper-Evident Audit Logging & Time Synchronization", "Regularly Monitor and Test Networks")
+            case "hardware.architecture", "hardware.vision_framework", "hardware.camera_device", "hardware.camera_permission", "hardware.camera_continuity", "hardware.power_efficiency", "hardware.thermal_state", "hardware.display_topology", "hardware.ambient_light_sensor", "hardware.neural_engine_coreml", "hardware.accelerate_simd_pipeline", "hardware.battery_health_capacity", "filesystem.disk_headroom", "filesystem.disk_storage_headroom", "security.presentation_suppression":
+                return ("Req 11", "Test Security of Systems and Networks Regularly", "11.5", "System Security & Sensor Anomaly Testing", "Regularly Monitor and Test Networks")
+            default:
+                return ("Req 12", "Support Information Security with Organizational Policies and Programs", "12.3", "Security Policies and Asset Management", "Maintain an Information Security Policy")
+            }
+        }
+
+        var assessments: [[String: Any]] = []
+        var requirementsMap: [String: [String: Any]] = [:]
+
+        for check in checks {
+            let pci = mapCheckToPCIDSS(check.id)
+            var item: [String: Any] = [
+                "check_id": check.id,
+                "category": check.category,
+                "name": check.name,
+                "status": check.status.rawValue,
+                "badge": check.status.badge,
+                "message": check.message,
+                "requirement_id": pci.requirementId,
+                "requirement_title": pci.requirementTitle,
+                "sub_requirement_id": pci.subRequirementId,
+                "sub_requirement_title": pci.subRequirementTitle,
+                "principal_goal": pci.principalGoal
+            ]
+            if let rem = check.remediation, !rem.isEmpty {
+                item["remediation"] = rem
+            }
+            assessments.append(item)
+
+            if requirementsMap[pci.requirementId] == nil {
+                requirementsMap[pci.requirementId] = [
+                    "requirement_id": pci.requirementId,
+                    "title": pci.requirementTitle,
+                    "principal_goal": pci.principalGoal
+                ]
+            }
+        }
+
+        let sortedRequirements = requirementsMap.values.sorted {
+            let id0 = Int(($0["requirement_id"] as? String ?? "").replacingOccurrences(of: "Req ", with: "")) ?? 0
+            let id1 = Int(($1["requirement_id"] as? String ?? "").replacingOccurrences(of: "Req ", with: "")) ?? 0
+            return id0 < id1
+        }
+
+        let complianceScore = totalChecks > 0 ? Int((Double(passedCount) / Double(totalChecks)) * 100.0) : 0
+
+        let principalGoalsList: [[String: Any]] = [
+            ["id": "Goal 1", "name": "Build and Maintain a Secure Network and Systems", "requirements": ["Req 1", "Req 2"], "description": "Network security controls, boundary defenses, and system component configuration standards."],
+            ["id": "Goal 2", "name": "Protect Account Data", "requirements": ["Req 3", "Req 4"], "description": "Cryptographic protection of sensitive data at rest and in transit across networks."],
+            ["id": "Goal 3", "name": "Maintain a Vulnerability Management Program", "requirements": ["Req 5", "Req 6"], "description": "Anti-malware protection and secure software engineering and integrity governance."],
+            ["id": "Goal 4", "name": "Implement Strong Access Control Measures", "requirements": ["Req 7", "Req 8", "Req 9"], "description": "Least privilege, biometric/multi-factor authentication, and physical unattended screen security."],
+            ["id": "Goal 5", "name": "Regularly Monitor and Test Networks", "requirements": ["Req 10", "Req 11"], "description": "Tamper-evident audit logging, NTP clock sync, and continuous system testing."],
+            ["id": "Goal 6", "name": "Maintain an Information Security Policy", "requirements": ["Req 12"], "description": "Organizational security governance, policy banners, and administrative operational standards."]
+        ]
+
+        let pciDict: [String: Any] = [
+            "pcidss_report": [
+                "framework": "PCI-DSS v4.0",
+                "version": "4.0",
+                "title": "FaceLock macOS Biometric Endpoint PCI-DSS v4.0 Security Assessment",
+                "timestamp": timestamp,
+                "metadata": [
+                    "facelock_version": version,
+                    "overall_status": overallStatus,
+                    "compliance_score": complianceScore,
+                    "total_checks": totalChecks,
+                    "passed_checks": passedCount,
+                    "warning_checks": warningCount,
+                    "failure_checks": failureCount,
+                    "info_checks": infoCount
+                ],
+                "principal_goals": principalGoalsList,
+                "requirements": Array(sortedRequirements),
+                "assessments": assessments
+            ]
+        ]
+
+        return pciDict
+    }
+
+    public func generatePCIDSS() -> String {
+        let dict = toPCIDSSDictionary()
+        guard let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
+              let str = String(data: data, encoding: .utf8) else {
+            return "{\"pcidss_report\":{\"framework\":\"PCI-DSS v4.0\",\"version\":\"4.0\",\"assessments\":[]}}\n"
         }
         return str + "\n"
     }
@@ -4673,6 +4829,28 @@ public struct Diagnostics {
             ))
         }
 
+        // 2.19 Automatic 30-Day Trash Emptying & Incident Pruning Governance
+        let trashCheck = runShellCommand("/usr/bin/defaults", arguments: ["read", "com.apple.finder", "FXRemoveOldTrashItems"])
+        let isTrashAutoEmpty = (trashCheck.exitCode == 0 && trashCheck.stdout.trimmingCharacters(in: .whitespacesAndNewlines) == "1")
+        if isTrashAutoEmpty {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.trash_auto_empty_retention",
+                category: "filesystem",
+                name: "Trash Auto-Empty Retention & Incident Pruning Governance",
+                status: .pass,
+                message: "Finder automatic 30-day trash purging active; deleted intruder captures and temporary files automatically expunged."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.trash_auto_empty_retention",
+                category: "filesystem",
+                name: "Trash Auto-Empty Retention & Incident Pruning Governance",
+                status: .info,
+                message: "Automatic 30-day trash removal is not enabled in Finder; deleted intruder incident captures may persist in Trash.",
+                remediation: "Enable auto-empty in Finder Settings > Advanced > 'Remove items from the Trash after 30 days' or via 'defaults write com.apple.finder FXRemoveOldTrashItems -bool true'."
+            ))
+        }
+
         // Category 3: Background Daemon & Automation
         // 3.1 Daemon Process
         let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: "io.github.facelock")
@@ -6138,6 +6316,72 @@ public struct Diagnostics {
             ))
         }
 
+        // 4.42 Login Window Password Hint Suppression
+        let hintCheck = runShellCommand("/usr/bin/defaults", arguments: ["read", "/Library/Preferences/com.apple.loginwindow", "RetriesUntilHint"])
+        let hintVal = Int(hintCheck.stdout.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+        if hintCheck.exitCode != 0 || hintVal == 0 {
+            checks.append(DoctorCheckItem(
+                id: "security.login_window_password_hints",
+                category: "security",
+                name: "Login Window Password Hint Suppression",
+                status: .pass,
+                message: "Login window password hints suppressed (RetriesUntilHint = 0); master credentials cannot be hinted to physical bystanders."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.login_window_password_hints",
+                category: "security",
+                name: "Login Window Password Hint Suppression",
+                status: .warn,
+                message: "Login window displays password hints after \(hintVal) failed attempts.",
+                remediation: "Disable password hints via 'sudo defaults write /Library/Preferences/com.apple.loginwindow RetriesUntilHint -int 0'."
+            ))
+        }
+
+        // 4.43 Fast User Switching Multi-Session Governance
+        let fusCheck = runShellCommand("/usr/bin/defaults", arguments: ["read", "/Library/Preferences/.GlobalPreferences", "MultipleSessionEnabled"])
+        let isFusEnabled = (fusCheck.exitCode == 0 && fusCheck.stdout.trimmingCharacters(in: .whitespacesAndNewlines) == "1")
+        if !isFusEnabled {
+            checks.append(DoctorCheckItem(
+                id: "security.fast_user_switching_governance",
+                category: "security",
+                name: "Fast User Switching Multi-Session Governance",
+                status: .pass,
+                message: "Fast User Switching multi-session disabled or governed; prevents parallel unshielded desktop sessions."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.fast_user_switching_governance",
+                category: "security",
+                name: "Fast User Switching Multi-Session Governance",
+                status: .info,
+                message: "Fast User Switching is enabled; secondary local accounts can log in concurrently without terminating active session.",
+                remediation: "Optionally disable multi-session switching in System Settings > Control Center > Fast User Switching if strict single-tenant console policy is required."
+            ))
+        }
+
+        // 4.44 Bluetooth OBEX File Sharing Hardening
+        let btShareCheck = runShellCommand("/usr/bin/defaults", arguments: ["read", "com.apple.BluetoothPref", "PrefKeyBluetoothSharingState"])
+        let isBtShareActive = (btShareCheck.exitCode == 0 && btShareCheck.stdout.trimmingCharacters(in: .whitespacesAndNewlines) == "1")
+        if !isBtShareActive {
+            checks.append(DoctorCheckItem(
+                id: "security.bluetooth_sharing_disabled",
+                category: "security",
+                name: "Bluetooth OBEX File Sharing Hardening",
+                status: .pass,
+                message: "Bluetooth OBEX file sharing service disabled; unauthorized proximity file ingestion or beacon exploit blocked."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.bluetooth_sharing_disabled",
+                category: "security",
+                name: "Bluetooth OBEX File Sharing Hardening",
+                status: .warn,
+                message: "Bluetooth file sharing service is active; proximate devices may attempt wireless file push.",
+                remediation: "Disable Bluetooth Sharing in System Settings > General > Sharing."
+            ))
+        }
+
         // Category 5: Remote Alerting & Network
         if config.telegramEnabled {
             if !config.telegramBotToken.isEmpty && !config.telegramChatId.isEmpty {
@@ -6278,7 +6522,7 @@ public struct Diagnostics {
         }
 
         // 1d. Sensitive files permissions repair (chmod 0600 on sensitive credentials and audit files)
-        let sensitiveFilesToRepair = ["config.json", "enrolled_vectors.json", "audit_log.jsonl", "doctor_report.json", "doctor_step_summary.md", "doctor_codeclimate.json", "doctor_sonarqube.json", "doctor_defectdojo.json", "doctor_cyclonedx.json", "doctor_spdx.json", "doctor_csaf.json", "doctor_openvex.json", "doctor_stix.json", "doctor_attack.json", "doctor_oscal.json", "doctor_nist_csf.json", "doctor_cis_controls.json", "doctor_iso27001.json", "doctor_soc2.json"]
+        let sensitiveFilesToRepair = ["config.json", "enrolled_vectors.json", "audit_log.jsonl", "doctor_report.json", "doctor_step_summary.md", "doctor_codeclimate.json", "doctor_sonarqube.json", "doctor_defectdojo.json", "doctor_cyclonedx.json", "doctor_spdx.json", "doctor_csaf.json", "doctor_openvex.json", "doctor_stix.json", "doctor_attack.json", "doctor_oscal.json", "doctor_nist_csf.json", "doctor_cis_controls.json", "doctor_iso27001.json", "doctor_soc2.json", "doctor_pcidss.json"]
         for sFileName in sensitiveFilesToRepair {
             let sFilePath = facelockDir.appendingPathComponent(sFileName).path
             if FileManager.default.fileExists(atPath: sFilePath) {
@@ -6904,6 +7148,33 @@ public struct Diagnostics {
             let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
             try? FileManager.default.createDirectory(at: facelockDir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
             targetURL = facelockDir.appendingPathComponent("doctor_soc2.json")
+        }
+
+        guard let data = json.data(using: .utf8) else {
+            return (false, targetURL.path, json, report)
+        }
+
+        do {
+            try data.write(to: targetURL, options: .atomic)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: targetURL.path)
+            return (true, targetURL.path, json, report)
+        } catch {
+            return (false, targetURL.path, json, report)
+        }
+    }
+
+    @discardableResult
+    public static func exportDoctorPCIDSS(toPath customPath: String? = nil, config: Config = .shared, skipNetwork: Bool = false) -> (success: Bool, path: String, content: String, report: DoctorReport) {
+        let report = runDoctor(config: config, skipNetwork: skipNetwork)
+        let json = report.generatePCIDSS()
+        let targetURL: URL
+        if let customPath = customPath, !customPath.isEmpty {
+            targetURL = URL(fileURLWithPath: (customPath as NSString).expandingTildeInPath)
+        } else {
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
+            try? FileManager.default.createDirectory(at: facelockDir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            targetURL = facelockDir.appendingPathComponent("doctor_pcidss.json")
         }
 
         guard let data = json.data(using: .utf8) else {

@@ -4,6 +4,26 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.7] - 2026-11-18
+
+### Added
+- **Diagnostic Doctor Expansion to 104 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `filesystem.trash_auto_empty_retention`: Audits macOS automatic 30-day trash purging and retention governance (`defaults read com.apple.finder FXRemoveOldTrashItems`), ensuring stale intruder incident photos, rotated audit logs, and temporary biometric captures are expunged from local storage to prevent data accumulation.
+  - Added `security.login_window_password_hints`: Audits macOS login window credential hint suppression (`defaults read /Library/Preferences/com.apple.loginwindow RetriesUntilHint == 0`), preventing physical shoulder-surfers and bystanders from viewing master credentials or hints upon lock screen challenges.
+  - Added `security.fast_user_switching_governance`: Audits macOS Fast User Switching multi-session governance (`defaults read /Library/Preferences/.GlobalPreferences MultipleSessionEnabled`), verifying that unshielded secondary console sessions cannot bypass foreground biometric app lockouts.
+  - Added `security.bluetooth_sharing_disabled`: Audits macOS Bluetooth OBEX file exchange service (`defaults read com.apple.BluetoothPref PrefKeyBluetoothSharingState`), ensuring unauthorized proximate wireless file pushes or beacon ingestion channels are disabled.
+- **PCI-DSS v4.0 (Payment Card Industry Data Security Standard) Assessment Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.toPCIDSSDictionary()` and `DoctorReport.generatePCIDSS()` generating comprehensive PCI-DSS v4.0 assessment reports (`pcidss_report`, `framework: "PCI-DSS v4.0"`, `version: "4.0"`, `metadata`, `principal_goals` [Goals 1-6], `requirements` [Req 1-12], `assessments`) mapping evaluated FaceLock biometric checks and macOS hardening parameters to the 12 PCI-DSS technical requirements for payment environment compliance, vendor assessments, and fintech endpoint audits.
+  - Implemented `Diagnostics.exportDoctorPCIDSS(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_pcidss.json` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-pcidss`, `--doctor-pci`, and `--doctor-export-pcidss [path]` with `--json` output support and full normalization aliases (`--doctor-pcidss-json`, `--pcidss-doctor-json`, `--doctor-pci-dss-json`, `--pci-dss-doctor-json`, `--doctor-pci-json`, `--pci-doctor-json`, `--doctor-pcidss`, `--pcidss-doctor`, `--doctor-pci-dss`, `--pci-dss-doctor`, `--doctor-pci`, `--pci-doctor`, `--doctor-export-pcidss-json`, `--export-doctor-pcidss-json`, `--export-pcidss-doctor-json`, `--doctor-export-pci-dss-json`, `--export-doctor-pci-dss-json`, `--export-pci-dss-doctor-json`, `--doctor-export-pci-json`, `--export-doctor-pci-json`, `--export-pci-doctor-json`, `--doctor-export-pcidss`, `--export-doctor-pcidss`, `--export-pcidss-doctor`, `--doctor-export-pci-dss`, `--export-doctor-pci-dss`, `--export-pci-dss-doctor`, `--doctor-export-pci`, `--export-doctor-pci`, `--export-pci-doctor`).
+  - Added Makefile targets `make doctor-pcidss`, `make doctor-pcidss-json`, `make doctor-export-pcidss`, `make doctor-export-pcidss-json`, `make doctor-pci`, `make doctor-pci-json`, `make doctor-export-pci`, and `make doctor-export-pci-json`.
+- **Self-Healing Storage Permission Auto-Repair (`Diagnostics.swift`)**:
+  - Enhanced `doctor-repair` engine to automatically restrict `doctor_pcidss.json` to `0600` POSIX permissions.
+- **Automated Test Suite Expansion to 7,400+ Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV147Enhancements()` validating 104+ doctor checks, all 4 new check identifiers, PCI-DSS v4.0 JSON compliance, 6 principal goals, requirements, assessments, atomic file export integrity, repair report execution, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.4.7 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.4.7` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.4.6] - 2026-11-17
 
 ### Added
