@@ -4,6 +4,26 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.11] - 2026-11-19
+
+### Added
+- **Diagnostic Doctor Expansion to 120 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `security.internet_sharing_disabled`: Audits macOS Internet Sharing NAT and rogue Wi-Fi AP configuration (`defaults read /Library/Preferences/SystemConfiguration/com.apple.nat NAT`), verifying that internet sharing is disabled to prevent rogue access point bridging and network perimeter bypass.
+  - Added `security.printer_sharing_disabled`: Audits CUPS printer and scanner sharing daemon status via `/usr/sbin/cupsctl` (`_share_printers=0` and `_remote_any=0`), verifying that remote printer sharing and unauthenticated print job injection are disabled.
+  - Added `security.nfs_export_service_disabled`: Audits `/etc/exports` and NFS file system export configuration, verifying that unauthenticated remote NFS shares and cleartext RPC network mounting are suppressed.
+  - Added `network.system_proxy_integrity`: Audits system network proxy and Proxy Auto-Config (PAC) settings via `/usr/sbin/scutil --proxy`, verifying that unauthenticated HTTP/HTTPS/SOCKS and auto-discovery proxies are disabled to prevent eavesdropping and interception of biometric telemetry and remote alerts.
+- **European Union NIS2 Directive (EU 2022/2555) Assessment Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.toNIS2Dictionary()` and `DoctorReport.generateNIS2()` producing standard NIS2 Directive Article 21 Cybersecurity Risk-Management Assessment JSON (`nis2_report`, `framework: "European Union NIS2 Directive (Directive (EU) 2022/2555)"`, `version: "NIS2 Directive (EU) 2022/2555"`, `metadata`, `articles` [Article 21(2)(a) through (j)], `measures`, `assessments`) mapping evaluated FaceLock biometric controls and macOS hardening parameters to EU cybersecurity statutory requirements.
+  - Implemented `Diagnostics.exportDoctorNIS2(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_nis2.json` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-nis2` and `--doctor-export-nis2 [path]` with `--json` output support and full normalization aliases (`--doctor-nis2-json`, `--nis2-doctor-json`, `--doctor-nis-2-json`, `--nis-2-doctor-json`, `--doctor-nis2`, `--nis2-doctor`, `--doctor-nis-2`, `--doctor-export-nis2-json`, `--export-doctor-nis2-json`, `--export-nis2-doctor-json`, `--doctor-export-nis-2-json`, `--doctor-export-nis2`, `--export-doctor-nis2`, `--export-nis2-doctor`, `--doctor-export-nis-2`).
+  - Added Makefile targets `make doctor-nis2`, `make doctor-nis2-json`, `make doctor-export-nis2`, and `make doctor-export-nis2-json`.
+- **Self-Healing Storage Permission Auto-Repair (`Diagnostics.swift`)**:
+  - Enhanced `doctor-repair` engine to automatically restrict `doctor_nis2.json` to `0600` POSIX permissions.
+- **Automated Test Suite Expansion to 13,000+ Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV1411Enhancements()` validating 120+ doctor checks, all 4 new check identifiers, EU NIS2 Directive JSON format compliance, 10 core Article 21 statutory measures, measures, assessments, atomic file export integrity, repair report execution, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.4.11 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.4.11` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.4.10] - 2026-11-19
 
 ### Added

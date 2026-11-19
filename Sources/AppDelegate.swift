@@ -493,6 +493,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor-export-nist80053", "--json"])
             case "--doctor-export-nist80053", "--export-doctor-nist80053", "--export-nist80053-doctor", "--doctor-export-sp80053", "--export-doctor-sp80053", "--export-sp80053-doctor", "--doctor-export-nist-sp-800-53", "--export-doctor-nist-sp-800-53", "--export-nist-sp-800-53-doctor":
                 args.append("--doctor-export-nist80053")
+            case "--doctor-nis2-json", "--nis2-doctor-json", "--doctor-nis-2-json", "--nis-2-doctor-json":
+                args.append(contentsOf: ["--doctor-nis2", "--json"])
+            case "--doctor-nis2", "--nis2-doctor", "--doctor-nis-2", "--nis-2-doctor":
+                args.append("--doctor-nis2")
+            case "--doctor-export-nis2-json", "--export-doctor-nis2-json", "--export-nis2-doctor-json", "--doctor-export-nis-2-json", "--export-doctor-nis-2-json", "--export-nis-2-doctor-json":
+                args.append(contentsOf: ["--doctor-export-nis2", "--json"])
+            case "--doctor-export-nis2", "--export-doctor-nis2", "--export-nis2-doctor", "--doctor-export-nis-2", "--export-doctor-nis-2", "--export-nis-2-doctor":
+                args.append("--doctor-export-nis2")
             default:
                 args.append(arg)
             }
@@ -675,6 +683,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --doctor-export-gdpr [path] [--json]       Export doctor report to GDPR Data Protection file
               --doctor-nist80053, --doctor-sp80053 [--json] Generate doctor report in NIST SP 800-53 Rev. 5 Assessment JSON
               --doctor-export-nist80053, --doctor-export-sp80053 [path] [--json] Export doctor report to NIST SP 800-53 Rev. 5 file
+              --doctor-nis2 [--json]                     Generate doctor report in EU NIS2 Directive Assessment JSON
+              --doctor-export-nis2 [path] [--json]       Export doctor report to EU NIS2 Directive file
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -2071,6 +2081,62 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 if result.success {
                     print("✓ Doctor diagnostic health report exported to NIST SP 800-53 Rev. 5 file: \(result.path)")
+                    print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
+                } else {
+                    print("✗ Failed to export doctor diagnostic report to: \(result.path)")
+                }
+            }
+            exit(result.success ? 0 : 1)
+        }
+
+        if args.contains("--doctor-nis2") {
+            let report = Diagnostics.runDoctor()
+            let nis2 = report.generateNIS2()
+            if args.contains("--json") {
+                let dict = report.toNIS2Dictionary()
+                var jsonDict: [String: Any] = dict
+                jsonDict["version"] = report.version
+                jsonDict["overallStatus"] = report.overallStatus
+                jsonDict["totalChecks"] = report.totalChecks
+                jsonDict["passed"] = report.passedCount
+                jsonDict["warnings"] = report.warningCount
+                jsonDict["failures"] = report.failureCount
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                } else {
+                    print(nis2)
+                }
+            } else {
+                print(nis2)
+            }
+            exit(report.failureCount > 0 ? 1 : 0)
+        }
+
+        if args.contains("--doctor-export-nis2") {
+            let customPath = AppDelegate.valueForOption("--doctor-export-nis2", in: args)
+            let result = Diagnostics.exportDoctorNIS2(toPath: customPath)
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "success": result.success,
+                    "path": result.path,
+                    "overallStatus": result.report.overallStatus,
+                    "totalChecks": result.report.totalChecks,
+                    "passed": result.report.passedCount,
+                    "warnings": result.report.warningCount,
+                    "failures": result.report.failureCount,
+                    "framework": "European Union NIS2 Directive (Directive (EU) 2022/2555)",
+                    "exportedBytes": result.content.utf8.count
+                ]
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                } else {
+                    print("{\"success\": \(result.success), \"path\": \"\(result.path)\"}")
+                }
+            } else {
+                if result.success {
+                    print("✓ Doctor diagnostic health report exported to NIS2 Directive (EU 2022/2555) file: \(result.path)")
                     print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
                 } else {
                     print("✗ Failed to export doctor diagnostic report to: \(result.path)")
