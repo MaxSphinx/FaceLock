@@ -477,6 +477,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor-export-hipaa", "--json"])
             case "--doctor-export-hipaa", "--export-doctor-hipaa", "--export-hipaa-doctor":
                 args.append("--doctor-export-hipaa")
+            case "--doctor-gdpr-json", "--gdpr-doctor-json":
+                args.append(contentsOf: ["--doctor-gdpr", "--json"])
+            case "--doctor-gdpr", "--gdpr-doctor":
+                args.append("--doctor-gdpr")
+            case "--doctor-export-gdpr-json", "--export-doctor-gdpr-json", "--export-gdpr-doctor-json":
+                args.append(contentsOf: ["--doctor-export-gdpr", "--json"])
+            case "--doctor-export-gdpr", "--export-doctor-gdpr", "--export-gdpr-doctor":
+                args.append("--doctor-export-gdpr")
             default:
                 args.append(arg)
             }
@@ -655,6 +663,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --doctor-export-pcidss, --doctor-export-pci [path] [--json] Export doctor report to PCI-DSS v4.0 file
               --doctor-hipaa [--json]                    Generate doctor report in HIPAA Security Rule Assessment JSON
               --doctor-export-hipaa [path] [--json]      Export doctor report to HIPAA Security Rule file
+              --doctor-gdpr [--json]                     Generate doctor report in GDPR Data Protection Assessment JSON
+              --doctor-export-gdpr [path] [--json]       Export doctor report to GDPR Data Protection file
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -1943,6 +1953,60 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 if result.success {
                     print("✓ Doctor diagnostic health report exported to HIPAA Security Rule file: \(result.path)")
+                    print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
+                } else {
+                    print("✗ Failed to export doctor diagnostic report to: \(result.path)")
+                }
+            }
+            exit(result.success ? 0 : 1)
+        }
+
+        if args.contains("--doctor-gdpr") {
+            let report = Diagnostics.runDoctor()
+            let gdpr = report.generateGDPR()
+            if args.contains("--json") {
+                let dict = report.toGDPRDictionary()
+                var jsonDict: [String: Any] = dict
+                jsonDict["version"] = report.version
+                jsonDict["overallStatus"] = report.overallStatus
+                jsonDict["totalChecks"] = report.totalChecks
+                jsonDict["passed"] = report.passedCount
+                jsonDict["warnings"] = report.warningCount
+                jsonDict["failures"] = report.failureCount
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                } else {
+                    print(gdpr)
+                }
+            } else {
+                print(gdpr)
+            }
+            exit(report.failureCount > 0 ? 1 : 0)
+        }
+
+        if args.contains("--doctor-export-gdpr") {
+            let customPath = AppDelegate.valueForOption("--doctor-export-gdpr", in: args)
+            let result = Diagnostics.exportDoctorGDPR(toPath: customPath)
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "success": result.success,
+                    "path": result.path,
+                    "overallStatus": result.report.overallStatus,
+                    "totalChecks": result.report.totalChecks,
+                    "passed": result.report.passedCount,
+                    "warnings": result.report.warningCount,
+                    "failures": result.report.failureCount,
+                    "framework": "General Data Protection Regulation (EU 2016/679)",
+                    "exportedBytes": result.content.utf8.count
+                ]
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                }
+            } else {
+                if result.success {
+                    print("✓ Doctor diagnostic health report exported to GDPR Data Protection file: \(result.path)")
                     print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
                 } else {
                     print("✗ Failed to export doctor diagnostic report to: \(result.path)")

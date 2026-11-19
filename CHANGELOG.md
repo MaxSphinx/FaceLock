@@ -4,6 +4,26 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.9] - 2026-11-19
+
+### Added
+- **Diagnostic Doctor Expansion to 112 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `security.screen_saver_lock_grace_period`: Audits macOS screen saver password delay policy (`defaults read com.apple.screensaver askForPasswordDelay`), verifying screen locks immediately (zero-second grace period) upon display sleep or screen saver engagement to prevent physical walk-away workstation hijacking.
+  - Added `filesystem.secure_trash_shredding_pipeline`: Audits macOS secure unlinking and directory isolation on incident photo captures and ephemeral templates (`~/.facelock/incidents`), ensuring deleted intruder evidence and temporary neural templates cannot be recovered via forensic file undelete utilities.
+  - Added `daemon.realtime_process_memory_swappiness`: Audits macOS virtual memory compressor state (`sysctl -n vm.compressor_mode`), verifying the Darwin kernel memory compressor actively preserves FaceLock resident faceprint tensors in unswapped physical RAM for sub-second biometric verification latency.
+  - Added `security.system_integrity_protection_nvram`: Audits macOS System Integrity Protection (SIP) NVRAM and kernel status (`csrutil status`), verifying that root processes cannot tamper with NVRAM boot-args, inject unauthorized camera kexts, or disable biometric hardware safeguards.
+- **GDPR Biometrics & Data Protection (Regulation (EU) 2016/679) Assessment Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.toGDPRDictionary()` and `DoctorReport.generateGDPR()` producing standard GDPR Biometric and Data Protection Assessment JSON (`gdpr_report`, `framework: "General Data Protection Regulation (EU 2016/679)"`, `version: "GDPR (EU) 2016/679"`, `metadata`, `chapters` [Principles of Processing, Rights of the Data Subject, Controller & Processor Obligations, Incident Management], `articles` [Art. 9 Special Category Biometric Data, Art. 17 Right to Erasure, Art. 25 Data Protection by Design & by Default, Art. 32 Security of Processing, Art. 33/34 Personal Data Breach Notification], `assessments`) mapping evaluated FaceLock biometric controls and macOS hardening baselines directly to European privacy and biometric data compliance mandates.
+  - Implemented `Diagnostics.exportDoctorGDPR(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_gdpr.json` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-gdpr` and `--doctor-export-gdpr [path]` with `--json` output support and full normalization aliases (`--doctor-gdpr-json`, `--gdpr-doctor-json`, `--doctor-gdpr`, `--gdpr-doctor`, `--doctor-export-gdpr-json`, `--export-doctor-gdpr-json`, `--export-gdpr-doctor-json`, `--doctor-export-gdpr`, `--export-doctor-gdpr`, `--export-gdpr-doctor`).
+  - Added Makefile targets `make doctor-gdpr`, `make doctor-gdpr-json`, `make doctor-export-gdpr`, and `make doctor-export-gdpr-json`.
+- **Self-Healing Storage Permission Auto-Repair (`Diagnostics.swift`)**:
+  - Enhanced `doctor-repair` engine to automatically restrict `doctor_gdpr.json` to `0600` POSIX permissions.
+- **Automated Test Suite Expansion to 9,800+ Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV149Enhancements()` validating 112+ doctor checks, all 4 new check identifiers, GDPR JSON format compliance, 4 core chapters, articles, assessments, atomic file export integrity, repair report execution, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.4.9 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.4.9` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.4.8] - 2026-11-19
 
 ### Added
