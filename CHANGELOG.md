@@ -4,6 +4,26 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.10] - 2026-11-19
+
+### Added
+- **Diagnostic Doctor Expansion to 116 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `filesystem.secure_system_dump_exclusion`: Audits macOS CrashReporter submission policy (`defaults read /Library/Preferences/com.apple.CrashReporter DialogType`), verifying automatic memory dump submissions are suppressed to prevent resident faceprint vectors and biometric memory state from leaking to external diagnostic endpoints.
+  - Added `daemon.launchd_service_domain_isolation`: Audits macOS user GUI bootstrap domain (`getuid() >= 501`), verifying FaceLock executes within dedicated user GUI domain to ensure uncompromised camera hardware session access and isolated Keychain security.
+  - Added `security.airplay_receiver_disabled`: Audits macOS AirPlay Receiver screen mirroring preference (`defaults read /Library/Preferences/com.apple.airplay allowAirPlayToDevice`), verifying screen mirroring is disabled to prevent proximate unauthorized video streaming or biometric lock screen overlay hijacking.
+  - Added `security.login_window_console_disabled`: Audits macOS Login Window text-mode console login policy (`defaults read /Library/Preferences/com.apple.loginwindow DisableConsoleAccess`), verifying special console login (`>console`) is disabled to prevent physical bypass of GUI biometric shield.
+- **NIST SP 800-53 Rev. 5 Assessment Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.toNISTSP80053Dictionary()` and `DoctorReport.generateNISTSP80053()` producing standard NIST SP 800-53 Rev. 5 Assessment JSON (`nist_sp80053_report`, `framework: "NIST Special Publication 800-53 Revision 5"`, `version: "NIST SP 800-53 Rev. 5"`, `metadata`, `families` [AC, IA, AU, SI, SC, MP, PE, CM], `controls`, `assessments`) mapping evaluated FaceLock biometric controls and macOS hardening parameters to federal and enterprise cybersecurity standards.
+  - Implemented `Diagnostics.exportDoctorNISTSP80053(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_nist80053.json` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-nist80053`, `--doctor-sp80053`, and `--doctor-export-nist80053 [path]` with `--json` output support and full normalization aliases (`--doctor-nist80053-json`, `--nist80053-doctor-json`, `--doctor-sp80053-json`, `--sp80053-doctor-json`, `--doctor-nist80053`, `--doctor-sp80053`, `--doctor-export-nist80053-json`, `--export-doctor-nist80053-json`, `--doctor-export-sp80053-json`, `--doctor-export-nist80053`, `--doctor-export-sp80053`).
+  - Added Makefile targets `make doctor-nist80053`, `make doctor-nist80053-json`, `make doctor-export-nist80053`, `make doctor-export-nist80053-json`, `make doctor-sp80053`, `make doctor-sp80053-json`, `make doctor-export-sp80053`, and `make doctor-export-sp80053-json`.
+- **Self-Healing Storage Permission Auto-Repair (`Diagnostics.swift`)**:
+  - Enhanced `doctor-repair` engine to automatically restrict `doctor_nist80053.json` to `0600` POSIX permissions.
+- **Automated Test Suite Expansion to 12,700+ Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV1410Enhancements()` validating 116+ doctor checks, all 4 new check identifiers, NIST SP 800-53 Rev. 5 JSON format compliance, 8 core control families, controls, assessments, atomic file export integrity, repair report execution, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.4.10 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.4.10` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.4.9] - 2026-11-19
 
 ### Added

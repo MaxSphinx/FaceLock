@@ -485,6 +485,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor-export-gdpr", "--json"])
             case "--doctor-export-gdpr", "--export-doctor-gdpr", "--export-gdpr-doctor":
                 args.append("--doctor-export-gdpr")
+            case "--doctor-nist80053-json", "--nist80053-doctor-json", "--doctor-sp80053-json", "--sp80053-doctor-json", "--doctor-nist-sp-800-53-json", "--nist-sp-800-53-doctor-json":
+                args.append(contentsOf: ["--doctor-nist80053", "--json"])
+            case "--doctor-nist80053", "--nist80053-doctor", "--doctor-sp80053", "--sp80053-doctor", "--doctor-nist-sp-800-53", "--nist-sp-800-53-doctor":
+                args.append("--doctor-nist80053")
+            case "--doctor-export-nist80053-json", "--export-doctor-nist80053-json", "--export-nist80053-doctor-json", "--doctor-export-sp80053-json", "--export-doctor-sp80053-json", "--export-sp80053-doctor-json", "--doctor-export-nist-sp-800-53-json", "--export-doctor-nist-sp-800-53-json", "--export-nist-sp-800-53-doctor-json":
+                args.append(contentsOf: ["--doctor-export-nist80053", "--json"])
+            case "--doctor-export-nist80053", "--export-doctor-nist80053", "--export-nist80053-doctor", "--doctor-export-sp80053", "--export-doctor-sp80053", "--export-sp80053-doctor", "--doctor-export-nist-sp-800-53", "--export-doctor-nist-sp-800-53", "--export-nist-sp-800-53-doctor":
+                args.append("--doctor-export-nist80053")
             default:
                 args.append(arg)
             }
@@ -665,6 +673,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --doctor-export-hipaa [path] [--json]      Export doctor report to HIPAA Security Rule file
               --doctor-gdpr [--json]                     Generate doctor report in GDPR Data Protection Assessment JSON
               --doctor-export-gdpr [path] [--json]       Export doctor report to GDPR Data Protection file
+              --doctor-nist80053, --doctor-sp80053 [--json] Generate doctor report in NIST SP 800-53 Rev. 5 Assessment JSON
+              --doctor-export-nist80053, --doctor-export-sp80053 [path] [--json] Export doctor report to NIST SP 800-53 Rev. 5 file
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -2007,6 +2017,60 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 if result.success {
                     print("✓ Doctor diagnostic health report exported to GDPR Data Protection file: \(result.path)")
+                    print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
+                } else {
+                    print("✗ Failed to export doctor diagnostic report to: \(result.path)")
+                }
+            }
+            exit(result.success ? 0 : 1)
+        }
+
+        if args.contains("--doctor-nist80053") {
+            let report = Diagnostics.runDoctor()
+            let sp80053 = report.generateNISTSP80053()
+            if args.contains("--json") {
+                let dict = report.toNISTSP80053Dictionary()
+                var jsonDict: [String: Any] = dict
+                jsonDict["version"] = report.version
+                jsonDict["overallStatus"] = report.overallStatus
+                jsonDict["totalChecks"] = report.totalChecks
+                jsonDict["passed"] = report.passedCount
+                jsonDict["warnings"] = report.warningCount
+                jsonDict["failures"] = report.failureCount
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                } else {
+                    print(sp80053)
+                }
+            } else {
+                print(sp80053)
+            }
+            exit(report.failureCount > 0 ? 1 : 0)
+        }
+
+        if args.contains("--doctor-export-nist80053") {
+            let customPath = AppDelegate.valueForOption("--doctor-export-nist80053", in: args)
+            let result = Diagnostics.exportDoctorNISTSP80053(toPath: customPath)
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "success": result.success,
+                    "path": result.path,
+                    "overallStatus": result.report.overallStatus,
+                    "totalChecks": result.report.totalChecks,
+                    "passed": result.report.passedCount,
+                    "warnings": result.report.warningCount,
+                    "failures": result.report.failureCount,
+                    "framework": "NIST Special Publication 800-53 Revision 5",
+                    "exportedBytes": result.content.utf8.count
+                ]
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                }
+            } else {
+                if result.success {
+                    print("✓ Doctor diagnostic health report exported to NIST SP 800-53 Rev. 5 file: \(result.path)")
                     print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
                 } else {
                     print("✗ Failed to export doctor diagnostic report to: \(result.path)")
