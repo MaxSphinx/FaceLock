@@ -4,6 +4,26 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.8] - 2026-11-19
+
+### Added
+- **Diagnostic Doctor Expansion to 108 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `filesystem.secure_kernel_extension_loading`: Audits macOS Kernel Extension user authorization policy (`spctl kext-consent status`), ensuring unauthorized third-party kexts or screen-recording drivers cannot be loaded into kernel space to tamper with biometric pipelines.
+  - Added `daemon.thermal_throttling_mitigation`: Audits macOS system thermal pressure level (`pmset -g therm`), ensuring device is not undergoing severe CPU thermal throttling that could degrade real-time Vision biometric frame processing latencies (>300ms).
+  - Added `security.airdrop_discoverability_state`: Audits macOS AirDrop discoverability state (`defaults read com.apple.sharingd DiscoverableMode`), verifying AirDrop is not set to "Everyone" to prevent proximate drive-by file push exploitation or unauthorized beacon ingestion on workstation endpoints.
+  - Added `security.usb_restricted_mode`: Audits macOS USB Restricted Mode and accessory authorization policy (`defaults read /Library/Preferences/com.apple.security.accessories.plist`), ensuring physical USB keystroke injectors (e.g. BadUSB / Rubber Ducky) or hardware bypass dongles are restricted while the screen is locked.
+- **HIPAA Security Rule (45 CFR Part 164 Subpart C) Assessment Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.toHIPAADictionary()` and `DoctorReport.generateHIPAA()` generating standard HIPAA Security Rule Assessment JSON (`hipaa_report`, `framework: "HIPAA Security Rule (45 CFR Part 164)"`, `version: "45 CFR Part 164 Subpart C"`, `metadata`, `safeguards` [Administrative, Physical, Technical Safeguards], `specifications` [§ 164.308, § 164.310, § 164.312], `assessments`) mapping evaluated FaceLock biometric checks and macOS security controls to HIPAA requirements for healthcare, hospital workstation security, ePHI protection, and medical device compliance.
+  - Implemented `Diagnostics.exportDoctorHIPAA(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_hipaa.json` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-hipaa` and `--doctor-export-hipaa [path]` with `--json` output support and full normalization aliases (`--doctor-hipaa-json`, `--hipaa-doctor-json`, `--doctor-hipaa`, `--hipaa-doctor`, `--doctor-export-hipaa-json`, `--export-doctor-hipaa-json`, `--export-hipaa-doctor-json`, `--doctor-export-hipaa`, `--export-doctor-hipaa`, `--export-hipaa-doctor`).
+  - Added Makefile targets `make doctor-hipaa`, `make doctor-hipaa-json`, `make doctor-export-hipaa`, and `make doctor-export-hipaa-json`.
+- **Self-Healing Storage Permission Auto-Repair (`Diagnostics.swift`)**:
+  - Enhanced `doctor-repair` engine to automatically restrict `doctor_hipaa.json` to `0600` POSIX permissions.
+- **Automated Test Suite Expansion to 9,700+ Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV148Enhancements()` validating 108+ doctor checks, all 4 new check identifiers, HIPAA Security Rule JSON format compliance, 3 principal safeguards, specifications, assessments, atomic file export integrity, repair report execution, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.4.8 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.4.8` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.4.7] - 2026-11-18
 
 ### Added

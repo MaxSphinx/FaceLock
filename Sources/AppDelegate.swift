@@ -469,6 +469,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor-export-pcidss", "--json"])
             case "--doctor-export-pcidss", "--export-doctor-pcidss", "--export-pcidss-doctor", "--doctor-export-pci-dss", "--export-doctor-pci-dss", "--export-pci-dss-doctor", "--doctor-export-pci", "--export-doctor-pci", "--export-pci-doctor":
                 args.append("--doctor-export-pcidss")
+            case "--doctor-hipaa-json", "--hipaa-doctor-json":
+                args.append(contentsOf: ["--doctor-hipaa", "--json"])
+            case "--doctor-hipaa", "--hipaa-doctor":
+                args.append("--doctor-hipaa")
+            case "--doctor-export-hipaa-json", "--export-doctor-hipaa-json", "--export-hipaa-doctor-json":
+                args.append(contentsOf: ["--doctor-export-hipaa", "--json"])
+            case "--doctor-export-hipaa", "--export-doctor-hipaa", "--export-hipaa-doctor":
+                args.append("--doctor-export-hipaa")
             default:
                 args.append(arg)
             }
@@ -645,6 +653,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --doctor-export-soc2, --doctor-export-soc [path] [--json] Export doctor report to AICPA SOC 2 Type II file
               --doctor-pcidss, --doctor-pci [--json]     Generate doctor report in PCI-DSS v4.0 Assessment JSON
               --doctor-export-pcidss, --doctor-export-pci [path] [--json] Export doctor report to PCI-DSS v4.0 file
+              --doctor-hipaa [--json]                    Generate doctor report in HIPAA Security Rule Assessment JSON
+              --doctor-export-hipaa [path] [--json]      Export doctor report to HIPAA Security Rule file
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -1879,6 +1889,60 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 if result.success {
                     print("✓ Doctor diagnostic health report exported to PCI-DSS v4.0 file: \(result.path)")
+                    print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
+                } else {
+                    print("✗ Failed to export doctor diagnostic report to: \(result.path)")
+                }
+            }
+            exit(result.success ? 0 : 1)
+        }
+
+        if args.contains("--doctor-hipaa") {
+            let report = Diagnostics.runDoctor()
+            let hipaa = report.generateHIPAA()
+            if args.contains("--json") {
+                let dict = report.toHIPAADictionary()
+                var jsonDict: [String: Any] = dict
+                jsonDict["version"] = report.version
+                jsonDict["overallStatus"] = report.overallStatus
+                jsonDict["totalChecks"] = report.totalChecks
+                jsonDict["passed"] = report.passedCount
+                jsonDict["warnings"] = report.warningCount
+                jsonDict["failures"] = report.failureCount
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                } else {
+                    print(hipaa)
+                }
+            } else {
+                print(hipaa)
+            }
+            exit(report.failureCount > 0 ? 1 : 0)
+        }
+
+        if args.contains("--doctor-export-hipaa") {
+            let customPath = AppDelegate.valueForOption("--doctor-export-hipaa", in: args)
+            let result = Diagnostics.exportDoctorHIPAA(toPath: customPath)
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "success": result.success,
+                    "path": result.path,
+                    "overallStatus": result.report.overallStatus,
+                    "totalChecks": result.report.totalChecks,
+                    "passed": result.report.passedCount,
+                    "warnings": result.report.warningCount,
+                    "failures": result.report.failureCount,
+                    "framework": "HIPAA Security Rule (45 CFR Part 164)",
+                    "exportedBytes": result.content.utf8.count
+                ]
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                }
+            } else {
+                if result.success {
+                    print("✓ Doctor diagnostic health report exported to HIPAA Security Rule file: \(result.path)")
                     print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
                 } else {
                     print("✗ Failed to export doctor diagnostic report to: \(result.path)")
