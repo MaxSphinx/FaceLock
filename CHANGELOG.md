@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added Makefile targets `make doctor-dora`, `make doctor-dora-json`, `make doctor-export-dora`, and `make doctor-export-dora-json`.
 - **Self-Healing Storage Permission Auto-Repair (`Diagnostics.swift`)**:
   - Enhanced `doctor-repair` engine to automatically restrict `doctor_dora.json` to `0600` POSIX permissions.
-- **Automated Test Suite Expansion to 15,500+ Tests (`Tests/FaceLockTests.swift`)**:
+- **Automated Test Suite Expansion to 16,400+ Tests (`Tests/FaceLockTests.swift`)**:
   - Added `testMaintenanceV1412Enhancements()` validating 128+ doctor checks, all 8 new check identifiers, EU DORA Regulation JSON format compliance, 9 core Articles 6-14 operational resilience measures, measures, assessments, atomic file export integrity, repair report execution, version synchronization, and full CLI argument normalization matrix.
 - **Version Bump to v1.4.12 (`Config.swift`, `Resources/Info.plist`)**:
   - Synchronized version string `1.4.12` across `Config.currentVersion` and macOS bundle `Info.plist`.
