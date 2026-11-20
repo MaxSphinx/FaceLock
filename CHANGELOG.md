@@ -4,6 +4,30 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.12] - 2026-11-20
+
+### Added
+- **Diagnostic Doctor Expansion to 128 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `security.content_caching_disabled`: Audits macOS Content Caching daemon activation (`defaults read /Library/Preferences/com.apple.AssetCache.plist Activated`), verifying that Content Caching is disabled to prevent rogue local cache proxying, iCloud data caching across untrusted networks, and unintended network traffic amplification.
+  - Added `security.siri_lock_screen_disabled`: Audits Siri voice activation availability on locked screens (`defaults read com.apple.Siri LockscreenEnabled`), verifying Siri queries are disabled while the screen is locked to prevent voice-activated lock screen bypass, unauthenticated command execution, and acoustic data disclosure.
+  - Added `filesystem.home_directory_permissions`: Audits current user home directory POSIX permissions (`stat -f %Lp ~`), verifying permissions are strictly restricted (`0700` or `0750`) so other local unprivileged accounts cannot access `~/.facelock/`, biometric faceprint vectors, or sensitive configuration files.
+  - Added `security.firewall_logging_enabled`: Audits macOS Application Firewall (ALF) security event logging (`defaults read /Library/Preferences/com.apple.alf loggingoption`), verifying that packet filter and application firewall connection audit logging is active for forensic incident investigation.
+  - Added `security.hot_corners_secure_lock`: Audits macOS Dock Hot Corner preferences (`defaults read com.apple.dock`), verifying that no screen corner is mapped to 'Disable Screen Saver' (value 6), preventing unauthorized bypass of automated walk-away locks and screensaver timeouts via cursor placement.
+  - Added `security.universal_control_isolation`: Audits Universal Control cross-device pointer/keyboard bridging (`defaults read com.apple.universalcontrol`), ensuring cross-device input sharing is disabled or governed to prevent session manipulation from proximate unmanaged Apple devices.
+  - Added `security.smb_packet_signing_enforcement`: Audits SMB client packet signing configuration in `/etc/nsmb.conf` and `~/Library/Preferences/nsmb.conf`, ensuring packet signing is enforced or default negotiated to eliminate SMB relay and unauthenticated network payload tampering.
+  - Added `network.ipv6_firewall_rule_parity`: Audits packet filtering architecture via `/etc/pf.conf` and Application Layer Firewall (ALF), verifying endpoint packet filtering parity across both IPv4 and IPv6 traffic vectors.
+- **European Union DORA Regulation (EU 2022/2554) Assessment Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.toDORADictionary()` and `DoctorReport.generateDORA()` producing standard DORA Digital Operational Resilience Assessment JSON (`dora_report`, `framework: "European Union DORA Regulation (Regulation (EU) 2022/2554)"`, `version: "DORA Regulation (EU) 2022/2554"`, `metadata`, `articles` [Articles 6 through 14], `measures`, `assessments`) mapping evaluated FaceLock biometric controls and macOS hardening parameters to EU financial sector operational resilience statutory requirements.
+  - Implemented `Diagnostics.exportDoctorDORA(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_dora.json` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-dora` and `--doctor-export-dora [path]` with `--json` output support and full normalization aliases (`--doctor-dora-json`, `--dora-doctor-json`, `--doctor-dora-2-json`, `--dora-2-doctor-json`, `--doctor-dora`, `--dora-doctor`, `--doctor-export-dora-json`, `--export-doctor-dora-json`, `--export-dora-doctor-json`, `--doctor-export-dora`, `--export-doctor-dora`, `--export-dora-doctor`).
+  - Added Makefile targets `make doctor-dora`, `make doctor-dora-json`, `make doctor-export-dora`, and `make doctor-export-dora-json`.
+- **Self-Healing Storage Permission Auto-Repair (`Diagnostics.swift`)**:
+  - Enhanced `doctor-repair` engine to automatically restrict `doctor_dora.json` to `0600` POSIX permissions.
+- **Automated Test Suite Expansion to 15,500+ Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV1412Enhancements()` validating 128+ doctor checks, all 8 new check identifiers, EU DORA Regulation JSON format compliance, 9 core Articles 6-14 operational resilience measures, measures, assessments, atomic file export integrity, repair report execution, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.4.12 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.4.12` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.4.11] - 2026-11-19
 
 ### Added

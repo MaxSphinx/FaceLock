@@ -501,6 +501,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor-export-nis2", "--json"])
             case "--doctor-export-nis2", "--export-doctor-nis2", "--export-nis2-doctor", "--doctor-export-nis-2", "--export-doctor-nis-2", "--export-nis-2-doctor":
                 args.append("--doctor-export-nis2")
+            case "--doctor-dora-json", "--dora-doctor-json", "--doctor-dora-2-json", "--dora-2-doctor-json":
+                args.append(contentsOf: ["--doctor-dora", "--json"])
+            case "--doctor-dora", "--dora-doctor":
+                args.append("--doctor-dora")
+            case "--doctor-export-dora-json", "--export-doctor-dora-json", "--export-dora-doctor-json":
+                args.append(contentsOf: ["--doctor-export-dora", "--json"])
+            case "--doctor-export-dora", "--export-doctor-dora", "--export-dora-doctor":
+                args.append("--doctor-export-dora")
             default:
                 args.append(arg)
             }
@@ -685,6 +693,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --doctor-export-nist80053, --doctor-export-sp80053 [path] [--json] Export doctor report to NIST SP 800-53 Rev. 5 file
               --doctor-nis2 [--json]                     Generate doctor report in EU NIS2 Directive Assessment JSON
               --doctor-export-nis2 [path] [--json]       Export doctor report to EU NIS2 Directive file
+              --doctor-dora [--json]                     Generate doctor report in EU DORA Regulation Assessment JSON
+              --doctor-export-dora [path] [--json]       Export doctor report to EU DORA Regulation file
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -2137,6 +2147,62 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 if result.success {
                     print("✓ Doctor diagnostic health report exported to NIS2 Directive (EU 2022/2555) file: \(result.path)")
+                    print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
+                } else {
+                    print("✗ Failed to export doctor diagnostic report to: \(result.path)")
+                }
+            }
+            exit(result.success ? 0 : 1)
+        }
+
+        if args.contains("--doctor-dora") {
+            let report = Diagnostics.runDoctor()
+            let dora = report.generateDORA()
+            if args.contains("--json") {
+                let dict = report.toDORADictionary()
+                var jsonDict: [String: Any] = dict
+                jsonDict["version"] = report.version
+                jsonDict["overallStatus"] = report.overallStatus
+                jsonDict["totalChecks"] = report.totalChecks
+                jsonDict["passed"] = report.passedCount
+                jsonDict["warnings"] = report.warningCount
+                jsonDict["failures"] = report.failureCount
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                } else {
+                    print(dora)
+                }
+            } else {
+                print(dora)
+            }
+            exit(report.failureCount > 0 ? 1 : 0)
+        }
+
+        if args.contains("--doctor-export-dora") {
+            let customPath = AppDelegate.valueForOption("--doctor-export-dora", in: args)
+            let result = Diagnostics.exportDoctorDORA(toPath: customPath)
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "success": result.success,
+                    "path": result.path,
+                    "overallStatus": result.report.overallStatus,
+                    "totalChecks": result.report.totalChecks,
+                    "passed": result.report.passedCount,
+                    "warnings": result.report.warningCount,
+                    "failures": result.report.failureCount,
+                    "framework": "European Union DORA Regulation (Regulation (EU) 2022/2554)",
+                    "exportedBytes": result.content.utf8.count
+                ]
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                } else {
+                    print("{\"success\": \(result.success), \"path\": \"\(result.path)\"}")
+                }
+            } else {
+                if result.success {
+                    print("✓ Doctor diagnostic health report exported to DORA Regulation (EU 2022/2554) file: \(result.path)")
                     print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
                 } else {
                     print("✗ Failed to export doctor diagnostic report to: \(result.path)")

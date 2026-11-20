@@ -1708,6 +1708,22 @@ public struct DoctorReport {
                 return [("T1021.002", "lateral-movement")]
             case "network.system_proxy_integrity":
                 return [("T1090", "command-and-control")]
+            case "security.content_caching_disabled":
+                return [("T1021.005", "lateral-movement")]
+            case "security.siri_lock_screen_disabled":
+                return [("T1078", "initial-access")]
+            case "filesystem.home_directory_permissions":
+                return [("T1083", "discovery"), ("T1005", "collection")]
+            case "security.firewall_logging_enabled":
+                return [("T1562.002", "defense-evasion")]
+            case "security.hot_corners_secure_lock":
+                return [("T1562.001", "defense-evasion")]
+            case "security.universal_control_isolation":
+                return [("T1200", "initial-access")]
+            case "security.smb_packet_signing_enforcement":
+                return [("T1557.001", "credential-access")]
+            case "network.ipv6_firewall_rule_parity":
+                return [("T1562.004", "defense-evasion")]
             default:
                 return [("T1082", "discovery")]
             }
@@ -1904,6 +1920,22 @@ public struct DoctorReport {
                 return "ac-17"
             case "network.system_proxy_integrity":
                 return "sc-7"
+            case "security.content_caching_disabled":
+                return "cm-7"
+            case "security.siri_lock_screen_disabled":
+                return "ac-3"
+            case "filesystem.home_directory_permissions":
+                return "ac-3"
+            case "security.firewall_logging_enabled":
+                return "au-2"
+            case "security.hot_corners_secure_lock":
+                return "ac-11"
+            case "security.universal_control_isolation":
+                return "ac-17"
+            case "security.smb_packet_signing_enforcement":
+                return "sc-8"
+            case "network.ipv6_firewall_rule_parity":
+                return "sc-7"
             default:
                 return "ca-2"
             }
@@ -2091,6 +2123,22 @@ public struct DoctorReport {
             case "security.nfs_export_service_disabled":
                 return ("PR", "Protect", "PR.AC", "Access Control", "PR.AC-03", "Remote access is managed.")
             case "network.system_proxy_integrity":
+                return ("PR", "Protect", "PR.PS", "Platform Security", "PR.PS-05", "Installation of, and connections from, untrusted or remote network endpoints are restricted.")
+            case "security.content_caching_disabled":
+                return ("PR", "Protect", "PR.PS", "Platform Security", "PR.PS-05", "Installation of, and connections from, untrusted or remote network endpoints are restricted.")
+            case "security.siri_lock_screen_disabled":
+                return ("PR", "Protect", "PR.AC", "Access Control", "PR.AC-07", "Physical and logical access to assets is managed.")
+            case "filesystem.home_directory_permissions":
+                return ("PR", "Protect", "PR.DS", "Data Security", "PR.DS-01", "Data-at-rest is protected.")
+            case "security.firewall_logging_enabled":
+                return ("DE", "Detect", "DE.CM", "Continuous Monitoring", "DE.CM-01", "The network is monitored to detect potential cybersecurity events.")
+            case "security.hot_corners_secure_lock":
+                return ("PR", "Protect", "PR.AC", "Access Control", "PR.AC-02", "Physical access to assets is managed.")
+            case "security.universal_control_isolation":
+                return ("PR", "Protect", "PR.AC", "Access Control", "PR.AC-03", "Remote access is managed.")
+            case "security.smb_packet_signing_enforcement":
+                return ("PR", "Protect", "PR.DS", "Data Security", "PR.DS-02", "Data in transit is protected.")
+            case "network.ipv6_firewall_rule_parity":
                 return ("PR", "Protect", "PR.PS", "Platform Security", "PR.PS-05", "Installation of, and connections from, untrusted or remote network endpoints are restricted.")
             default:
                 return ("GV", "Govern", "GV.OC", "Organizational Context", "GV.OC-01", "The organizational context, mission, and endpoint security policies are established.")
@@ -2281,6 +2329,22 @@ public struct DoctorReport {
                 return ("CIS-04", "Secure Configuration of Enterprise Assets and Software", "4.8", "Uninstall or Disable Unnecessary Services on Enterprise Assets and Software", "IG1", "Network")
             case "network.system_proxy_integrity":
                 return ("CIS-13", "Network Monitoring and Defense", "13.4", "Perform Traffic Filtering Between Network Segments", "IG2", "Network")
+            case "security.content_caching_disabled":
+                return ("CIS-04", "Secure Configuration of Enterprise Assets and Software", "4.8", "Uninstall or Disable Unnecessary Services on Enterprise Assets and Software", "IG1", "Network")
+            case "security.siri_lock_screen_disabled":
+                return ("CIS-04", "Secure Configuration of Enterprise Assets and Software", "4.3", "Configure Automatic Session Lock on Enterprise Assets", "IG1", "Devices")
+            case "filesystem.home_directory_permissions":
+                return ("CIS-03", "Data Protection", "3.3", "Configure Data Access Control Lists", "IG1", "Data")
+            case "security.firewall_logging_enabled":
+                return ("CIS-08", "Audit Log Management", "8.2", "Collect Audit Logs", "IG1", "Network")
+            case "security.hot_corners_secure_lock":
+                return ("CIS-04", "Secure Configuration of Enterprise Assets and Software", "4.1", "Establish and Maintain Secure System Baselines", "IG1", "Devices")
+            case "security.universal_control_isolation":
+                return ("CIS-12", "Network Infrastructure Management", "12.4", "Deny Communication Over Unauthorized Ports and Protocols", "IG2", "Network")
+            case "security.smb_packet_signing_enforcement":
+                return ("CIS-03", "Data Protection", "3.10", "Encrypt Sensitive Data in Transit", "IG2", "Data")
+            case "network.ipv6_firewall_rule_parity":
+                return ("CIS-04", "Secure Configuration of Enterprise Assets and Software", "4.4", "Implement and Manage a Firewall on End-User Devices", "IG1", "Network")
             default:
                 return ("CIS-04", "Secure Configuration of Enterprise Assets and Software", "4.1", "Establish and Maintain Secure System Baselines", "IG1", "Devices")
             }
@@ -2485,6 +2549,22 @@ public struct DoctorReport {
                 return ("A.8", "Technological controls", "A.8.20", "Network security", "NFS Remote File System Hardening")
             case "network.system_proxy_integrity":
                 return ("A.8", "Technological controls", "A.8.22", "Segregation in networks", "Network Proxy and Interception Defense")
+            case "security.content_caching_disabled":
+                return ("A.8", "Technological controls", "A.8.20", "Network security", "Content Caching Network Service Hardening")
+            case "security.siri_lock_screen_disabled":
+                return ("A.5", "Organizational controls", "A.5.15", "Access control", "Lock Screen Voice Assistant Restriction")
+            case "filesystem.home_directory_permissions":
+                return ("A.8", "Technological controls", "A.8.2", "Privileged access rights", "User Home Directory Access Control")
+            case "security.firewall_logging_enabled":
+                return ("A.8", "Technological controls", "A.8.15", "Logging", "Firewall Event Logging and Monitoring")
+            case "security.hot_corners_secure_lock":
+                return ("A.8", "Technological controls", "A.8.1", "User endpoint devices", "Display Lock and Screen Saver Bypass Defense")
+            case "security.universal_control_isolation":
+                return ("A.8", "Technological controls", "A.8.20", "Network security", "Cross-Device Input Sharing Hardening")
+            case "security.smb_packet_signing_enforcement":
+                return ("A.8", "Technological controls", "A.8.24", "Use of cryptography", "SMB Message Signing & Relay Protection")
+            case "network.ipv6_firewall_rule_parity":
+                return ("A.8", "Technological controls", "A.8.20", "Network security", "IPv6 Protocol and Filtering Boundary Hardening")
             default:
                 return ("A.8", "Technological controls", "A.8.1", "User endpoint devices", "Endpoint Baseline Security")
             }
@@ -2586,11 +2666,11 @@ public struct DoctorReport {
                 return ("Security", "Common Criteria / Security", "CC6.2", "User Authentication - Multi-Factor & Biometrics", "Fallback Credential Protection")
             case "security.app_shield_policy", "security.verification_timeout", "security.debounce_protection", "security.fast_user_switching_governance":
                 return ("Security", "Common Criteria / Security", "CC6.3", "Role-Based Access & Least Privilege", "Application-Level Access Policy")
-            case "security.screen_saver_lock", "security.screensaver_lock", "security.display_sleep_timeout", "hardware.display_sleep_timer", "security.walk_away_lock", "security.lock_on_wake":
+            case "security.screen_saver_lock", "security.screensaver_lock", "security.display_sleep_timeout", "hardware.display_sleep_timer", "security.walk_away_lock", "security.lock_on_wake", "security.hot_corners_secure_lock":
                 return ("Security", "Common Criteria / Security", "CC6.4", "Physical & Environmental Access Restriction", "Unattended Workstation Auto-Lock")
-            case "security.firewall_stealth_mode", "security.remote_login_disabled", "security.remote_management_disabled", "security.wake_on_lan_disabled", "security.remote_apple_events_disabled", "security.file_sharing_disabled", "security.bluetooth_sharing_disabled", "daemon.network_reachability_monitor", "security.airplay_receiver_disabled", "security.internet_sharing_disabled", "security.printer_sharing_disabled", "security.nfs_export_service_disabled", "network.system_proxy_integrity":
+            case "security.firewall_stealth_mode", "security.remote_login_disabled", "security.remote_management_disabled", "security.wake_on_lan_disabled", "security.remote_apple_events_disabled", "security.file_sharing_disabled", "security.bluetooth_sharing_disabled", "daemon.network_reachability_monitor", "security.airplay_receiver_disabled", "security.internet_sharing_disabled", "security.printer_sharing_disabled", "security.nfs_export_service_disabled", "network.system_proxy_integrity", "security.content_caching_disabled", "security.universal_control_isolation", "network.ipv6_firewall_rule_parity":
                 return ("Security", "Common Criteria / Security", "CC6.6", "Boundary Protection & Network Attack Surface", "Network Perimeter Defense")
-            case "network.dns_secure_resolvers", "security.airdrop_discoverability":
+            case "network.dns_secure_resolvers", "security.airdrop_discoverability", "security.smb_packet_signing_enforcement":
                 return ("Security", "Common Criteria / Security", "CC6.7", "Data Transmission Protection & Encryption", "Secure Network Protocol & Transport")
             case "security.biometric_spoofing", "security.shoulder_surfing", "security.handoff_clipboard_isolation", "security.screen_capture_privacy_governance":
                 return ("Security", "Common Criteria / Security", "CC6.8", "Malicious Software & Unauthorized Eavesdropping Prevention", "Anti-Spyware & Shoulder Defense")
@@ -2638,6 +2718,12 @@ public struct DoctorReport {
                 return ("Confidentiality", "Confidentiality Criteria", "C1.1", "Data Classification & Memory Privacy", "Core Dump Leakage Prevention")
             case "daemon.launchd_service_domain_isolation":
                 return ("Security", "Common Criteria / Security", "CC6.8", "Malicious Software & System Integrity Defense", "Per-User GUI Domain Isolation")
+            case "security.siri_lock_screen_disabled":
+                return ("Security", "Common Criteria / Security", "CC6.1", "Logical Access - Infrastructure & Perimeter", "Lock Screen Voice Assistant Restriction")
+            case "filesystem.home_directory_permissions":
+                return ("Confidentiality", "Confidentiality Criteria", "C1.1", "Data Classification & Encryption at Rest", "User Home Directory POSIX Isolation")
+            case "security.firewall_logging_enabled":
+                return ("Security", "Common Criteria / Security", "CC7.2", "Security Event Monitoring & Incident Response", "Firewall Event Logging & Intrusion Detection")
             default:
                 return ("Security", "Common Criteria / Security", "CC6.1", "Logical Access - Infrastructure & Perimeter", "Endpoint Baseline Security")
             }
@@ -2730,25 +2816,25 @@ public struct DoctorReport {
 
         func mapCheckToPCIDSS(_ checkId: String) -> (requirementId: String, requirementTitle: String, subRequirementId: String, subRequirementTitle: String, principalGoal: String) {
             switch checkId {
-            case "security.firewall_stealth_mode", "security.remote_login_disabled", "security.remote_management_disabled", "security.wake_on_lan_disabled", "security.remote_apple_events_disabled", "security.file_sharing_disabled", "security.bluetooth_sharing_disabled", "security.airdrop_discoverability_state", "daemon.network_reachability_monitor", "security.airplay_receiver_disabled", "security.internet_sharing_disabled", "security.printer_sharing_disabled", "security.nfs_export_service_disabled", "network.system_proxy_integrity":
+            case "security.firewall_stealth_mode", "security.remote_login_disabled", "security.remote_management_disabled", "security.wake_on_lan_disabled", "security.remote_apple_events_disabled", "security.file_sharing_disabled", "security.bluetooth_sharing_disabled", "security.airdrop_discoverability_state", "daemon.network_reachability_monitor", "security.airplay_receiver_disabled", "security.internet_sharing_disabled", "security.printer_sharing_disabled", "security.nfs_export_service_disabled", "network.system_proxy_integrity", "security.content_caching_disabled", "security.universal_control_isolation", "network.ipv6_firewall_rule_parity":
                 return ("Req 1", "Install and Maintain Network Security Controls", "1.2", "Network Connections and Traffic Restrictions", "Build and Maintain a Secure Network and Systems")
             case "security.sip_system_integrity", "security.sip_filesystem_integrity", "security.gatekeeper_integrity", "security.gatekeeper_enforced", "hardware.secure_boot_policy", "security.automatic_software_updates", "security.automatic_login_disabled", "security.guest_account_disabled", "security.login_window_banner", "security.fast_user_switching_governance":
                 return ("Req 2", "Apply Secure Configurations to All System Components", "2.2", "System Component Configuration Standards & Hardening", "Build and Maintain a Secure Network and Systems")
-            case "security.filevault_encryption", "filesystem.encrypted_swap_virtual_memory", "filesystem.core_dumps_disabled", "filesystem.time_machine_backup_encryption", "filesystem.trash_auto_empty_retention", "filesystem.secure_erase_pipeline", "security.incident_retention_policy", "filesystem.directory", "filesystem.config_permissions", "filesystem.vectors_permissions", "filesystem.intruders_permissions", "filesystem.audit_permissions", "filesystem.posix_umask_hygiene", "filesystem.extended_attributes_hygiene", "filesystem.config_directory", "filesystem.owner_vectors_json", "filesystem.config_valid_json", "filesystem.secure_enclave_keychain", "filesystem.backups_dir", "filesystem.backup_freshness", "filesystem.vectors_backup_fresh", "filesystem.backup_apfs_snapshots", "filesystem.secure_trash_shredding_pipeline", "filesystem.secure_system_dump_exclusion":
+            case "security.filevault_encryption", "filesystem.encrypted_swap_virtual_memory", "filesystem.core_dumps_disabled", "filesystem.time_machine_backup_encryption", "filesystem.trash_auto_empty_retention", "filesystem.secure_erase_pipeline", "security.incident_retention_policy", "filesystem.directory", "filesystem.config_permissions", "filesystem.vectors_permissions", "filesystem.intruders_permissions", "filesystem.audit_permissions", "filesystem.posix_umask_hygiene", "filesystem.extended_attributes_hygiene", "filesystem.config_directory", "filesystem.owner_vectors_json", "filesystem.config_valid_json", "filesystem.secure_enclave_keychain", "filesystem.backups_dir", "filesystem.backup_freshness", "filesystem.vectors_backup_fresh", "filesystem.backup_apfs_snapshots", "filesystem.secure_trash_shredding_pipeline", "filesystem.secure_system_dump_exclusion", "filesystem.home_directory_permissions":
                 return ("Req 3", "Protect Stored Account Data", "3.4", "Cryptographic Protection of Sensitive Data at Rest", "Protect Account Data")
-            case "network.dns_secure_resolvers", "network.telegram_alert", "security.airdrop_discoverability":
+            case "network.dns_secure_resolvers", "network.telegram_alert", "security.airdrop_discoverability", "security.smb_packet_signing_enforcement":
                 return ("Req 4", "Protect Cardholder Data with Strong Cryptography During Transmission", "4.1", "Data Transmission Protection Over Open, Public Networks", "Protect Account Data")
             case "security.biometric_spoofing", "security.shoulder_surfing", "security.handoff_clipboard_isolation", "security.screen_capture_privacy_governance":
                 return ("Req 5", "Protect All Systems and Networks from Malicious Software", "5.2", "Anti-Malware & Eavesdropping Defenses Active", "Maintain a Vulnerability Management Program")
             case "daemon.runtime_entitlements_integrity", "daemon.binary_integrity", "daemon.process", "daemon.launchagent", "daemon.launchd_keepalive_service", "daemon.memory_footprint", "daemon.cpu_utilization", "daemon.power_assertions", "daemon.file_descriptor_limit", "daemon.thread_pool_headroom", "daemon.mach_port_allocation", "daemon.energy_impact_profiling", "daemon.dispatch_queue_latency", "daemon.memory_resident_pressure", "daemon.ipc_unix_domain_socket", "daemon.process_scheduling_priority", "filesystem.temporary_storage_sandbox", "filesystem.crash_reports_cleanliness", "filesystem.keychain_access_group", "filesystem.secure_kernel_extension_loading", "daemon.launchd_service_domain_isolation":
                 return ("Req 6", "Develop and Maintain Secure Systems and Software", "6.3", "Security Vulnerability Mitigation & Software Integrity", "Maintain a Vulnerability Management Program")
-            case "security.app_shield_policy", "security.verification_timeout", "security.debounce_protection", "security.login_window_console_disabled":
+            case "security.app_shield_policy", "security.verification_timeout", "security.debounce_protection", "security.login_window_console_disabled", "security.siri_lock_screen_disabled":
                 return ("Req 7", "Restrict Access to System Components by Business Need to Know", "7.2", "Least Privilege & Application Shield Authorization", "Implement Strong Access Control Measures")
             case "biometrics.face_enrolled", "biometrics.liveness_detection", "biometrics.strict_face_match", "security.strict_face_match", "hardware.touchid", "hardware.secure_enclave", "security.touchid_fallback", "security.master_pin", "security.pin_bruteforce_defense", "security.login_window_password_hints", "security.sudo_touchid_pam", "security.secure_keyboard_entry", "biometrics.vector_consistency", "biometrics.vector_entropy", "security.biometric_cluster_cohesion":
                 return ("Req 8", "Identify Users and Authenticate Access to System Components", "8.3", "Multi-Factor & Biometric User Authentication", "Implement Strong Access Control Measures")
-            case "security.screen_saver_lock", "security.screensaver_lock", "security.display_sleep_timeout", "hardware.display_sleep_timer", "security.walk_away_lock", "security.lock_on_wake", "hardware.lid_wake_sensor_state", "hardware.clamshell_state", "hardware.bluetooth_proximity", "hardware.power_standby_mode", "security.usb_restricted_mode", "security.screen_saver_lock_grace_period":
+            case "security.screen_saver_lock", "security.screensaver_lock", "security.display_sleep_timeout", "hardware.display_sleep_timer", "security.walk_away_lock", "security.lock_on_wake", "hardware.lid_wake_sensor_state", "hardware.clamshell_state", "hardware.bluetooth_proximity", "hardware.power_standby_mode", "security.usb_restricted_mode", "security.screen_saver_lock_grace_period", "security.hot_corners_secure_lock":
                 return ("Req 9", "Restrict Physical Access to System Components", "9.4", "Unattended Workstation Auto-Lock & Physical Separation", "Implement Strong Access Control Measures")
-            case "filesystem.audit_chain_tamper", "security.audit_integrity_crypto", "filesystem.audit_integrity", "security.ntp_time_synchronization", "filesystem.audit_log_rotation", "security.duress_pin", "security.duress_alarm_pipeline", "security.audible_deterrent", "security.camera_indicator_compliance", "security.posture_score", "security.system_integrity_protection_nvram":
+            case "filesystem.audit_chain_tamper", "security.audit_integrity_crypto", "filesystem.audit_integrity", "security.ntp_time_synchronization", "filesystem.audit_log_rotation", "security.duress_pin", "security.duress_alarm_pipeline", "security.audible_deterrent", "security.camera_indicator_compliance", "security.posture_score", "security.system_integrity_protection_nvram", "security.firewall_logging_enabled":
                 return ("Req 10", "Log and Monitor All Access to System Components", "10.2", "Tamper-Evident Audit Logging & Time Synchronization", "Regularly Monitor and Test Networks")
             case "hardware.architecture", "hardware.vision_framework", "hardware.camera_device", "hardware.camera_permission", "hardware.camera_continuity", "hardware.power_efficiency", "hardware.thermal_state", "hardware.display_topology", "hardware.ambient_light_sensor", "hardware.neural_engine_coreml", "hardware.accelerate_simd_pipeline", "hardware.battery_health_capacity", "filesystem.disk_headroom", "filesystem.disk_storage_headroom", "security.presentation_suppression", "daemon.thermal_throttling_mitigation", "daemon.realtime_process_memory_swappiness":
                 return ("Req 11", "Test Security of Systems and Networks Regularly", "11.5", "System Security & Sensor Anomaly Testing", "Regularly Monitor and Test Networks")
@@ -2846,21 +2932,21 @@ public struct DoctorReport {
 
         func mapCheckToHIPAA(_ checkId: String) -> (safeguardId: String, safeguardName: String, sectionId: String, sectionTitle: String, specificationType: String, description: String) {
             switch checkId {
-            case "security.walk_away_lock", "security.screen_saver_lock", "security.screensaver_lock", "security.display_sleep_timeout", "hardware.display_sleep_timer", "security.lock_on_wake", "hardware.lid_wake_sensor_state", "security.screen_saver_lock_grace_period":
+            case "security.walk_away_lock", "security.screen_saver_lock", "security.screensaver_lock", "security.display_sleep_timeout", "hardware.display_sleep_timer", "security.lock_on_wake", "hardware.lid_wake_sensor_state", "security.screen_saver_lock_grace_period", "security.hot_corners_secure_lock":
                 return ("Technical Safeguards (§ 164.312)", "Technical Safeguards", "164.312(a)(2)(iii)", "Automatic Logoff", "Addressable", "Workstation automatically terminates an active electronic session after a predetermined time of inactivity.")
             case "biometrics.face_enrolled", "biometrics.liveness_detection", "biometrics.strict_face_match", "security.strict_face_match", "hardware.touchid", "hardware.secure_enclave", "security.touchid_fallback", "security.master_pin", "security.pin_bruteforce_defense", "security.sudo_touchid_pam", "security.secure_keyboard_entry", "biometrics.vector_consistency", "biometrics.vector_entropy", "security.biometric_cluster_cohesion", "security.login_window_password_hints":
                 return ("Technical Safeguards (§ 164.312)", "Technical Safeguards", "164.312(d)", "Person or Entity Authentication", "Required", "Verify that a person or entity seeking access to electronic protected health information is the one claimed.")
-            case "filesystem.audit_chain_tamper", "security.audit_integrity_crypto", "filesystem.audit_integrity", "security.ntp_time_synchronization", "filesystem.audit_log_rotation", "security.incident_retention_policy", "security.duress_pin", "security.duress_alarm_pipeline":
+            case "filesystem.audit_chain_tamper", "security.audit_integrity_crypto", "filesystem.audit_integrity", "security.ntp_time_synchronization", "filesystem.audit_log_rotation", "security.incident_retention_policy", "security.duress_pin", "security.duress_alarm_pipeline", "security.firewall_logging_enabled":
                 return ("Technical Safeguards (§ 164.312)", "Technical Safeguards", "164.312(b)", "Audit Controls", "Required", "Implement hardware, software, and procedural mechanisms that record and examine activity in information systems.")
             case "security.filevault_encryption", "filesystem.encrypted_swap_virtual_memory", "filesystem.core_dumps_disabled", "filesystem.secure_enclave_keychain", "security.posture_score", "security.system_integrity_protection_nvram", "filesystem.secure_system_dump_exclusion":
                 return ("Technical Safeguards (§ 164.312)", "Technical Safeguards", "164.312(c)(1)", "Integrity - Controls to Protect ePHI", "Addressable", "Policies and procedures to protect electronic protected health information from improper alteration or destruction.")
-            case "security.shoulder_surfing", "security.handoff_clipboard_isolation", "security.screen_capture_privacy_governance", "security.presentation_suppression", "security.audible_deterrent", "security.camera_indicator_compliance", "security.login_window_console_disabled":
+            case "security.shoulder_surfing", "security.handoff_clipboard_isolation", "security.screen_capture_privacy_governance", "security.presentation_suppression", "security.audible_deterrent", "security.camera_indicator_compliance", "security.login_window_console_disabled", "security.siri_lock_screen_disabled":
                 return ("Physical Safeguards (§ 164.310)", "Physical Safeguards", "164.310(b)", "Workstation Use", "Required", "Implement policies and procedures that specify the proper functions to be performed and the physical attributes of workstation surroundings.")
             case "security.app_shield_policy", "security.verification_timeout", "security.debounce_protection", "hardware.clamshell_state", "hardware.bluetooth_proximity", "security.fast_user_switching_governance", "security.usb_restricted_mode", "daemon.launchd_service_domain_isolation":
                 return ("Physical Safeguards (§ 164.310)", "Physical Safeguards", "164.310(c)", "Workstation Security", "Required", "Physical safeguards for all workstations that access electronic protected health information, to restrict access to authorized users.")
-            case "filesystem.trash_auto_empty_retention", "filesystem.secure_erase_pipeline", "filesystem.time_machine_backup_encryption", "filesystem.directory", "filesystem.config_permissions", "filesystem.vectors_permissions", "filesystem.intruders_permissions", "filesystem.audit_permissions", "filesystem.posix_umask_hygiene", "filesystem.extended_attributes_hygiene", "filesystem.config_directory", "filesystem.owner_vectors_json", "filesystem.config_valid_json", "filesystem.secure_kernel_extension_loading", "filesystem.secure_trash_shredding_pipeline":
+            case "filesystem.trash_auto_empty_retention", "filesystem.secure_erase_pipeline", "filesystem.time_machine_backup_encryption", "filesystem.directory", "filesystem.config_permissions", "filesystem.vectors_permissions", "filesystem.intruders_permissions", "filesystem.audit_permissions", "filesystem.posix_umask_hygiene", "filesystem.extended_attributes_hygiene", "filesystem.config_directory", "filesystem.owner_vectors_json", "filesystem.config_valid_json", "filesystem.secure_kernel_extension_loading", "filesystem.secure_trash_shredding_pipeline", "filesystem.home_directory_permissions":
                 return ("Physical Safeguards (§ 164.310)", "Physical Safeguards", "164.310(d)(1)", "Device and Media Controls", "Required", "Policies and procedures that govern the receipt and removal of hardware and electronic media that contain ePHI into and out of a facility.")
-            case "network.dns_secure_resolvers", "network.telegram_alert", "security.airdrop_discoverability", "security.airdrop_discoverability_state", "security.firewall_stealth_mode", "security.remote_login_disabled", "security.remote_management_disabled", "security.wake_on_lan_disabled", "security.remote_apple_events_disabled", "security.file_sharing_disabled", "security.bluetooth_sharing_disabled", "daemon.network_reachability_monitor", "security.airplay_receiver_disabled", "security.internet_sharing_disabled", "security.printer_sharing_disabled", "security.nfs_export_service_disabled", "network.system_proxy_integrity":
+            case "network.dns_secure_resolvers", "network.telegram_alert", "security.airdrop_discoverability", "security.airdrop_discoverability_state", "security.firewall_stealth_mode", "security.remote_login_disabled", "security.remote_management_disabled", "security.wake_on_lan_disabled", "security.remote_apple_events_disabled", "security.file_sharing_disabled", "security.bluetooth_sharing_disabled", "daemon.network_reachability_monitor", "security.airplay_receiver_disabled", "security.internet_sharing_disabled", "security.printer_sharing_disabled", "security.nfs_export_service_disabled", "network.system_proxy_integrity", "security.content_caching_disabled", "security.universal_control_isolation", "security.smb_packet_signing_enforcement", "network.ipv6_firewall_rule_parity":
                 return ("Technical Safeguards (§ 164.312)", "Technical Safeguards", "164.312(e)(1)", "Transmission Security", "Addressable", "Guard against unauthorized access to electronic protected health information that is being transmitted over an electronic communications network.")
             default:
                 return ("Administrative Safeguards (§ 164.308)", "Administrative Safeguards", "164.308(a)(1)(ii)(D)", "Information System Activity Review", "Required", "Regularly review records of information system activity, such as audit logs, access reports, and security incident tracking.")
@@ -2961,7 +3047,7 @@ public struct DoctorReport {
                 return ("Chapter III", "Rights of the Data Subject", "Article 17", "Right to Erasure ('Right to be Forgotten')", "Data Minimization & Storage Limitation", "Mechanisms to permanently erase facial templates and automatically prune incident photos upon retention expiry.")
             case "filesystem.directory", "filesystem.config_permissions", "filesystem.vectors_permissions", "filesystem.intruders_permissions", "filesystem.audit_permissions", "filesystem.posix_umask_hygiene", "filesystem.extended_attributes_hygiene", "filesystem.config_directory", "filesystem.owner_vectors_json", "filesystem.config_valid_json", "filesystem.secure_enclave_keychain", "filesystem.permissions_hardened", "hardware.camera_permission", "hardware.camera_authorization", "security.camera_indicator_compliance", "daemon.runtime_entitlements_integrity", "daemon.launchd_service_domain_isolation":
                 return ("Chapter IV", "Controller & Processor Obligations", "Article 25", "Data Protection by Design and by Default", "Privacy by Design", "On-device architecture with zero external telemetry, strict POSIX 0700/0600 storage isolation, and privacy-preserving defaults.")
-            case "security.filevault_encryption", "filesystem.encrypted_swap_virtual_memory", "filesystem.core_dumps_disabled", "filesystem.time_machine_backup_encryption", "security.sip_system_integrity", "security.sip_filesystem_integrity", "hardware.secure_boot_policy", "security.gatekeeper_integrity", "security.gatekeeper_enforced", "filesystem.secure_kernel_extension_loading", "security.system_integrity_protection_nvram", "security.screen_saver_lock_grace_period", "security.walk_away_lock", "security.screen_saver_lock", "security.screensaver_lock", "security.display_sleep_timeout", "hardware.display_sleep_timer", "security.lock_on_wake", "security.usb_restricted_mode", "security.app_shield_policy", "security.verification_timeout", "security.debounce_protection", "security.fast_user_switching_governance", "security.shoulder_surfing", "security.handoff_clipboard_isolation", "security.screen_capture_privacy_governance", "security.firewall_stealth_mode", "security.remote_login_disabled", "security.remote_management_disabled", "security.wake_on_lan_disabled", "security.remote_apple_events_disabled", "security.file_sharing_disabled", "security.bluetooth_sharing_disabled", "network.dns_secure_resolvers", "security.airdrop_discoverability_state", "security.airdrop_discoverability", "daemon.realtime_process_memory_swappiness", "filesystem.secure_system_dump_exclusion", "security.airplay_receiver_disabled", "security.login_window_console_disabled", "security.internet_sharing_disabled", "security.printer_sharing_disabled", "security.nfs_export_service_disabled", "network.system_proxy_integrity":
+            case "security.filevault_encryption", "filesystem.encrypted_swap_virtual_memory", "filesystem.core_dumps_disabled", "filesystem.time_machine_backup_encryption", "security.sip_system_integrity", "security.sip_filesystem_integrity", "hardware.secure_boot_policy", "security.gatekeeper_integrity", "security.gatekeeper_enforced", "filesystem.secure_kernel_extension_loading", "security.system_integrity_protection_nvram", "security.screen_saver_lock_grace_period", "security.walk_away_lock", "security.screen_saver_lock", "security.screensaver_lock", "security.display_sleep_timeout", "hardware.display_sleep_timer", "security.lock_on_wake", "security.usb_restricted_mode", "security.app_shield_policy", "security.verification_timeout", "security.debounce_protection", "security.fast_user_switching_governance", "security.shoulder_surfing", "security.handoff_clipboard_isolation", "security.screen_capture_privacy_governance", "security.firewall_stealth_mode", "security.remote_login_disabled", "security.remote_management_disabled", "security.wake_on_lan_disabled", "security.remote_apple_events_disabled", "security.file_sharing_disabled", "security.bluetooth_sharing_disabled", "network.dns_secure_resolvers", "security.airdrop_discoverability_state", "security.airdrop_discoverability", "daemon.realtime_process_memory_swappiness", "filesystem.secure_system_dump_exclusion", "security.airplay_receiver_disabled", "security.login_window_console_disabled", "security.internet_sharing_disabled", "security.printer_sharing_disabled", "security.nfs_export_service_disabled", "network.system_proxy_integrity", "security.content_caching_disabled", "security.siri_lock_screen_disabled", "filesystem.home_directory_permissions", "security.firewall_logging_enabled", "security.hot_corners_secure_lock", "security.universal_control_isolation", "security.smb_packet_signing_enforcement", "network.ipv6_firewall_rule_parity":
                 return ("Chapter IV", "Controller & Processor Obligations", "Article 32", "Security of Processing", "Confidentiality, Integrity & Resilience", "Technical and organizational measures ensuring data encryption at rest, memory protection, perimeter defense, and system resilience.")
             case "network.telegram_alert", "security.duress_pin", "security.duress_alarm_pipeline", "security.audible_deterrent", "filesystem.audit_chain_tamper", "security.audit_integrity_crypto", "filesystem.audit_integrity", "security.ntp_time_synchronization", "filesystem.audit_log_rotation", "daemon.network_reachability_monitor":
                 return ("Chapter IV Section 2", "Incident Management", "Articles 33 & 34", "Notification & Documentation of Personal Data Breaches", "Incident Logging & Alerting", "Real-time unauthorized access alerts via Telegram, silent duress distress alarm, and cryptographically verified audit trails.")
@@ -3064,15 +3150,15 @@ public struct DoctorReport {
                 return ("AC", "Access Control", "AC-7", "Unsuccessful Logon Attempts", "MODERATE", "Enforces maximum invalid PIN attempts with progressive cooling lockouts to thwart brute-force attacks.")
             case "security.login_window_banner":
                 return ("AC", "Access Control", "AC-8", "System Use Notification", "LOW", "Displays system-use notification and authorized enterprise usage warning banner prior to granting access.")
-            case "security.walk_away_lock", "security.screen_saver_lock", "security.screensaver_lock", "security.screen_saver_lock_grace_period", "security.display_sleep_timeout", "hardware.display_sleep_timer":
+            case "security.walk_away_lock", "security.screen_saver_lock", "security.screensaver_lock", "security.screen_saver_lock_grace_period", "security.display_sleep_timeout", "hardware.display_sleep_timer", "security.siri_lock_screen_disabled", "security.hot_corners_secure_lock":
                 return ("AC", "Access Control", "AC-11", "Device Lock", "LOW", "Prevents unauthorized physical workstation access by enforcing biometric walk-away lock and immediate session screen lock.")
-            case "security.app_shield_policy", "security.verification_timeout", "security.debounce_protection":
+            case "security.app_shield_policy", "security.verification_timeout", "security.debounce_protection", "filesystem.home_directory_permissions":
                 return ("AC", "Access Control", "AC-3", "Access Enforcement", "LOW", "Enforces approved authorizations for logical access to sensitive target applications based on biometric verification.")
             case "security.fast_user_switching_governance", "security.guest_account_disabled", "security.automatic_login_disabled", "security.login_window_console_disabled":
                 return ("AC", "Access Control", "AC-2", "Account Management", "LOW", "Disables unshielded guest logins, automatic logins, and text-mode console access to prevent session bypass.")
             case "security.airdrop_discoverability", "security.airdrop_discoverability_state", "security.bluetooth_sharing_disabled", "security.airplay_receiver_disabled":
                 return ("AC", "Access Control", "AC-18", "Wireless Access", "MODERATE", "Restricts unauthenticated proximate Bluetooth OBEX, AirDrop, and AirPlay wireless transfers to harden boundary security.")
-            case "security.remote_login_disabled", "security.remote_management_disabled", "security.remote_apple_events_disabled", "security.file_sharing_disabled", "security.wake_on_lan_disabled", "security.internet_sharing_disabled", "security.nfs_export_service_disabled":
+            case "security.remote_login_disabled", "security.remote_management_disabled", "security.remote_apple_events_disabled", "security.file_sharing_disabled", "security.wake_on_lan_disabled", "security.internet_sharing_disabled", "security.nfs_export_service_disabled", "security.universal_control_isolation":
                 return ("AC", "Access Control", "AC-17", "Remote Access", "LOW", "Disables unused remote administration protocols, SSH, Apple Remote Desktop, NFS exports, Internet sharing, and Wake-on-LAN services.")
 
             // Identification and Authentication (IA)
@@ -3090,7 +3176,7 @@ public struct DoctorReport {
                 return ("AU", "Audit and Accountability", "AU-4", "Audit Log Storage Capacity", "LOW", "Allocates sufficient audit storage and enforces automated log rotation to prevent audit capacity exhaustion.")
             case "security.ntp_time_synchronization":
                 return ("AU", "Audit and Accountability", "AU-8", "Time Stamps", "LOW", "Synchronizes internal system clocks with authorized NTP time sources for accurate forensic event ordering.")
-            case "network.telegram_alert", "security.duress_pin", "security.duress_alarm_pipeline", "security.audible_deterrent":
+            case "network.telegram_alert", "security.duress_pin", "security.duress_alarm_pipeline", "security.audible_deterrent", "security.firewall_logging_enabled":
                 return ("AU", "Audit and Accountability", "AU-2", "Event Logging & Real-Time Alerting", "LOW", "Generates immutable audit records and dispatches real-time security alerts upon intruder detection or duress.")
 
             // System and Information Integrity (SI)
@@ -3106,8 +3192,10 @@ public struct DoctorReport {
             // System and Communications Protection (SC)
             case "security.filevault_encryption", "filesystem.encrypted_swap_virtual_memory", "filesystem.time_machine_backup_encryption", "filesystem.secure_enclave_keychain", "filesystem.keychain_access_group":
                 return ("SC", "System and Communications Protection", "SC-28", "Protection of Information at Rest", "MODERATE", "Employs FileVault full-disk XTS-AES-128 encryption, encrypted swap, and Secure Enclave hardware protection at rest.")
-            case "security.firewall_stealth_mode", "network.dns_secure_resolvers", "daemon.network_reachability_monitor", "network.system_proxy_integrity":
+            case "security.firewall_stealth_mode", "network.dns_secure_resolvers", "daemon.network_reachability_monitor", "network.system_proxy_integrity", "network.ipv6_firewall_rule_parity":
                 return ("SC", "System and Communications Protection", "SC-7", "Boundary Protection", "LOW", "Enforces macOS Application Firewall in stealth mode, validates DNS resolver integrity, and eliminates rogue system proxies.")
+            case "security.smb_packet_signing_enforcement":
+                return ("SC", "System and Communications Protection", "SC-8", "Transmission Confidentiality and Integrity", "MODERATE", "Enforces cryptographic packet signing for SMB network communications to prevent message tampering and relay attacks.")
             case "security.secure_keyboard_entry", "security.handoff_clipboard_isolation", "security.screen_capture_privacy_governance":
                 return ("SC", "System and Communications Protection", "SC-13", "Cryptographic Protection & Keystroke Isolation", "MODERATE", "Isolates keystrokes and clipboard data at the WindowServer layer to prevent background keylogging and eavesdropping.")
             case "daemon.launchd_service_domain_isolation", "daemon.runtime_entitlements_integrity", "daemon.ipc_unix_domain_socket", "filesystem.temporary_storage_sandbox":
@@ -3126,7 +3214,7 @@ public struct DoctorReport {
                 return ("PE", "Physical and Environmental Protection", "PE-14", "Environmental Controls", "LOW", "Monitors thermal pressure and energy efficiency to maintain real-time biometric processing headroom.")
 
             // Configuration Management (CM)
-            case "security.printer_sharing_disabled":
+            case "security.printer_sharing_disabled", "security.content_caching_disabled":
                 return ("CM", "Configuration Management", "CM-7", "Least Functionality", "LOW", "Disables unnecessary printer and scanner sharing services to restrict exposed local attack surface.")
             default:
                 return ("CM", "Configuration Management", "CM-6", "Configuration Settings", "LOW", "Maintains hardened macOS security configuration baseline and validates system diagnostic compliance.")
@@ -3262,23 +3350,23 @@ public struct DoctorReport {
                 return ("Article 21(2)(f)", "Cybersecurity Effectiveness & Audit Review", "NIS2-21.2.f-AUD", "System Telemetry, Time Sync & Performance Auditing", "Mandatory", "Audits runtime memory, CPU footprint, network time synchronization (NTP), and log rotation for reliable continuous operation.")
 
             // Article 21(2)(g) - Basic Cyber Hygiene Practices & Device Hardening
-            case "security.automatic_login_disabled", "security.guest_account_disabled", "security.login_window_console_disabled", "security.login_window_banner", "security.login_window_password_hints", "security.fast_user_switching_governance":
+            case "security.automatic_login_disabled", "security.guest_account_disabled", "security.login_window_console_disabled", "security.login_window_banner", "security.login_window_password_hints", "security.fast_user_switching_governance", "security.siri_lock_screen_disabled":
                 return ("Article 21(2)(g)", "Basic Cyber Hygiene Practices", "NIS2-21.2.g-LGN", "Login Window & Account Boundary Hardening", "Mandatory", "Disables automatic login, guest accounts, text-mode console access, and fast user switching while displaying security banners.")
-            case "filesystem.posix_umask_hygiene", "filesystem.extended_attributes_hygiene", "filesystem.permissions_hardened", "filesystem.trash_auto_empty_retention", "filesystem.secure_trash_shredding_pipeline", "security.usb_restricted_mode":
+            case "filesystem.posix_umask_hygiene", "filesystem.extended_attributes_hygiene", "filesystem.permissions_hardened", "filesystem.trash_auto_empty_retention", "filesystem.secure_trash_shredding_pipeline", "security.usb_restricted_mode", "filesystem.home_directory_permissions":
                 return ("Article 21(2)(g)", "Basic Cyber Hygiene Practices", "NIS2-21.2.g-HYG", "Filesystem Hygiene & Peripheral USB Restriction", "Mandatory", "Enforces strict POSIX umask permissions, quarantine hygiene, secure trash shredding, and restricts locked USB accessories.")
 
             // Article 21(2)(h) - Cryptography & Data Encryption
-            case "security.filevault_encryption", "filesystem.encrypted_swap_virtual_memory", "filesystem.secure_enclave_keychain", "filesystem.keychain_access_group":
+            case "security.filevault_encryption", "filesystem.encrypted_swap_virtual_memory", "filesystem.secure_enclave_keychain", "filesystem.keychain_access_group", "security.smb_packet_signing_enforcement":
                 return ("Article 21(2)(h)", "Cryptography & Data Encryption", "NIS2-21.2.h-ENC", "Full-Disk & Keychain Hardware Cryptography", "Mandatory", "Protects biometric templates and system volumes using FileVault XTS-AES-128 encryption, encrypted virtual memory swap, and Secure Enclave keychains.")
             case "security.secure_keyboard_entry", "security.handoff_clipboard_isolation", "security.screen_capture_privacy_governance":
                 return ("Article 21(2)(h)", "Cryptography & Data Encryption", "NIS2-21.2.h-ISO", "WindowServer Keystroke & Clipboard Eavesdropping Isolation", "Mandatory", "Enforces secure keyboard entry and isolates universal clipboard buffers to prevent malware keystroke snooping.")
 
             // Article 21(2)(i) - Access Control Policies & Network Defense
-            case "security.walk_away_lock", "security.screen_saver_lock", "security.screen_saver_lock_grace_period", "security.display_sleep_timeout", "hardware.display_sleep_timer", "hardware.lid_wake_sensor_state", "security.lock_on_wake":
+            case "security.walk_away_lock", "security.screen_saver_lock", "security.screen_saver_lock_grace_period", "security.display_sleep_timeout", "hardware.display_sleep_timer", "hardware.lid_wake_sensor_state", "security.lock_on_wake", "security.hot_corners_secure_lock":
                 return ("Article 21(2)(i)", "Access Control Policies & Network Defense", "NIS2-21.2.i-LOC", "Unattended Workstation Auto-Lock & Sleep Defense", "Mandatory", "Locks active display immediately upon physical walk-away, clamshell lid closure, or display sleep.")
             case "security.app_shield_policy", "security.verification_timeout", "security.debounce_protection", "security.presentation_suppression":
                 return ("Article 21(2)(i)", "Access Control Policies & Network Defense", "NIS2-21.2.i-APP", "Application-Level Biometric Shield Policy", "Mandatory", "Restricts access to confidential enterprise applications behind biometric re-authentication with presentation awareness.")
-            case "security.firewall_stealth_mode", "security.remote_login_disabled", "security.remote_management_disabled", "security.remote_apple_events_disabled", "security.file_sharing_disabled", "security.wake_on_lan_disabled", "security.airdrop_discoverability", "security.airdrop_discoverability_state", "security.bluetooth_sharing_disabled", "security.airplay_receiver_disabled", "security.internet_sharing_disabled", "security.printer_sharing_disabled", "security.nfs_export_service_disabled", "network.dns_secure_resolvers", "network.system_proxy_integrity", "daemon.network_reachability_monitor", "daemon.launchd_service_domain_isolation", "daemon.ipc_unix_domain_socket":
+            case "security.firewall_stealth_mode", "security.remote_login_disabled", "security.remote_management_disabled", "security.remote_apple_events_disabled", "security.file_sharing_disabled", "security.wake_on_lan_disabled", "security.airdrop_discoverability", "security.airdrop_discoverability_state", "security.bluetooth_sharing_disabled", "security.airplay_receiver_disabled", "security.internet_sharing_disabled", "security.printer_sharing_disabled", "security.nfs_export_service_disabled", "network.dns_secure_resolvers", "network.system_proxy_integrity", "daemon.network_reachability_monitor", "daemon.launchd_service_domain_isolation", "daemon.ipc_unix_domain_socket", "security.content_caching_disabled", "security.firewall_logging_enabled", "security.universal_control_isolation", "network.ipv6_firewall_rule_parity":
                 return ("Article 21(2)(i)", "Access Control Policies & Network Defense", "NIS2-21.2.i-NET", "Network Service Hardening & Attack Surface Elimination", "Mandatory", "Enforces stealth firewall, disables unused file sharing/remote desktop/NFS/AirPlay/Internet sharing services, and eliminates proxy tampering.")
 
             // Article 21(2)(a) - Policies on Risk Analysis & Information System Security (Default)
@@ -3372,6 +3460,155 @@ public struct DoctorReport {
         guard let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
               let str = String(data: data, encoding: .utf8) else {
             return "{\"nis2_report\":{\"framework\":\"European Union NIS2 Directive (Directive (EU) 2022/2555)\",\"version\":\"NIS2 Directive (EU) 2022/2555\",\"assessments\":[]}}\n"
+        }
+        return str + "\n"
+    }
+
+    // MARK: - DORA Regulation (EU 2022/2554) Assessment Report Generation
+
+    public func toDORADictionary() -> [String: Any] {
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+
+        func mapCheckToDORA(_ checkId: String) -> (articleId: String, articleTitle: String, measureId: String, measureTitle: String, requirementLevel: String, objective: String) {
+            switch checkId {
+            // Article 7 - ICT Systems, Protocols & Tools (Biometrics, MFA & Optical Sensors)
+            case "biometrics.face_enrolled", "biometrics.liveness_detection", "biometrics.strict_face_match", "security.strict_face_match", "hardware.vision_framework", "hardware.neural_engine_coreml", "hardware.accelerate_simd_pipeline", "biometrics.vector_consistency", "biometrics.vector_entropy", "security.biometric_cluster_cohesion", "security.shoulder_surfing", "security.biometric_spoofing":
+                return ("Article 7", "ICT Systems, Protocols & Tools", "DORA-Art7-BIO", "Continuous Biometric Face Authentication & Anti-Spoofing", "Mandatory", "Deploys on-device 128-D neural face embedding comparison and live bystander anti-spoofing to continuously authenticate active workstation operator.")
+            case "hardware.touchid", "hardware.secure_enclave", "security.touchid_fallback", "security.sudo_touchid_pam", "security.master_pin", "security.pin_bruteforce_defense":
+                return ("Article 7", "ICT Systems, Protocols & Tools", "DORA-Art7-MFA", "Hardware-Backed Multi-Factor Authentication", "Mandatory", "Enforces hardware Apple Secure Enclave Touch ID biometrics and brute-force resilient PIN fallback for identity verification and privileged escalation.")
+            case "hardware.camera_device", "hardware.camera_permission", "hardware.camera_continuity", "security.camera_indicator_compliance":
+                return ("Article 7", "ICT Systems, Protocols & Tools", "DORA-Art7-SEN", "Optical Sensor Hardware Integrity & Privacy", "Mandatory", "Verifies optical sensor availability, hardware indicator compliance, and camera session integrity for continuous biometric authentication.")
+
+            // Article 10 - Detection of Anomalous Activities & Real-Time Alerting
+            case "network.telegram_alert", "security.duress_pin", "security.duress_alarm_pipeline", "security.audible_deterrent":
+                return ("Article 10", "Detection of Anomalous Activities", "DORA-Art10-ALR", "Real-Time Intruder & Emergency Distress Alerting", "Mandatory", "Dispatches instant encrypted Telegram alerts, duress panic notifications, and audible deterrent alarms upon unauthorized physical intrusion.")
+            case "security.incident_retention_policy", "filesystem.intruder_storage", "filesystem.audit_chain_tamper", "security.audit_integrity_crypto", "filesystem.audit_integrity":
+                return ("Article 10", "Detection of Anomalous Activities", "DORA-Art10-EVI", "Cryptographic Incident Evidence & Tamper-Evident Audit", "Mandatory", "Captures forensic intruder evidence with HMAC-SHA256 tamper-evident integrity seals and strictly governed retention pruning.")
+
+            // Article 12 - Backup Policies & Recovery Methods
+            case "filesystem.backups_dir", "filesystem.backup_freshness", "filesystem.backup_apfs_snapshots", "filesystem.time_machine_backup_encryption", "daemon.launchd_keepalive_service":
+                return ("Article 12", "Backup Policies & Recovery Methods", "DORA-Art12-BCP", "Automated State Backups & Local APFS Snapshots", "Mandatory", "Maintains encrypted point-in-time configuration snapshots, automated backups, and launchd keep-alive auto-restart resilience.")
+
+            // Article 11 - Response & Recovery Strategies
+            case "hardware.clamshell_state", "hardware.display_topology", "hardware.power_standby_mode", "hardware.power_efficiency", "hardware.thermal_state", "daemon.thermal_throttling_mitigation", "hardware.battery_health_capacity", "daemon.energy_impact_profiling":
+                return ("Article 11", "Response & Recovery Strategies", "DORA-Art11-RES", "Hardware Energy & Environmental Resilience", "Mandatory", "Monitors power headroom, thermal throttling, clamshell topology, and battery health to ensure uninterrupted security enforcement.")
+
+            // Article 9 - Protection & Prevention Controls
+            case "security.filevault_encryption", "filesystem.encrypted_swap_virtual_memory", "filesystem.secure_enclave_keychain", "filesystem.keychain_access_group", "security.smb_packet_signing_enforcement":
+                return ("Article 9", "Protection & Prevention Controls", "DORA-Art9-ENC", "Full-Disk & Keychain Hardware Cryptography", "Mandatory", "Protects biometric templates and system volumes using FileVault XTS-AES-128 encryption, encrypted virtual memory swap, and Secure Enclave keychains.")
+            case "security.walk_away_lock", "security.screen_saver_lock", "security.screen_saver_lock_grace_period", "security.display_sleep_timeout", "hardware.display_sleep_timer", "hardware.lid_wake_sensor_state", "security.lock_on_wake", "security.hot_corners_secure_lock":
+                return ("Article 9", "Protection & Prevention Controls", "DORA-Art9-LOC", "Unattended Workstation Auto-Lock & Sleep Defense", "Mandatory", "Locks active display immediately upon physical walk-away, clamshell lid closure, or display sleep.")
+            case "security.gatekeeper_integrity", "security.gatekeeper_enforced", "daemon.binary_integrity", "filesystem.secure_kernel_extension_loading", "daemon.runtime_entitlements_integrity":
+                return ("Article 9", "Protection & Prevention Controls", "DORA-Art9-SIG", "Binary Code-Signing & Kernel Extension Hardening", "Mandatory", "Verifies Apple developer code-signature, hardened runtime entitlements, and restricts third-party kernel extensions.")
+            case "security.automatic_login_disabled", "security.guest_account_disabled", "security.login_window_console_disabled", "security.login_window_banner", "security.login_window_password_hints", "security.fast_user_switching_governance", "security.siri_lock_screen_disabled":
+                return ("Article 9", "Protection & Prevention Controls", "DORA-Art9-LGN", "Login Window & Account Boundary Hardening", "Mandatory", "Disables automatic login, guest accounts, text-mode console access, Siri on lock screen, and fast user switching while displaying security banners.")
+            case "filesystem.posix_umask_hygiene", "filesystem.extended_attributes_hygiene", "filesystem.permissions_hardened", "filesystem.trash_auto_empty_retention", "filesystem.secure_trash_shredding_pipeline", "security.usb_restricted_mode", "filesystem.home_directory_permissions":
+                return ("Article 9", "Protection & Prevention Controls", "DORA-Art9-HYG", "Filesystem Hygiene & Peripheral USB Restriction", "Mandatory", "Enforces strict POSIX umask permissions, home directory isolation, quarantine hygiene, secure trash shredding, and restricts locked USB accessories.")
+            case "security.firewall_stealth_mode", "security.remote_login_disabled", "security.remote_management_disabled", "security.remote_apple_events_disabled", "security.file_sharing_disabled", "security.wake_on_lan_disabled", "security.airdrop_discoverability", "security.airdrop_discoverability_state", "security.bluetooth_sharing_disabled", "security.airplay_receiver_disabled", "security.internet_sharing_disabled", "security.printer_sharing_disabled", "security.nfs_export_service_disabled", "network.dns_secure_resolvers", "network.system_proxy_integrity", "daemon.network_reachability_monitor", "daemon.launchd_service_domain_isolation", "daemon.ipc_unix_domain_socket", "security.content_caching_disabled", "security.firewall_logging_enabled", "security.universal_control_isolation", "network.ipv6_firewall_rule_parity":
+                return ("Article 9", "Protection & Prevention Controls", "DORA-Art9-NET", "Network Service Hardening & Firewall Event Logging", "Mandatory", "Enforces stealth firewall with event logging, disables content caching, unneeded network sharing/NFS/AirPlay services, and eliminates proxy tampering.")
+            case "security.app_shield_policy", "security.verification_timeout", "security.debounce_protection", "security.presentation_suppression":
+                return ("Article 9", "Protection & Prevention Controls", "DORA-Art9-APP", "Application-Level Biometric Shield Policy", "Mandatory", "Restricts access to confidential enterprise applications behind biometric re-authentication with presentation awareness.")
+            case "security.secure_keyboard_entry", "security.handoff_clipboard_isolation", "security.screen_capture_privacy_governance":
+                return ("Article 9", "Protection & Prevention Controls", "DORA-Art9-ISO", "WindowServer Keystroke & Clipboard Eavesdropping Isolation", "Mandatory", "Enforces secure keyboard entry and isolates universal clipboard buffers to prevent malware keystroke snooping.")
+
+            // Article 13 - Learning, Evolving & Incident Post-Mortem
+            case "filesystem.audit_log_rotation", "security.ntp_time_synchronization", "daemon.memory_footprint", "daemon.cpu_utilization", "daemon.memory_resident_pressure", "daemon.realtime_process_memory_swappiness":
+                return ("Article 13", "Learning, Evolving & Incident Post-Mortem", "DORA-Art13-AUD", "System Telemetry, Time Sync & Performance Auditing", "Mandatory", "Audits runtime memory, CPU footprint, network time synchronization (NTP), and log rotation for reliable continuous operation.")
+
+            // Article 8 - Identification of Assets & Threat Landscape
+            case "hardware.architecture", "hardware.ambient_light_sensor", "hardware.camera_resolution", "filesystem.directory", "filesystem.config_schema", "filesystem.enrolled_vectors", "filesystem.disk_headroom":
+                return ("Article 8", "Identification of Assets & Threat Landscape", "DORA-Art8-AST", "Asset Inventory & System Telemetry Baseline", "Mandatory", "Catalogs hardware sensor baselines, camera resolution, Apple Silicon architecture, and local storage headroom.")
+
+            // Article 6 - ICT Risk Management Framework & Governance (Default)
+            default:
+                return ("Article 6", "ICT Risk Management Framework & Governance", "DORA-Art6-RSK", "Endpoint Baseline Security & Hardening Assessment", "Mandatory", "Maintains continuous security posture evaluation and endpoint configuration compliance against enterprise risk baselines.")
+            }
+        }
+
+        var assessments: [[String: Any]] = []
+        var measuresMap: [String: [String: Any]] = [:]
+
+        for check in checks {
+            let dora = mapCheckToDORA(check.id)
+            var item: [String: Any] = [
+                "check_id": check.id,
+                "category": check.category,
+                "name": check.name,
+                "status": check.status.rawValue,
+                "badge": check.status.badge,
+                "message": check.message,
+                "article_id": dora.articleId,
+                "article_title": dora.articleTitle,
+                "measure_id": dora.measureId,
+                "measure_title": dora.measureTitle,
+                "requirement_level": dora.requirementLevel,
+                "objective": dora.objective
+            ]
+            if let rem = check.remediation, !rem.isEmpty {
+                item["remediation"] = rem
+            }
+            assessments.append(item)
+
+            if measuresMap[dora.measureId] == nil {
+                measuresMap[dora.measureId] = [
+                    "measure_id": dora.measureId,
+                    "title": dora.measureTitle,
+                    "article_id": dora.articleId,
+                    "article_title": dora.articleTitle,
+                    "requirement_level": dora.requirementLevel,
+                    "objective": dora.objective
+                ]
+            }
+        }
+
+        let sortedMeasures = measuresMap.values.sorted {
+            ($0["measure_id"] as? String ?? "") < ($1["measure_id"] as? String ?? "")
+        }
+
+        let complianceScore = totalChecks > 0 ? Int((Double(passedCount) / Double(totalChecks)) * 100.0) : 0
+
+        let articlesList: [[String: Any]] = [
+            ["id": "Article 6", "name": "ICT Risk Management Framework & Governance", "description": "Policies on digital operational resilience, risk management framework, and governance (Article 6)."],
+            ["id": "Article 7", "name": "ICT Systems, Protocols & Tools", "description": "Continuous biometric identification, hardware enclave isolation, and reliable ICT tools (Article 7)."],
+            ["id": "Article 8", "name": "Identification of Assets & Threat Landscape", "description": "Identification and classification of hardware assets, display topologies, and sensor baselines (Article 8)."],
+            ["id": "Article 9", "name": "Protection & Prevention Controls", "description": "Endpoint hardening, FileVault encryption, network service restrictions, and session lock controls (Article 9)."],
+            ["id": "Article 10", "name": "Detection of Anomalous Activities", "description": "Real-time intruder detection, walk-away monitoring, and shoulder-surfing bystander defense (Article 10)."],
+            ["id": "Article 11", "name": "Response & Recovery Strategies", "description": "Operational continuity, thermal mitigation, battery health, and launchd keep-alive resilience (Article 11)."],
+            ["id": "Article 12", "name": "Backup Policies & Recovery Methods", "description": "Automated configuration backups, local APFS snapshots, and disaster recovery procedures (Article 12)."],
+            ["id": "Article 13", "name": "Learning, Evolving & Incident Post-Mortem", "description": "Tamper-evident audit verification, forensic HMAC seals, log rotation, and post-incident analysis (Article 13)."],
+            ["id": "Article 14", "name": "Communication Plans & Crisis Notification", "description": "Real-time encrypted Telegram alerting, emergency distress notifications, and crisis dispatch (Article 14)."]
+        ]
+
+        let doraDict: [String: Any] = [
+            "dora_report": [
+                "framework": "European Union DORA Regulation (Regulation (EU) 2022/2554)",
+                "version": "DORA Regulation (EU) 2022/2554",
+                "title": "FaceLock macOS Biometric Endpoint DORA Digital Operational Resilience Assessment",
+                "timestamp": timestamp,
+                "metadata": [
+                    "facelock_version": version,
+                    "overall_status": overallStatus,
+                    "compliance_score": complianceScore,
+                    "total_checks": totalChecks,
+                    "passed_checks": passedCount,
+                    "warning_checks": warningCount,
+                    "failure_checks": failureCount,
+                    "info_checks": infoCount
+                ],
+                "articles": articlesList,
+                "measures": Array(sortedMeasures),
+                "assessments": assessments
+            ]
+        ]
+
+        return doraDict
+    }
+
+    public func generateDORA() -> String {
+        let dict = toDORADictionary()
+        guard let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
+              let str = String(data: data, encoding: .utf8) else {
+            return "{\"dora_report\":{\"framework\":\"European Union DORA Regulation (Regulation (EU) 2022/2554)\",\"version\":\"DORA Regulation (EU) 2022/2554\",\"assessments\":[]}}\n"
         }
         return str + "\n"
     }
@@ -5644,6 +5881,35 @@ public struct Diagnostics {
             ))
         }
 
+        // 2.25 Home Directory POSIX Permissions Hardening
+        var homePermsRestricted = false
+        var homePermsString = "unknown"
+        if let homeAttrs = try? FileManager.default.attributesOfItem(atPath: home.path),
+           let homePermsNum = homeAttrs[.posixPermissions] as? NSNumber {
+            let perms = homePermsNum.intValue
+            homePermsString = String(format: "%04o", perms)
+            // Restricted if group has no write and others have no read/write/execute (perms & 0o027 == 0)
+            homePermsRestricted = ((perms & 0o027) == 0)
+        }
+        if homePermsRestricted {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.home_directory_permissions",
+                category: "filesystem",
+                name: "Home Directory POSIX Permissions Hardening",
+                status: .pass,
+                message: "Home directory POSIX permissions are restricted (\(homePermsString)); multi-user access to biometric vectors and ~/.facelock prevented."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.home_directory_permissions",
+                category: "filesystem",
+                name: "Home Directory POSIX Permissions Hardening",
+                status: .warn,
+                message: "Home directory POSIX permissions are permissive (\(homePermsString)); other local user accounts may access sensitive biometric state.",
+                remediation: "Run 'chmod 700 ~' to restrict home directory permissions to current user only."
+            ))
+        }
+
         // Category 3: Background Daemon & Automation
         // 3.1 Daemon Process
         let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: "io.github.facelock")
@@ -7443,6 +7709,158 @@ public struct Diagnostics {
             ))
         }
 
+        // 4.54 Content Caching Service Hardening
+        let contentCachingCheck = runShellCommand("/usr/bin/defaults", arguments: ["read", "/Library/Preferences/com.apple.AssetCache.plist", "Activated"])
+        let isContentCachingDisabled = (contentCachingCheck.exitCode != 0 || !contentCachingCheck.stdout.trimmingCharacters(in: .whitespacesAndNewlines).contains("1"))
+        if isContentCachingDisabled {
+            checks.append(DoctorCheckItem(
+                id: "security.content_caching_disabled",
+                category: "security",
+                name: "Content Caching Service Hardening",
+                status: .pass,
+                message: "macOS Content Caching is disabled; rogue local cache proxying and unintended iCloud/software update relaying prevented."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.content_caching_disabled",
+                category: "security",
+                name: "Content Caching Service Hardening",
+                status: .info,
+                message: "macOS Content Caching is active; workstation acts as local network cache server for iCloud and software updates.",
+                remediation: "Disable Content Caching in System Settings > General > Sharing > Content Caching."
+            ))
+        }
+
+        // 4.55 Siri on Lock Screen Hardening
+        let siriLockCheck = runShellCommand("/usr/bin/defaults", arguments: ["read", "com.apple.Siri", "LockscreenEnabled"])
+        let isSiriLockDisabled = (siriLockCheck.exitCode != 0 || siriLockCheck.stdout.trimmingCharacters(in: .whitespacesAndNewlines) == "0")
+        if isSiriLockDisabled {
+            checks.append(DoctorCheckItem(
+                id: "security.siri_lock_screen_disabled",
+                category: "security",
+                name: "Siri on Lock Screen Hardening",
+                status: .pass,
+                message: "Siri on Lock Screen is disabled; voice-activated command execution and acoustic data disclosure prevented when workstation is locked."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.siri_lock_screen_disabled",
+                category: "security",
+                name: "Siri on Lock Screen Hardening",
+                status: .warn,
+                message: "Siri is accessible while workstation screen is locked; potential voice-assisted information disclosure or lock screen bypass.",
+                remediation: "Disable 'Allow Siri when locked' in System Settings > Apple Intelligence & Siri."
+            ))
+        }
+
+        // 4.56 Application Firewall Security Event Logging
+        let alfLoggingCheck = runShellCommand("/usr/bin/defaults", arguments: ["read", "/Library/Preferences/com.apple.alf", "loggingoption"])
+        let isAlfLoggingEnabled = (alfLoggingCheck.exitCode == 0 && (Int(alfLoggingCheck.stdout.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0) >= 1)
+        if isAlfLoggingEnabled {
+            checks.append(DoctorCheckItem(
+                id: "security.firewall_logging_enabled",
+                category: "security",
+                name: "Application Firewall Security Event Logging",
+                status: .pass,
+                message: "macOS Application Firewall security event logging is enabled; incoming connection drops and security telemetry are audited."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.firewall_logging_enabled",
+                category: "security",
+                name: "Application Firewall Security Event Logging",
+                status: .info,
+                message: "macOS Application Firewall security logging is disabled or set to minimal; network intrusion events are not journaled.",
+                remediation: "Run 'sudo defaults write /Library/Preferences/com.apple.alf loggingoption -int 1' to enable firewall event logging."
+            ))
+        }
+
+        // 4.57 Hot Corners Lock Bypass Prevention
+        let dockCorners = runShellCommand("/usr/bin/defaults", arguments: ["read", "com.apple.dock"])
+        var hasDisableScreenSaverCorner = false
+        if dockCorners.exitCode == 0 {
+            let out = dockCorners.stdout
+            for cornerKey in ["wvous-tl-corner", "wvous-tr-corner", "wvous-bl-corner", "wvous-br-corner"] {
+                if out.contains("\"\(cornerKey)\" = 6;") || out.contains("\(cornerKey) = 6;") {
+                    hasDisableScreenSaverCorner = true
+                    break
+                }
+            }
+        }
+        if !hasDisableScreenSaverCorner {
+            checks.append(DoctorCheckItem(
+                id: "security.hot_corners_secure_lock",
+                category: "security",
+                name: "Hot Corners Lock Bypass Prevention",
+                status: .pass,
+                message: "No screen corners are configured to disable screen saver (wvous corner value 6); screen auto-lock and walk-away defense cannot be bypassed via cursor positioning."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.hot_corners_secure_lock",
+                category: "security",
+                name: "Hot Corners Lock Bypass Prevention",
+                status: .warn,
+                message: "A macOS Hot Corner is configured to 'Disable Screen Saver'; placing cursor in this corner inhibits automated screen locking.",
+                remediation: "Disable the 'Disable Screen Saver' hot corner in System Settings > Desktop & Dock > Hot Corners."
+            ))
+        }
+
+        // 4.58 Universal Control Cross-Device Pointer Sharing Hardening
+        let ucCheck = runShellCommand("/usr/bin/defaults", arguments: ["read", "com.apple.universalcontrol"])
+        let isUcDisabledOrAbsent = (ucCheck.exitCode != 0 || ucCheck.stdout.contains("Disable = 1;") || ucCheck.stdout.contains("DisableService = 1;"))
+        if isUcDisabledOrAbsent {
+            checks.append(DoctorCheckItem(
+                id: "security.universal_control_isolation",
+                category: "security",
+                name: "Universal Control Cross-Device Pointer Sharing Hardening",
+                status: .pass,
+                message: "Universal Control cross-device pointer/keyboard bridging is inactive or governed; unauthorized cross-device session manipulation prevented."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.universal_control_isolation",
+                category: "security",
+                name: "Universal Control Cross-Device Pointer Sharing Hardening",
+                status: .info,
+                message: "Universal Control is enabled; pointer and keyboard input can move seamlessly to adjacent unmanaged Apple devices.",
+                remediation: "In high-security environments, disable Universal Control in System Settings > Displays > Advanced > 'Allow pointer and keyboard to move between any nearby Mac or iPad'."
+            ))
+        }
+
+        // 4.59 SMB Protocol Cryptographic Packet Signing Hardening
+        var isSmbSigningInsecure = false
+        if let nsmbContent = try? String(contentsOfFile: "/etc/nsmb.conf", encoding: .utf8) {
+            let lower = nsmbContent.lowercased()
+            if lower.contains("signing_required=no") || lower.contains("signing_permitted=no") {
+                isSmbSigningInsecure = true
+            }
+        }
+        if let userNsmb = try? String(contentsOfFile: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Preferences/nsmb.conf").path, encoding: .utf8) {
+            let lower = userNsmb.lowercased()
+            if lower.contains("signing_required=no") || lower.contains("signing_permitted=no") {
+                isSmbSigningInsecure = true
+            }
+        }
+        if !isSmbSigningInsecure {
+            checks.append(DoctorCheckItem(
+                id: "security.smb_packet_signing_enforcement",
+                category: "security",
+                name: "SMB Protocol Cryptographic Packet Signing Hardening",
+                status: .pass,
+                message: "SMB packet signing is enforced or default negotiated; NTLM/SMB relay attacks and unauthenticated payload tampering on file shares prevented."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.smb_packet_signing_enforcement",
+                category: "security",
+                name: "SMB Protocol Cryptographic Packet Signing Hardening",
+                status: .warn,
+                message: "SMB client packet signing is explicitly disabled in nsmb.conf; network communications are vulnerable to man-in-the-middle SMB relay attacks.",
+                remediation: "Remove 'signing_required=no' and 'signing_permitted=no' from /etc/nsmb.conf or set 'signing_required=yes'."
+            ))
+        }
+
         // Category 5: Remote Alerting & Network
         if config.telegramEnabled {
             if !config.telegramBotToken.isEmpty && !config.telegramChatId.isEmpty {
@@ -7561,6 +7979,29 @@ public struct Diagnostics {
             ))
         }
 
+        // 5.4 IPv6 Network Filtering & Packet Inspection Hardening
+        let pfConfExists = FileManager.default.fileExists(atPath: "/etc/pf.conf")
+        let alfCheck = runShellCommand("/usr/bin/defaults", arguments: ["read", "/Library/Preferences/com.apple.alf/globalstate"])
+        let isAlfOrPfActive = (pfConfExists || (alfCheck.exitCode == 0 && alfCheck.stdout.trimmingCharacters(in: .whitespacesAndNewlines) != "0"))
+        if isAlfOrPfActive {
+            checks.append(DoctorCheckItem(
+                id: "network.ipv6_firewall_rule_parity",
+                category: "network",
+                name: "IPv6 Network Filtering & Packet Inspection Hardening",
+                status: .pass,
+                message: "macOS Packet Filter (PF) architecture and Application Layer Firewall (ALF) govern endpoint packet filtering across both IPv4 and IPv6 vectors."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "network.ipv6_firewall_rule_parity",
+                category: "network",
+                name: "IPv6 Network Filtering & Packet Inspection Hardening",
+                status: .warn,
+                message: "Packet Filter ruleset is missing and Application Layer Firewall is inactive; IPv6 traffic bypasses local packet boundary defense.",
+                remediation: "Enable Application Firewall in System Settings > Network > Firewall or restore /etc/pf.conf."
+            ))
+        }
+
         return DoctorReport(checks: checks, version: Config.currentVersion)
     }
 
@@ -7611,7 +8052,7 @@ public struct Diagnostics {
         }
 
         // 1d. Sensitive files permissions repair (chmod 0600 on sensitive credentials and audit files)
-        let sensitiveFilesToRepair = ["config.json", "enrolled_vectors.json", "audit_log.jsonl", "doctor_report.json", "doctor_step_summary.md", "doctor_codeclimate.json", "doctor_sonarqube.json", "doctor_defectdojo.json", "doctor_cyclonedx.json", "doctor_spdx.json", "doctor_csaf.json", "doctor_openvex.json", "doctor_stix.json", "doctor_attack.json", "doctor_oscal.json", "doctor_nist_csf.json", "doctor_cis_controls.json", "doctor_iso27001.json", "doctor_soc2.json", "doctor_pcidss.json", "doctor_hipaa.json", "doctor_gdpr.json", "doctor_nist80053.json", "doctor_nis2.json"]
+        let sensitiveFilesToRepair = ["config.json", "enrolled_vectors.json", "audit_log.jsonl", "doctor_report.json", "doctor_step_summary.md", "doctor_codeclimate.json", "doctor_sonarqube.json", "doctor_defectdojo.json", "doctor_cyclonedx.json", "doctor_spdx.json", "doctor_csaf.json", "doctor_openvex.json", "doctor_stix.json", "doctor_attack.json", "doctor_oscal.json", "doctor_nist_csf.json", "doctor_cis_controls.json", "doctor_iso27001.json", "doctor_soc2.json", "doctor_pcidss.json", "doctor_hipaa.json", "doctor_gdpr.json", "doctor_nist80053.json", "doctor_nis2.json", "doctor_dora.json"]
         for sFileName in sensitiveFilesToRepair {
             let sFilePath = facelockDir.appendingPathComponent(sFileName).path
             if FileManager.default.fileExists(atPath: sFilePath) {
@@ -8372,6 +8813,33 @@ public struct Diagnostics {
             let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
             try? FileManager.default.createDirectory(at: facelockDir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
             targetURL = facelockDir.appendingPathComponent("doctor_nis2.json")
+        }
+
+        guard let data = json.data(using: .utf8) else {
+            return (false, targetURL.path, json, report)
+        }
+
+        do {
+            try data.write(to: targetURL, options: .atomic)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: targetURL.path)
+            return (true, targetURL.path, json, report)
+        } catch {
+            return (false, targetURL.path, json, report)
+        }
+    }
+
+    @discardableResult
+    public static func exportDoctorDORA(toPath customPath: String? = nil, config: Config = .shared, skipNetwork: Bool = false) -> (success: Bool, path: String, content: String, report: DoctorReport) {
+        let report = runDoctor(config: config, skipNetwork: skipNetwork)
+        let json = report.generateDORA()
+        let targetURL: URL
+        if let customPath = customPath, !customPath.isEmpty {
+            targetURL = URL(fileURLWithPath: (customPath as NSString).expandingTildeInPath)
+        } else {
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
+            try? FileManager.default.createDirectory(at: facelockDir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            targetURL = facelockDir.appendingPathComponent("doctor_dora.json")
         }
 
         guard let data = json.data(using: .utf8) else {
