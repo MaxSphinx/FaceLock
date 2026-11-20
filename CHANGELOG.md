@@ -4,6 +4,30 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.13] - 2026-11-20
+
+### Added
+- **Diagnostic Doctor Expansion to 136 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `security.safari_safe_files_auto_open_disabled`: Audits Safari automatic download execution policy (`defaults read com.apple.Safari AutoOpenSafeDownloads`), verifying automatic execution of downloaded "safe" files is disabled to eliminate drive-by malware execution, rogue script execution, and unauthenticated file launching.
+  - Added `security.cups_web_interface_disabled`: Audits Common Unix Printing System (CUPS) web administration interface on port 631 via `/usr/sbin/cupsctl`, ensuring the localhost web administrative interface is disabled to eliminate local cross-site scripting (CSRF) and unauthorized printer re-configuration.
+  - Added `security.auditd_service_auditing_active`: Audits macOS OpenBSM kernel security auditing daemon (`com.apple.auditd` and `/etc/security/audit_control`), verifying system-wide security auditing, privileged authentication events, and audit logs are recorded to `/var/audit`.
+  - Added `security.tftp_service_disabled`: Audits Trivial File Transfer Protocol (TFTP) daemon state (`/bin/launchctl list com.apple.tftpd`), ensuring unauthenticated, unencrypted UDP file transfer services are disabled.
+  - Added `security.diagnostic_reports_sharing_disabled`: Audits Apple Diagnostic & Crash Usage telemetry auto-submission (`defaults read /Library/Application Support/CrashReporter/DiagnosticReporting.plist AutoSubmit`), ensuring process memory dumps and application argument vectors are governed and not automatically transmitted to third parties.
+  - Added `filesystem.temporary_directory_permissions`: Audits `/private/tmp` POSIX sticky-bit permissions (`stat -f %Lp /private/tmp`), verifying standard `1777` sticky-bit enforcement to prevent unprivileged symlink attacks, race conditions, and unauthorized deletion of inter-process socket endpoints.
+  - Added `security.screen_capture_location_isolated`: Audits `defaults read com.apple.screencapture location`, ensuring captured desktop screenshots are placed in private user-owned directories rather than world-writable or synchronized shared folders.
+  - Added `security.ssh_server_root_login_disabled`: Audits OpenSSH server configuration (`/etc/ssh/sshd_config`), verifying that direct remote root login (`PermitRootLogin no`) is strictly prohibited to mitigate automated brute-force attacks against administrative credentials.
+- **Australian Cyber Security Centre (ACSC) Essential Eight Assessment Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.toEssentialEightDictionary()` and `DoctorReport.generateEssentialEight()` producing standard ACSC Essential Eight Maturity Model Assessment JSON (`essential_eight_report`, `framework: "Australian Cyber Security Centre Essential Eight (ACSC Essential 8)"`, `version: "ACSC Essential Eight Maturity Model (2023)"`, `metadata`, `strategies` [E8-01 through E8-08 across Maturity Levels 1, 2, and 3], `controls`, `assessments`) mapping evaluated FaceLock biometric controls and macOS hardening parameters to Australian Signals Directorate (ASD / ACSC) statutory mitigation strategies.
+  - Implemented `Diagnostics.exportDoctorEssentialEight(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_essential8.json` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-essential8`, `--doctor-e8`, and `--doctor-export-essential8 [path]` with `--json` output support and full normalization aliases (`--doctor-essential8-json`, `--essential8-doctor-json`, `--doctor-e8-json`, `--e8-doctor-json`, `--doctor-essential-eight-json`, `--essential-eight-doctor-json`, `--doctor-essential8`, `--essential8-doctor`, `--doctor-e8`, `--e8-doctor`, `--doctor-essential-eight`, `--essential-eight-doctor`, `--doctor-export-essential8-json`, `--export-doctor-essential8-json`, `--export-essential8-doctor-json`, `--doctor-export-e8-json`, `--export-doctor-e8-json`, `--export-e8-doctor-json`, `--doctor-export-essential8`, `--export-doctor-essential8`, `--export-essential8-doctor`, `--doctor-export-e8`, `--export-doctor-e8`, `--export-e8-doctor`).
+  - Added Makefile targets `make doctor-essential8`, `make doctor-essential8-json`, `make doctor-export-essential8`, `make doctor-export-essential8-json`, `make doctor-e8`, `make doctor-e8-json`, `make doctor-export-e8`, and `make doctor-export-e8-json`.
+- **Self-Healing Storage Permission Auto-Repair (`Diagnostics.swift`)**:
+  - Enhanced `doctor-repair` engine to automatically restrict `doctor_essential8.json` to `0600` POSIX permissions.
+- **Automated Test Suite Expansion to 18,500+ Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV1413Enhancements()` validating 136+ doctor checks, all 8 new check identifiers, ACSC Essential Eight JSON format compliance, 8 core strategies E8-01 through E8-08, controls, assessments, atomic file export integrity, repair report execution, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.4.13 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.4.13` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.4.12] - 2026-11-20
 
 ### Added

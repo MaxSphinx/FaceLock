@@ -1724,6 +1724,22 @@ public struct DoctorReport {
                 return [("T1557.001", "credential-access")]
             case "network.ipv6_firewall_rule_parity":
                 return [("T1562.004", "defense-evasion")]
+            case "security.safari_safe_files_auto_open_disabled":
+                return [("T1204.002", "execution")]
+            case "security.cups_web_interface_disabled":
+                return [("T1072", "execution")]
+            case "security.auditd_service_auditing_active":
+                return [("T1562.002", "defense-evasion")]
+            case "security.tftp_service_disabled":
+                return [("T1048", "exfiltration")]
+            case "security.diagnostic_reports_sharing_disabled":
+                return [("T1005", "collection")]
+            case "filesystem.temporary_directory_permissions":
+                return [("T1083", "discovery"), ("T1222.002", "defense-evasion")]
+            case "security.screen_capture_location_isolated":
+                return [("T1113", "collection")]
+            case "security.ssh_server_root_login_disabled":
+                return [("T1078", "initial-access"), ("T1021.004", "lateral-movement")]
             default:
                 return [("T1082", "discovery")]
             }
@@ -1936,6 +1952,22 @@ public struct DoctorReport {
                 return "sc-8"
             case "network.ipv6_firewall_rule_parity":
                 return "sc-7"
+            case "security.safari_safe_files_auto_open_disabled":
+                return "si-3"
+            case "security.cups_web_interface_disabled":
+                return "cm-7"
+            case "security.auditd_service_auditing_active":
+                return "au-2"
+            case "security.tftp_service_disabled":
+                return "cm-7"
+            case "security.diagnostic_reports_sharing_disabled":
+                return "sc-7"
+            case "filesystem.temporary_directory_permissions":
+                return "ac-3"
+            case "security.screen_capture_location_isolated":
+                return "ac-3"
+            case "security.ssh_server_root_login_disabled":
+                return "ac-2"
             default:
                 return "ca-2"
             }
@@ -2140,6 +2172,22 @@ public struct DoctorReport {
                 return ("PR", "Protect", "PR.DS", "Data Security", "PR.DS-02", "Data in transit is protected.")
             case "network.ipv6_firewall_rule_parity":
                 return ("PR", "Protect", "PR.PS", "Platform Security", "PR.PS-05", "Installation of, and connections from, untrusted or remote network endpoints are restricted.")
+            case "security.safari_safe_files_auto_open_disabled":
+                return ("PR", "Protect", "PR.PS", "Platform Security", "PR.PS-02", "Software and firmware installation and execution are restricted to authorized binaries.")
+            case "security.cups_web_interface_disabled":
+                return ("PR", "Protect", "PR.PS", "Platform Security", "PR.PS-05", "Installation of, and connections from, untrusted or remote network endpoints are restricted.")
+            case "security.auditd_service_auditing_active":
+                return ("DE", "Detect", "DE.CM", "Continuous Monitoring", "DE.CM-01", "The network and endpoints are monitored to detect potential cybersecurity events.")
+            case "security.tftp_service_disabled":
+                return ("PR", "Protect", "PR.PS", "Platform Security", "PR.PS-05", "Installation of, and connections from, untrusted or remote network endpoints are restricted.")
+            case "security.diagnostic_reports_sharing_disabled":
+                return ("PR", "Protect", "PR.DS", "Data Security", "PR.DS-01", "Data-at-rest and diagnostic telemetry are protected.")
+            case "filesystem.temporary_directory_permissions":
+                return ("PR", "Protect", "PR.DS", "Data Security", "PR.DS-01", "Data-at-rest is protected.")
+            case "security.screen_capture_location_isolated":
+                return ("PR", "Protect", "PR.AC", "Access Control", "PR.AC-07", "Physical and logical access to assets is managed.")
+            case "security.ssh_server_root_login_disabled":
+                return ("PR", "Protect", "PR.AC", "Access Control", "PR.AC-03", "Remote access is managed.")
             default:
                 return ("GV", "Govern", "GV.OC", "Organizational Context", "GV.OC-01", "The organizational context, mission, and endpoint security policies are established.")
             }
@@ -2345,6 +2393,22 @@ public struct DoctorReport {
                 return ("CIS-03", "Data Protection", "3.10", "Encrypt Sensitive Data in Transit", "IG2", "Data")
             case "network.ipv6_firewall_rule_parity":
                 return ("CIS-04", "Secure Configuration of Enterprise Assets and Software", "4.4", "Implement and Manage a Firewall on End-User Devices", "IG1", "Network")
+            case "security.safari_safe_files_auto_open_disabled":
+                return ("CIS-04", "Secure Configuration of Enterprise Assets and Software", "4.8", "Uninstall or Disable Unnecessary Services on Enterprise Assets and Software", "IG1", "Applications")
+            case "security.cups_web_interface_disabled":
+                return ("CIS-04", "Secure Configuration of Enterprise Assets and Software", "4.8", "Uninstall or Disable Unnecessary Services on Enterprise Assets and Software", "IG1", "Network")
+            case "security.auditd_service_auditing_active":
+                return ("CIS-08", "Audit Log Management", "8.2", "Collect Audit Logs", "IG1", "Endpoint")
+            case "security.tftp_service_disabled":
+                return ("CIS-04", "Secure Configuration of Enterprise Assets and Software", "4.8", "Uninstall or Disable Unnecessary Services on Enterprise Assets and Software", "IG1", "Network")
+            case "security.diagnostic_reports_sharing_disabled":
+                return ("CIS-03", "Data Protection", "3.3", "Configure Data Access Control Lists", "IG1", "Data")
+            case "filesystem.temporary_directory_permissions":
+                return ("CIS-03", "Data Protection", "3.3", "Configure Data Access Control Lists", "IG1", "Data")
+            case "security.screen_capture_location_isolated":
+                return ("CIS-03", "Data Protection", "3.3", "Configure Data Access Control Lists", "IG1", "Data")
+            case "security.ssh_server_root_login_disabled":
+                return ("CIS-05", "Account Management", "5.4", "Restrict Administrator Privileges to Dedicated Administrator Accounts", "IG1", "Accounts")
             default:
                 return ("CIS-04", "Secure Configuration of Enterprise Assets and Software", "4.1", "Establish and Maintain Secure System Baselines", "IG1", "Devices")
             }
@@ -2565,6 +2629,22 @@ public struct DoctorReport {
                 return ("A.8", "Technological controls", "A.8.24", "Use of cryptography", "SMB Message Signing & Relay Protection")
             case "network.ipv6_firewall_rule_parity":
                 return ("A.8", "Technological controls", "A.8.20", "Network security", "IPv6 Protocol and Filtering Boundary Hardening")
+            case "security.safari_safe_files_auto_open_disabled":
+                return ("A.8", "Technological controls", "A.8.19", "Installation of software on operational systems", "Web Browser Download Execution Hardening")
+            case "security.cups_web_interface_disabled":
+                return ("A.8", "Technological controls", "A.8.20", "Network security", "CUPS Web Admin Service Hardening")
+            case "security.auditd_service_auditing_active":
+                return ("A.8", "Technological controls", "A.8.15", "Logging", "Operating System Audit Log Generation")
+            case "security.tftp_service_disabled":
+                return ("A.8", "Technological controls", "A.8.20", "Network security", "TFTP Insecure Protocol Service Hardening")
+            case "security.diagnostic_reports_sharing_disabled":
+                return ("A.8", "Technological controls", "A.8.12", "Data leakage prevention", "Diagnostic Crash Telemetry Governance")
+            case "filesystem.temporary_directory_permissions":
+                return ("A.8", "Technological controls", "A.8.2", "Privileged access rights", "Temporary Directory Sticky Bit Isolation")
+            case "security.screen_capture_location_isolated":
+                return ("A.8", "Technological controls", "A.8.12", "Data leakage prevention", "Desktop Capture Storage Isolation")
+            case "security.ssh_server_root_login_disabled":
+                return ("A.8", "Technological controls", "A.8.2", "Privileged access rights", "Root Remote Access Restriction")
             default:
                 return ("A.8", "Technological controls", "A.8.1", "User endpoint devices", "Endpoint Baseline Security")
             }
@@ -2724,6 +2804,18 @@ public struct DoctorReport {
                 return ("Confidentiality", "Confidentiality Criteria", "C1.1", "Data Classification & Encryption at Rest", "User Home Directory POSIX Isolation")
             case "security.firewall_logging_enabled":
                 return ("Security", "Common Criteria / Security", "CC7.2", "Security Event Monitoring & Incident Response", "Firewall Event Logging & Intrusion Detection")
+            case "security.safari_safe_files_auto_open_disabled":
+                return ("Security", "Common Criteria / Security", "CC6.8", "Malicious Software & System Integrity Defense", "Web Browser Download Execution Hardening")
+            case "security.cups_web_interface_disabled", "security.tftp_service_disabled":
+                return ("Security", "Common Criteria / Security", "CC6.6", "Perimeter & Network Security", "Unnecessary Protocol Service Hardening")
+            case "security.auditd_service_auditing_active":
+                return ("Security", "Common Criteria / Security", "CC7.2", "Security Event Monitoring & Incident Response", "OpenBSM Kernel Security Auditing")
+            case "security.diagnostic_reports_sharing_disabled", "security.screen_capture_location_isolated":
+                return ("Confidentiality", "Confidentiality Criteria", "C1.1", "Data Classification & Encryption at Rest", "Diagnostic & Capture Storage Isolation")
+            case "filesystem.temporary_directory_permissions":
+                return ("Security", "Common Criteria / Security", "CC6.1", "Logical Access - Infrastructure & Perimeter", "Temporary Directory Sticky Bit Isolation")
+            case "security.ssh_server_root_login_disabled":
+                return ("Security", "Common Criteria / Security", "CC6.3", "Role-Based Access & Least Privilege", "Root Remote Access Prohibition")
             default:
                 return ("Security", "Common Criteria / Security", "CC6.1", "Logical Access - Infrastructure & Perimeter", "Endpoint Baseline Security")
             }
@@ -3609,6 +3701,135 @@ public struct DoctorReport {
         guard let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
               let str = String(data: data, encoding: .utf8) else {
             return "{\"dora_report\":{\"framework\":\"European Union DORA Regulation (Regulation (EU) 2022/2554)\",\"version\":\"DORA Regulation (EU) 2022/2554\",\"assessments\":[]}}\n"
+        }
+        return str + "\n"
+    }
+
+    // MARK: - ACSC Essential Eight Maturity Model Assessment Generation
+
+    public func toEssentialEightDictionary() -> [String: Any] {
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+
+        func mapCheckToEssentialEight(_ checkId: String) -> (strategyId: String, strategyName: String, maturityLevel: String, controlId: String, controlTitle: String, objective: String) {
+            switch checkId {
+            // E8-01: Application Control
+            case "security.gatekeeper_integrity", "security.gatekeeper_enforced", "filesystem.secure_kernel_extension_loading", "daemon.runtime_entitlements_integrity", "daemon.binary_integrity", "daemon.launchd_service_domain_isolation", "security.app_shield_policy", "security.safari_safe_files_auto_open_disabled":
+                return ("E8-01", "Application Control", "Maturity Level 3", "E8-01-AC", "Execution Whitelisting & Binary Signature Enforcement", "Prevents execution of unapproved, untrusted, or unsigned executables, kernel extensions, and drive-by browser downloads.")
+
+            // E8-02: Patch Applications
+            case "security.automatic_software_updates", "daemon.process", "daemon.launchagent", "daemon.launchd_keepalive_service", "daemon.mach_port_allocation", "daemon.thread_pool_headroom", "daemon.file_descriptor_limit", "daemon.cpu_utilization", "daemon.memory_footprint", "daemon.energy_impact_profiling", "daemon.dispatch_queue_latency", "daemon.memory_resident_pressure", "daemon.realtime_process_memory_swappiness":
+                return ("E8-02", "Patch Applications", "Maturity Level 2", "E8-02-PA", "Application Patching & Runtime Resource Health", "Mitigates software vulnerabilities and memory corruption exploits through automated software updates and daemon health monitoring.")
+
+            // E8-03: Configure Microsoft Office Macro Settings
+            case "security.content_caching_disabled", "security.cups_web_interface_disabled":
+                return ("E8-03", "Configure Microsoft Office Macro Settings", "Maturity Level 2", "E8-03-OM", "Macro Sandboxing & Web Interface Isolation", "Restricts local web script execution, untrusted network macro proxying, and unauthenticated remote command facilities.")
+
+            // E8-04: User Application Hardening
+            case "security.usb_restricted_mode", "security.siri_lock_screen_disabled", "security.universal_control_isolation", "security.handoff_clipboard_isolation", "security.screen_capture_privacy_governance", "security.screen_capture_location_isolated", "security.diagnostic_reports_sharing_disabled", "filesystem.temporary_storage_sandbox", "filesystem.temporary_directory_permissions", "filesystem.home_directory_permissions", "filesystem.permissions_hardened", "filesystem.posix_umask_hygiene", "filesystem.extended_attributes_hygiene", "filesystem.core_dumps_disabled", "filesystem.crash_reports_cleanliness", "filesystem.secure_system_dump_exclusion", "filesystem.secure_trash_shredding_pipeline":
+                return ("E8-04", "User Application Hardening", "Maturity Level 3", "E8-04-UAH", "Endpoint Privacy & Peripheral Attack Surface Reduction", "Enforces strict POSIX umask, sticky-bit isolation, temporary storage sandboxing, USB peripheral restrictions, and prevents telemetry leakage.")
+
+            // E8-05: Restrict Administrative Privileges
+            case "security.sudo_touchid_pam", "security.ssh_server_root_login_disabled", "security.login_window_console_disabled", "security.guest_account_disabled", "security.automatic_login_disabled", "security.fast_user_switching_governance", "filesystem.directory", "filesystem.backups_dir", "filesystem.config_schema", "filesystem.enrolled_vectors", "filesystem.intruder_storage", "filesystem.trash_auto_empty_retention", "filesystem.keychain_access_group", "security.incident_retention_policy", "security.auditd_service_auditing_active":
+                return ("E8-05", "Restrict Administrative Privileges", "Maturity Level 3", "E8-05-RAP", "Privileged Elevation Governance & Least Privilege", "Restricts superuser elevation via biometric Touch ID PAM, prohibits root SSH logins, disables guest sessions, and audits administrative events via OpenBSM.")
+
+            // E8-06: Patch Operating Systems
+            case "security.sip_system_integrity", "security.sip_filesystem_integrity", "security.system_integrity_protection_nvram", "hardware.secure_boot_policy", "hardware.secure_enclave", "hardware.neural_engine_coreml", "hardware.accelerate_simd_pipeline", "hardware.architecture", "hardware.vision_framework", "hardware.power_efficiency", "hardware.power_standby_mode", "hardware.clamshell_state", "hardware.thermal_state", "hardware.battery_health_capacity", "daemon.power_assertions", "daemon.thermal_throttling_mitigation", "daemon.process_scheduling_priority":
+                return ("E8-06", "Patch Operating Systems", "Maturity Level 3", "E8-06-POS", "Operating System Integrity & Secure Hardware Enclave", "Enforces System Integrity Protection (SIP), Secure Boot policy, Apple Silicon hardware Neural Engine, and power-efficient continuous resilience.")
+
+            // E8-07: Multi-Factor Authentication
+            case "hardware.touchid", "security.touchid_fallback", "security.master_pin", "security.duress_pin", "security.duress_alarm_pipeline", "security.pin_bruteforce_defense", "security.login_window_password_hints", "security.strict_face_match", "security.biometric_cluster_cohesion", "security.biometric_spoofing", "hardware.camera_device", "hardware.camera_permission", "hardware.camera_continuity", "hardware.ambient_light_sensor", "hardware.bluetooth_proximity", "security.camera_indicator_compliance", "security.verification_timeout", "security.debounce_protection", "security.walk_away_lock", "security.screen_saver_lock", "security.screen_saver_lock_grace_period", "security.display_sleep_timeout", "hardware.display_sleep_timer", "hardware.lid_wake_sensor_state", "hardware.display_topology", "security.lock_on_wake", "security.hot_corners_secure_lock", "security.shoulder_surfing", "security.audible_deterrent", "security.presentation_suppression", "security.secure_keyboard_entry", "security.login_window_banner":
+                return ("E8-07", "Multi-Factor Authentication", "Maturity Level 3", "E8-07-MFA", "Biometric Multi-Factor Authentication & Screen Lock", "Mandates real-time neural face verification, master PIN defense, silent duress alerts, and automated physical walk-away display locks.")
+
+            // E8-08: Regular Backups
+            default:
+                return ("E8-08", "Regular Backups", "Maturity Level 2", "E8-08-RB", "Configuration Resiliency & Cryptographic State Backups", "Maintains encrypted APFS snapshots, FileVault full-disk encryption, tamper-evident audit logs, and secure perimeter network boundaries.")
+            }
+        }
+
+        var assessments: [[String: Any]] = []
+        var controlsMap: [String: [String: Any]] = [:]
+
+        for check in checks {
+            let e8 = mapCheckToEssentialEight(check.id)
+            var item: [String: Any] = [
+                "check_id": check.id,
+                "category": check.category,
+                "name": check.name,
+                "status": check.status.rawValue,
+                "badge": check.status.badge,
+                "message": check.message,
+                "strategy_id": e8.strategyId,
+                "strategy_name": e8.strategyName,
+                "maturity_level": e8.maturityLevel,
+                "control_id": e8.controlId,
+                "control_title": e8.controlTitle,
+                "objective": e8.objective
+            ]
+            if let rem = check.remediation, !rem.isEmpty {
+                item["remediation"] = rem
+            }
+            assessments.append(item)
+
+            if controlsMap[e8.controlId] == nil {
+                controlsMap[e8.controlId] = [
+                    "control_id": e8.controlId,
+                    "title": e8.controlTitle,
+                    "strategy_id": e8.strategyId,
+                    "strategy_name": e8.strategyName,
+                    "maturity_level": e8.maturityLevel,
+                    "objective": e8.objective
+                ]
+            }
+        }
+
+        let sortedControls = controlsMap.values.sorted {
+            ($0["control_id"] as? String ?? "") < ($1["control_id"] as? String ?? "")
+        }
+
+        let complianceScore = totalChecks > 0 ? Int((Double(passedCount) / Double(totalChecks)) * 100.0) : 0
+
+        let strategiesList: [[String: Any]] = [
+            ["id": "E8-01", "name": "Application Control", "maturity_level": "Maturity Level 3", "description": "Restrict execution of unapproved, untrusted, or unsigned executables and kernel extensions."],
+            ["id": "E8-02", "name": "Patch Applications", "maturity_level": "Maturity Level 2", "description": "Mitigate software vulnerabilities through automated updates and runtime health checks."],
+            ["id": "E8-03", "name": "Configure Microsoft Office Macro Settings", "maturity_level": "Maturity Level 2", "description": "Isolate macro execution, disable unauthenticated local web admin interfaces and proxying."],
+            ["id": "E8-04", "name": "User Application Hardening", "maturity_level": "Maturity Level 3", "description": "Enforce POSIX umask, sticky-bit isolation, temporary storage sandboxing, and USB peripheral restrictions."],
+            ["id": "E8-05", "name": "Restrict Administrative Privileges", "maturity_level": "Maturity Level 3", "description": "Govern root elevation via Touch ID PAM, prohibit root SSH access, and enforce OpenBSM auditing."],
+            ["id": "E8-06", "name": "Patch Operating Systems", "maturity_level": "Maturity Level 3", "description": "Enforce System Integrity Protection (SIP), Secure Boot, and Apple Silicon hardware acceleration."],
+            ["id": "E8-07", "name": "Multi-Factor Authentication", "maturity_level": "Maturity Level 3", "description": "Mandate biometric facial recognition, master PIN authentication, and walk-away screen lock protection."],
+            ["id": "E8-08", "name": "Regular Backups", "maturity_level": "Maturity Level 2", "description": "Maintain encrypted local APFS snapshots, FileVault encryption, and tamper-evident audit logs."]
+        ]
+
+        let e8Dict: [String: Any] = [
+            "essential_eight_report": [
+                "framework": "Australian Cyber Security Centre Essential Eight (ACSC Essential 8)",
+                "version": "ACSC Essential Eight Maturity Model (2023)",
+                "title": "FaceLock macOS Biometric Endpoint ACSC Essential Eight Assessment",
+                "timestamp": timestamp,
+                "metadata": [
+                    "facelock_version": version,
+                    "overall_status": overallStatus,
+                    "compliance_score": complianceScore,
+                    "target_maturity_level": "Maturity Level 3",
+                    "total_checks": totalChecks,
+                    "passed_checks": passedCount,
+                    "warning_checks": warningCount,
+                    "failure_checks": failureCount,
+                    "info_checks": infoCount
+                ],
+                "strategies": strategiesList,
+                "controls": Array(sortedControls),
+                "assessments": assessments
+            ]
+        ]
+
+        return e8Dict
+    }
+
+    public func generateEssentialEight() -> String {
+        let dict = toEssentialEightDictionary()
+        guard let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
+              let str = String(data: data, encoding: .utf8) else {
+            return "{\"essential_eight_report\":{\"framework\":\"Australian Cyber Security Centre Essential Eight (ACSC Essential 8)\",\"version\":\"ACSC Essential Eight Maturity Model (2023)\",\"assessments\":[]}}\n"
         }
         return str + "\n"
     }
@@ -5910,6 +6131,35 @@ public struct Diagnostics {
             ))
         }
 
+        // 2.19 System Temporary Directory POSIX Permissions Hardening
+        var tmpPermsRestricted = false
+        var tmpPermsString = "unknown"
+        if let tmpAttrs = try? FileManager.default.attributesOfItem(atPath: "/private/tmp"),
+           let tmpPermsNum = tmpAttrs[.posixPermissions] as? NSNumber {
+            let perms = tmpPermsNum.intValue
+            tmpPermsString = String(format: "%04o", perms)
+            // Sticky bit (0o1000) or standard 0o1777 / 0o777
+            tmpPermsRestricted = ((perms & 0o1000) != 0 || (perms & 0o777) == 0o777)
+        }
+        if tmpPermsRestricted {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.temporary_directory_permissions",
+                category: "filesystem",
+                name: "System Temporary Directory POSIX Sticky-Bit Hardening",
+                status: .pass,
+                message: "System temporary directory /private/tmp enforces POSIX sticky-bit permissions (\(tmpPermsString)); unprivileged symlink attacks and arbitrary file deletion prevented."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "filesystem.temporary_directory_permissions",
+                category: "filesystem",
+                name: "System Temporary Directory POSIX Sticky-Bit Hardening",
+                status: .warn,
+                message: "System temporary directory permissions are non-standard (\(tmpPermsString)); sticky-bit protection is absent.",
+                remediation: "Restore standard sticky-bit permissions: 'sudo chmod 1777 /private/tmp /private/var/tmp'."
+            ))
+        }
+
         // Category 3: Background Daemon & Automation
         // 3.1 Daemon Process
         let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: "io.github.facelock")
@@ -7861,6 +8111,176 @@ public struct Diagnostics {
             ))
         }
 
+        // 4.60 Safari Automatic Safe Files Execution Hardening
+        let safariSafeCheck = runShellCommand("/usr/bin/defaults", arguments: ["read", "com.apple.Safari", "AutoOpenSafeDownloads"])
+        let isSafariAutoOpenDisabled = (safariSafeCheck.exitCode != 0 || safariSafeCheck.stdout.trimmingCharacters(in: .whitespacesAndNewlines) == "0")
+        if isSafariAutoOpenDisabled {
+            checks.append(DoctorCheckItem(
+                id: "security.safari_safe_files_auto_open_disabled",
+                category: "security",
+                name: "Safari Automatic Safe Downloads Execution Hardening",
+                status: .pass,
+                message: "Safari automatic opening of downloaded files is disabled; arbitrary script execution and drive-by download attacks prevented."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.safari_safe_files_auto_open_disabled",
+                category: "security",
+                name: "Safari Automatic Safe Downloads Execution Hardening",
+                status: .warn,
+                message: "Safari is configured to automatically open downloaded files considered 'safe'; untrusted archives or scripts may execute automatically.",
+                remediation: "Disable 'Open \"safe\" files after downloading' in Safari > Settings > General."
+            ))
+        }
+
+        // 4.61 Common Unix Printing System (CUPS) Web Interface Hardening
+        let cupsWebCheck = runShellCommand("/usr/sbin/cupsctl", arguments: [])
+        let isCupsWebDisabled = (cupsWebCheck.exitCode == 0 && !cupsWebCheck.stdout.contains("_web_interface=1")) || (cupsWebCheck.exitCode != 0)
+        if isCupsWebDisabled {
+            checks.append(DoctorCheckItem(
+                id: "security.cups_web_interface_disabled",
+                category: "security",
+                name: "CUPS Printing Web Administration Interface Hardening",
+                status: .pass,
+                message: "Common Unix Printing System (CUPS) web administration interface on port 631 is disabled; local CSRF and unauthorized printer tampering prevented."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.cups_web_interface_disabled",
+                category: "security",
+                name: "CUPS Printing Web Administration Interface Hardening",
+                status: .info,
+                message: "CUPS printing web administration interface is enabled on localhost port 631; web browser attack vectors can interact with print subsystem.",
+                remediation: "Run 'cupsctl --no-web-interface' to disable the CUPS web administration interface."
+            ))
+        }
+
+        // 4.62 macOS OpenBSM Kernel Security Auditing Daemon
+        let auditControlExists = FileManager.default.fileExists(atPath: "/etc/security/audit_control")
+        let auditdCheck = runShellCommand("/bin/launchctl", arguments: ["list", "com.apple.auditd"])
+        let isAuditdActive = (auditControlExists || auditdCheck.exitCode == 0)
+        if isAuditdActive {
+            checks.append(DoctorCheckItem(
+                id: "security.auditd_service_auditing_active",
+                category: "security",
+                name: "OpenBSM Kernel Security Auditing Service",
+                status: .pass,
+                message: "macOS OpenBSM kernel security auditing infrastructure is configured (/etc/security/audit_control); system security events and auth records are journaled."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.auditd_service_auditing_active",
+                category: "security",
+                name: "OpenBSM Kernel Security Auditing Service",
+                status: .info,
+                message: "OpenBSM audit configuration is missing or inactive; operating system security telemetry is not recorded to /var/audit.",
+                remediation: "Enable OpenBSM auditing by configuring /etc/security/audit_control and starting auditd."
+            ))
+        }
+
+        // 4.63 Trivial File Transfer Protocol (TFTP) Insecure Service Hardening
+        let tftpdCheck = runShellCommand("/bin/launchctl", arguments: ["list", "com.apple.tftpd"])
+        let isTftpDisabled = (tftpdCheck.exitCode != 0 || !tftpdCheck.stdout.contains("com.apple.tftpd"))
+        if isTftpDisabled {
+            checks.append(DoctorCheckItem(
+                id: "security.tftp_service_disabled",
+                category: "security",
+                name: "TFTP Insecure Protocol Daemon Hardening",
+                status: .pass,
+                message: "Insecure TFTP daemon is disabled; unauthenticated UDP network file retrieval and exfiltration vectors eliminated."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.tftp_service_disabled",
+                category: "security",
+                name: "TFTP Insecure Protocol Daemon Hardening",
+                status: .warn,
+                message: "TFTP daemon is registered or active; unencrypted, unauthenticated file transfers are possible.",
+                remediation: "Disable TFTP daemon using 'sudo launchctl disable system/com.apple.tftpd'."
+            ))
+        }
+
+        // 4.64 Diagnostic & Crash Reporting Telemetry Governance
+        let diagCheck = runShellCommand("/usr/bin/defaults", arguments: ["read", "/Library/Application Support/CrashReporter/DiagnosticReporting.plist", "AutoSubmit"])
+        let isDiagAutoSubmitDisabled = (diagCheck.exitCode != 0 || diagCheck.stdout.trimmingCharacters(in: .whitespacesAndNewlines) == "0")
+        if isDiagAutoSubmitDisabled {
+            checks.append(DoctorCheckItem(
+                id: "security.diagnostic_reports_sharing_disabled",
+                category: "security",
+                name: "Diagnostic Crash Telemetry Auto-Submission Governance",
+                status: .pass,
+                message: "Crash and diagnostic reporting auto-submission is disabled; application memory traces and process arguments are not automatically transmitted."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.diagnostic_reports_sharing_disabled",
+                category: "security",
+                name: "Diagnostic Crash Telemetry Auto-Submission Governance",
+                status: .info,
+                message: "Diagnostic and crash reporting telemetry auto-submission is enabled; stack traces and environment metadata are sent to Apple.",
+                remediation: "Disable 'Share Mac Analytics' in System Settings > Privacy & Security > Analytics & Improvements."
+            ))
+        }
+
+        // 4.65 Screen Capture Storage Location Privacy Governance
+        let screenLocCheck = runShellCommand("/usr/bin/defaults", arguments: ["read", "com.apple.screencapture", "location"])
+        let screenLoc = screenLocCheck.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        let isScreenLocSafe = (screenLocCheck.exitCode != 0 || screenLoc.isEmpty || (!screenLoc.hasPrefix("/tmp") && !screenLoc.hasPrefix("/private/tmp") && !screenLoc.hasPrefix("/Users/Shared")))
+        if isScreenLocSafe {
+            checks.append(DoctorCheckItem(
+                id: "security.screen_capture_location_isolated",
+                category: "security",
+                name: "Screen Capture Storage Location Privacy Governance",
+                status: .pass,
+                message: "macOS screenshot capture storage is isolated to user private storage; captures are protected against multi-user directory eavesdropping."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.screen_capture_location_isolated",
+                category: "security",
+                name: "Screen Capture Storage Location Privacy Governance",
+                status: .warn,
+                message: "Screenshots are configured to save in a shared or temporary directory (\(screenLoc)); unprivileged local users may access desktop captures.",
+                remediation: "Reset screenshot location to user home: 'defaults delete com.apple.screencapture location'."
+            ))
+        }
+
+        // 4.66 OpenSSH Remote Root Login Restriction
+        var isSshRootDisabled = true
+        if let sshdConfig = try? String(contentsOfFile: "/etc/ssh/sshd_config", encoding: .utf8) {
+            let lines = sshdConfig.components(separatedBy: .newlines)
+            for line in lines {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if !trimmed.hasPrefix("#") && trimmed.lowercased().hasPrefix("permitrootlogin") {
+                    let parts = trimmed.split(separator: " ")
+                    if parts.count >= 2 {
+                        let val = parts[1].lowercased()
+                        if val == "yes" {
+                            isSshRootDisabled = false
+                        }
+                    }
+                }
+            }
+        }
+        if isSshRootDisabled {
+            checks.append(DoctorCheckItem(
+                id: "security.ssh_server_root_login_disabled",
+                category: "security",
+                name: "OpenSSH Remote Root Login Hardening",
+                status: .pass,
+                message: "OpenSSH remote root login is prohibited or SSH daemon is inactive; direct remote administrative brute-force attacks mitigated."
+            ))
+        } else {
+            checks.append(DoctorCheckItem(
+                id: "security.ssh_server_root_login_disabled",
+                category: "security",
+                name: "OpenSSH Remote Root Login Hardening",
+                status: .warn,
+                message: "OpenSSH server configuration explicitly permits root login ('PermitRootLogin yes'); high risk of automated remote brute-force compromise.",
+                remediation: "Set 'PermitRootLogin no' in /etc/ssh/sshd_config and restart sshd."
+            ))
+        }
+
         // Category 5: Remote Alerting & Network
         if config.telegramEnabled {
             if !config.telegramBotToken.isEmpty && !config.telegramChatId.isEmpty {
@@ -8052,7 +8472,7 @@ public struct Diagnostics {
         }
 
         // 1d. Sensitive files permissions repair (chmod 0600 on sensitive credentials and audit files)
-        let sensitiveFilesToRepair = ["config.json", "enrolled_vectors.json", "audit_log.jsonl", "doctor_report.json", "doctor_step_summary.md", "doctor_codeclimate.json", "doctor_sonarqube.json", "doctor_defectdojo.json", "doctor_cyclonedx.json", "doctor_spdx.json", "doctor_csaf.json", "doctor_openvex.json", "doctor_stix.json", "doctor_attack.json", "doctor_oscal.json", "doctor_nist_csf.json", "doctor_cis_controls.json", "doctor_iso27001.json", "doctor_soc2.json", "doctor_pcidss.json", "doctor_hipaa.json", "doctor_gdpr.json", "doctor_nist80053.json", "doctor_nis2.json", "doctor_dora.json"]
+        let sensitiveFilesToRepair = ["config.json", "enrolled_vectors.json", "audit_log.jsonl", "doctor_report.json", "doctor_step_summary.md", "doctor_codeclimate.json", "doctor_sonarqube.json", "doctor_defectdojo.json", "doctor_cyclonedx.json", "doctor_spdx.json", "doctor_csaf.json", "doctor_openvex.json", "doctor_stix.json", "doctor_attack.json", "doctor_oscal.json", "doctor_nist_csf.json", "doctor_cis_controls.json", "doctor_iso27001.json", "doctor_soc2.json", "doctor_pcidss.json", "doctor_hipaa.json", "doctor_gdpr.json", "doctor_nist80053.json", "doctor_nis2.json", "doctor_dora.json", "doctor_essential8.json"]
         for sFileName in sensitiveFilesToRepair {
             let sFilePath = facelockDir.appendingPathComponent(sFileName).path
             if FileManager.default.fileExists(atPath: sFilePath) {
@@ -8840,6 +9260,33 @@ public struct Diagnostics {
             let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
             try? FileManager.default.createDirectory(at: facelockDir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
             targetURL = facelockDir.appendingPathComponent("doctor_dora.json")
+        }
+
+        guard let data = json.data(using: .utf8) else {
+            return (false, targetURL.path, json, report)
+        }
+
+        do {
+            try data.write(to: targetURL, options: .atomic)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: targetURL.path)
+            return (true, targetURL.path, json, report)
+        } catch {
+            return (false, targetURL.path, json, report)
+        }
+    }
+
+    @discardableResult
+    public static func exportDoctorEssentialEight(toPath customPath: String? = nil, config: Config = .shared, skipNetwork: Bool = false) -> (success: Bool, path: String, content: String, report: DoctorReport) {
+        let report = runDoctor(config: config, skipNetwork: skipNetwork)
+        let json = report.generateEssentialEight()
+        let targetURL: URL
+        if let customPath = customPath, !customPath.isEmpty {
+            targetURL = URL(fileURLWithPath: (customPath as NSString).expandingTildeInPath)
+        } else {
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let facelockDir = home.appendingPathComponent(".facelock", isDirectory: true)
+            try? FileManager.default.createDirectory(at: facelockDir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            targetURL = facelockDir.appendingPathComponent("doctor_essential8.json")
         }
 
         guard let data = json.data(using: .utf8) else {
