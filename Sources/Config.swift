@@ -4,8 +4,8 @@ import AppKit
 import UniformTypeIdentifiers
 
 public final class Config: Codable {
-    // Last maintenance check: 2026-11-19
-    public static let currentVersion = "1.4.13"
+    // Last maintenance check: 2026-11-20
+    public static let currentVersion = "1.4.14"
     public static let shared = Config.load()
 
     public static let defaultProtectedBundleIdentifiers: [String] = [

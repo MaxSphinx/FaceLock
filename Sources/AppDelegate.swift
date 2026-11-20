@@ -517,6 +517,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor-export-essential8", "--json"])
             case "--doctor-export-essential8", "--export-doctor-essential8", "--export-essential8-doctor", "--doctor-export-e8", "--export-doctor-e8", "--export-e8-doctor", "--doctor-export-essential-eight", "--export-doctor-essential-eight", "--export-essential-eight-doctor":
                 args.append("--doctor-export-essential8")
+            case "--doctor-cyber-essentials-json", "--cyber-essentials-doctor-json", "--doctor-ce-json", "--ce-doctor-json":
+                args.append(contentsOf: ["--doctor-cyber-essentials", "--json"])
+            case "--doctor-cyber-essentials", "--cyber-essentials-doctor", "--doctor-ce", "--ce-doctor":
+                args.append("--doctor-cyber-essentials")
+            case "--doctor-export-cyber-essentials-json", "--export-doctor-cyber-essentials-json", "--export-cyber-essentials-doctor-json", "--doctor-export-ce-json", "--export-doctor-ce-json", "--export-ce-doctor-json":
+                args.append(contentsOf: ["--doctor-export-cyber-essentials", "--json"])
+            case "--doctor-export-cyber-essentials", "--export-doctor-cyber-essentials", "--export-cyber-essentials-doctor", "--doctor-export-ce", "--export-doctor-ce", "--export-ce-doctor":
+                args.append("--doctor-export-cyber-essentials")
             default:
                 args.append(arg)
             }
@@ -705,6 +713,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --doctor-export-dora [path] [--json]       Export doctor report to EU DORA Regulation file
               --doctor-essential8, --doctor-e8 [--json]  Generate doctor report in ACSC Essential Eight Assessment JSON
               --doctor-export-essential8 [path] [--json] Export doctor report to ACSC Essential Eight file
+              --doctor-cyber-essentials, --doctor-ce [--json] Generate doctor report in NCSC Cyber Essentials Assessment JSON
+              --doctor-export-cyber-essentials, --doctor-export-ce [path] [--json] Export doctor report to NCSC Cyber Essentials file
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -2269,6 +2279,62 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 if result.success {
                     print("✓ Doctor diagnostic health report exported to ACSC Essential Eight file: \(result.path)")
+                    print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
+                } else {
+                    print("✗ Failed to export doctor diagnostic report to: \(result.path)")
+                }
+            }
+            exit(result.success ? 0 : 1)
+        }
+
+        if args.contains("--doctor-cyber-essentials") {
+            let report = Diagnostics.runDoctor()
+            let ce = report.generateCyberEssentials()
+            if args.contains("--json") {
+                let dict = report.toCyberEssentialsDictionary()
+                var jsonDict: [String: Any] = dict
+                jsonDict["version"] = report.version
+                jsonDict["overallStatus"] = report.overallStatus
+                jsonDict["totalChecks"] = report.totalChecks
+                jsonDict["passed"] = report.passedCount
+                jsonDict["warnings"] = report.warningCount
+                jsonDict["failures"] = report.failureCount
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                } else {
+                    print(ce)
+                }
+            } else {
+                print(ce)
+            }
+            exit(report.failureCount > 0 ? 1 : 0)
+        }
+
+        if args.contains("--doctor-export-cyber-essentials") {
+            let customPath = AppDelegate.valueForOption("--doctor-export-cyber-essentials", in: args)
+            let result = Diagnostics.exportDoctorCyberEssentials(toPath: customPath)
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "success": result.success,
+                    "path": result.path,
+                    "overallStatus": result.report.overallStatus,
+                    "totalChecks": result.report.totalChecks,
+                    "passed": result.report.passedCount,
+                    "warnings": result.report.warningCount,
+                    "failures": result.report.failureCount,
+                    "framework": "UK National Cyber Security Centre Cyber Essentials (NCSC CE)",
+                    "exportedBytes": result.content.utf8.count
+                ]
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                } else {
+                    print("{\"success\": \(result.success), \"path\": \"\(result.path)\"}")
+                }
+            } else {
+                if result.success {
+                    print("✓ Doctor diagnostic health report exported to NCSC Cyber Essentials file: \(result.path)")
                     print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
                 } else {
                     print("✗ Failed to export doctor diagnostic report to: \(result.path)")

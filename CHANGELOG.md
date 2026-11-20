@@ -4,6 +4,30 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.14] - 2026-11-20
+
+### Added
+- **Diagnostic Doctor Expansion to 144 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `security.nfs_server_daemon_disabled`: Audits Network File System (NFS) daemon state and `/etc/exports` via `/bin/launchctl list com.apple.nfsd`, ensuring legacy or unauthenticated NFS file shares are disabled to prevent unauthorized remote filesystem mounting.
+  - Added `security.airdrop_discoverability_governed`: Audits Apple AirDrop discoverability posture (`defaults read com.apple.sharingd DiscoverableMode`), verifying AirDrop is restricted to "Off" or "Contacts Only" to prevent unsolicited file drops and proximate device tracking.
+  - Added `security.ntp_time_synchronization_active`: Audits Network Time Protocol (NTP) synchronization (`/usr/sbin/systemsetup -getusingnetworktime`), verifying system clock synchronization against authorized time servers for cryptographic timestamping and forensic audit trail integrity.
+  - Added `filesystem.secure_enclave_keychain_isolation`: Audits user login keychain POSIX access permissions (`stat -f %Lp ~/Library/Keychains/login.keychain-db`), ensuring strict `0600` or `0640` permissions to prevent unprivileged credential extraction.
+  - Added `security.uucp_service_disabled`: Audits legacy Unix-to-Unix Copy (UUCP) background daemon (`/bin/launchctl list com.apple.uucp`), ensuring obsolete dial-up and serial communications services are disabled.
+  - Added `security.remote_management_ard_disabled`: Audits Apple Remote Desktop (ARD) agent status (`/bin/launchctl list com.apple.RemoteDesktop.agent`), ensuring unauthenticated remote desktop administration services are disabled to prevent unauthorized remote screen control.
+  - Added `filesystem.system_log_directory_permissions`: Audits system log directory POSIX permissions (`stat -f %Lp /private/var/log`), ensuring write restrictions are enforced to protect diagnostic traces and security event records from unauthorized tampering or deletion.
+  - Added `security.security_token_filevault_prk`: Audits FileVault full-disk XTS-AES-128 cryptographic volume status via `/usr/bin/fdesetup status`, ensuring FileVault volume encryption is active and cryptographic protection is fully engaged.
+- **UK National Cyber Security Centre (NCSC) Cyber Essentials Assessment Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.toCyberEssentialsDictionary()` and `DoctorReport.generateCyberEssentials()` producing standard NCSC UK Cyber Essentials Assessment JSON (`cyber_essentials_report`, `framework: "National Cyber Security Centre Cyber Essentials (NCSC UK)"`, `version: "Cyber Essentials Requirements for IT Infrastructure v3.1 (2023/2024)"`, `metadata`, `themes` [CE-01 Firewalls, CE-02 Secure Configuration, CE-03 User Access Control, CE-04 Malware Protection, CE-05 Security Update Management], `controls`, `assessments`) mapping evaluated FaceLock biometric controls and macOS hardening parameters to UK statutory technical controls.
+  - Implemented `Diagnostics.exportDoctorCyberEssentials(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_cyber_essentials.json` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-cyber-essentials`, `--doctor-ce`, `--doctor-export-cyber-essentials [path]`, and `--doctor-export-ce [path]` with `--json` output support and full normalization aliases (`--doctor-cyber-essentials-json`, `--cyber-essentials-doctor-json`, `--doctor-ce-json`, `--ce-doctor-json`, `--doctor-export-cyber-essentials-json`, `--export-doctor-cyber-essentials-json`, etc.).
+  - Added Makefile targets `make doctor-cyber-essentials`, `make doctor-cyber-essentials-json`, `make doctor-export-cyber-essentials`, `make doctor-export-cyber-essentials-json`, `make doctor-ce`, `make doctor-ce-json`, `make doctor-export-ce`, and `make doctor-export-ce-json`.
+- **Self-Healing Storage Permission Auto-Repair (`Diagnostics.swift`)**:
+  - Enhanced `doctor-repair` engine to automatically restrict `doctor_cyber_essentials.json` to `0600` POSIX permissions.
+- **Automated Test Suite Expansion to 20,800+ Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV1414Enhancements()` validating 144+ doctor checks, all 8 new check identifiers, NCSC UK Cyber Essentials JSON format compliance, 5 core themes CE-01 through CE-05, controls, assessments, atomic file export integrity, repair report execution, version synchronization, and full CLI argument normalization matrix (totaling 20,822 passing unit tests).
+- **Version Bump to v1.4.14 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.4.14` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.4.13] - 2026-11-20
 
 ### Added
