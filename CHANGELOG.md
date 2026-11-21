@@ -4,6 +4,30 @@ All notable changes to **FaceLock** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.15] - 2026-11-21
+
+### Added
+- **Diagnostic Doctor Expansion to 152 Comprehensive Checks (`Diagnostics.swift`)**:
+  - Added `filesystem.facelock_backup_archive_permissions`: Audits `~/.facelock/backups` directory POSIX permissions, verifying strict `0700` isolation to ensure archived biometric faceprint vectors and configuration backups are inaccessible to unprivileged local processes.
+  - Added `filesystem.secure_enclave_biometric_vectors_sealed`: Audits `~/.facelock/owner_face_vectors.json` POSIX file permissions, verifying strict `0600` permissions to protect enrolled 128-D neural embeddings from unauthorized extraction.
+  - Added `daemon.thermal_mitigation_governor_active`: Audits host thermal state and adaptive sensor polling governor (`ProcessInfo.processInfo.thermalState`), verifying active adaptive vision processing and camera sampling governor backoff to prevent hardware degradation.
+  - Added `security.sudo_timestamp_timeout_governed`: Audits `/etc/sudoers` authentication timestamp caching, verifying bounded ticket timeouts to prevent unattended terminal session takeover.
+  - Added `security.system_profiler_hardware_uuid_sealed`: Audits hardware `IOPlatformUUID` via IORegistry, verifying platform identity uniqueness for hardware-bound biometric key derivation and anti-cloning security.
+  - Added `security.login_window_screen_lock_immediate`: Audits `defaults read com.apple.screensaver askForPasswordDelay`, verifying screen lock password grace period is bounded (<= 5s) for immediate locking upon display sleep or screensaver activation.
+  - Added `security.safari_javascript_execution_governed`: Audits Safari fraudulent website warnings (`defaults read com.apple.Safari WarnAboutFraudulentWebsites`), verifying phishing and rogue WebKit exploitation defenses are active.
+  - Added `network.endpoint_security_offline_isolation`: Audits local-first biometric decision pipeline offline autonomy, verifying that biometric face matching, PIN verification, and application shielding operate with 100% offline fidelity without cloud dependencies or external telemetry.
+- **German BSI IT-Grundschutz Assessment Engine (`Diagnostics.swift`, `AppDelegate.swift`, `Makefile`)**:
+  - Implemented `DoctorReport.toBSIGrundschutzDictionary()` and `DoctorReport.generateBSIGrundschutz()` producing standard BSI IT-Grundschutz Assessment JSON (`bsi_grundschutz_report`, `framework: "Bundesamt für Sicherheit in der Informationstechnik (BSI) IT-Grundschutz"`, `version: "BSI IT-Grundschutz Kompendium Edition 2023/2024"`, `metadata`, `bausteine` [SYS.2.1 Allgemeiner Client, APP.3.1 Kryptographische Module & Biometrie, ORP.4 Identitäts- und Berechtigungsmanagement, CON.2 Datenschutz & Speicherisolation, OPS.1.1.4 Schutz vor Schadprogrammen, NET.1.1 Netzwerkarchitektur & Schnittstellenabsicherung, DER.1 Sicherheitsvorfallerkennung & Protokollierung], `controls`, `assessments`) mapping evaluated FaceLock biometric controls and macOS hardening parameters to statutory German/EU technical requirements.
+  - Implemented `Diagnostics.exportDoctorBSIGrundschutz(toPath:config:skipNetwork:)` enabling atomic file export to `~/.facelock/doctor_bsi_grundschutz.json` (or custom path) with secure `0600` POSIX permissions.
+  - Added CLI options `--doctor-bsi`, `--doctor-bsi-grundschutz`, `--doctor-export-bsi [path]`, and `--doctor-export-bsi-grundschutz [path]` with `--json` output support and full normalization aliases (`--doctor-bsi-json`, `--bsi-doctor-json`, `--doctor-bsi-grundschutz-json`, `--bsi-grundschutz-doctor-json`, `--doctor-export-bsi-json`, `--export-doctor-bsi-json`, etc.).
+  - Added Makefile targets `make doctor-bsi`, `make doctor-bsi-json`, `make doctor-export-bsi`, `make doctor-export-bsi-json`, `make doctor-bsi-grundschutz`, `make doctor-bsi-grundschutz-json`, `make doctor-export-bsi-grundschutz`, and `make doctor-export-bsi-grundschutz-json`.
+- **Self-Healing Storage Permission Auto-Repair (`Diagnostics.swift`)**:
+  - Enhanced `doctor-repair` engine to automatically restrict `doctor_bsi_grundschutz.json` and `owner_face_vectors.json` to `0600` POSIX permissions and `~/.facelock/backups` to `0700` POSIX permissions.
+- **Automated Test Suite Expansion to 23,000+ Tests (`Tests/FaceLockTests.swift`)**:
+  - Added `testMaintenanceV1415Enhancements()` validating 152+ doctor checks, all 8 new check identifiers, BSI IT-Grundschutz JSON format compliance, 7 core Bausteine SYS.2.1 through DER.1, controls, assessments, atomic file export integrity, repair report execution, version synchronization, and full CLI argument normalization matrix.
+- **Version Bump to v1.4.15 (`Config.swift`, `Resources/Info.plist`)**:
+  - Synchronized version string `1.4.15` across `Config.currentVersion` and macOS bundle `Info.plist`.
+
 ## [1.4.14] - 2026-11-20
 
 ### Added

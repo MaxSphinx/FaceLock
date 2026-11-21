@@ -525,6 +525,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 args.append(contentsOf: ["--doctor-export-cyber-essentials", "--json"])
             case "--doctor-export-cyber-essentials", "--export-doctor-cyber-essentials", "--export-cyber-essentials-doctor", "--doctor-export-ce", "--export-doctor-ce", "--export-ce-doctor":
                 args.append("--doctor-export-cyber-essentials")
+            case "--doctor-bsi-json", "--bsi-doctor-json", "--doctor-grundschutz-json", "--grundschutz-doctor-json", "--doctor-bsi-grundschutz-json", "--bsi-grundschutz-doctor-json":
+                args.append(contentsOf: ["--doctor-bsi", "--json"])
+            case "--doctor-bsi", "--bsi-doctor", "--doctor-grundschutz", "--grundschutz-doctor", "--doctor-bsi-grundschutz", "--bsi-grundschutz-doctor":
+                args.append("--doctor-bsi")
+            case "--doctor-export-bsi-json", "--export-doctor-bsi-json", "--export-bsi-doctor-json", "--doctor-export-grundschutz-json", "--export-doctor-grundschutz-json", "--export-grundschutz-doctor-json", "--doctor-export-bsi-grundschutz-json", "--export-doctor-bsi-grundschutz-json", "--export-bsi-grundschutz-doctor-json":
+                args.append(contentsOf: ["--doctor-export-bsi", "--json"])
+            case "--doctor-export-bsi", "--export-doctor-bsi", "--export-bsi-doctor", "--doctor-export-grundschutz", "--export-doctor-grundschutz", "--export-grundschutz-doctor", "--doctor-export-bsi-grundschutz", "--export-doctor-bsi-grundschutz", "--export-bsi-grundschutz-doctor":
+                args.append("--doctor-export-bsi")
             default:
                 args.append(arg)
             }
@@ -715,6 +723,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
               --doctor-export-essential8 [path] [--json] Export doctor report to ACSC Essential Eight file
               --doctor-cyber-essentials, --doctor-ce [--json] Generate doctor report in NCSC Cyber Essentials Assessment JSON
               --doctor-export-cyber-essentials, --doctor-export-ce [path] [--json] Export doctor report to NCSC Cyber Essentials file
+              --doctor-bsi, --doctor-grundschutz [--json] Generate doctor report in BSI IT-Grundschutz Assessment JSON
+              --doctor-export-bsi, --doctor-export-grundschutz [path] [--json] Export doctor report to BSI IT-Grundschutz file
               --status [--json]          Print current daemon status and vector metrics
               --security-score [--json]  Evaluate macOS security posture and hardening score
               --harden [--json]          Auto-remediate vulnerabilities & harden macOS security posture
@@ -2335,6 +2345,62 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 if result.success {
                     print("✓ Doctor diagnostic health report exported to NCSC Cyber Essentials file: \(result.path)")
+                    print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
+                } else {
+                    print("✗ Failed to export doctor diagnostic report to: \(result.path)")
+                }
+            }
+            exit(result.success ? 0 : 1)
+        }
+
+        if args.contains("--doctor-bsi") {
+            let report = Diagnostics.runDoctor()
+            let bsi = report.generateBSIGrundschutz()
+            if args.contains("--json") {
+                let dict = report.toBSIGrundschutzDictionary()
+                var jsonDict: [String: Any] = dict
+                jsonDict["version"] = report.version
+                jsonDict["overallStatus"] = report.overallStatus
+                jsonDict["totalChecks"] = report.totalChecks
+                jsonDict["passed"] = report.passedCount
+                jsonDict["warnings"] = report.warningCount
+                jsonDict["failures"] = report.failureCount
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                } else {
+                    print(bsi)
+                }
+            } else {
+                print(bsi)
+            }
+            exit(report.failureCount > 0 ? 1 : 0)
+        }
+
+        if args.contains("--doctor-export-bsi") {
+            let customPath = AppDelegate.valueForOption("--doctor-export-bsi", in: args)
+            let result = Diagnostics.exportDoctorBSIGrundschutz(toPath: customPath)
+            if args.contains("--json") {
+                let jsonDict: [String: Any] = [
+                    "success": result.success,
+                    "path": result.path,
+                    "overallStatus": result.report.overallStatus,
+                    "totalChecks": result.report.totalChecks,
+                    "passed": result.report.passedCount,
+                    "warnings": result.report.warningCount,
+                    "failures": result.report.failureCount,
+                    "framework": "Bundesamt für Sicherheit in der Informationstechnik (BSI) IT-Grundschutz",
+                    "exportedBytes": result.content.utf8.count
+                ]
+                if let jsonData = try? JSONSerialization.data(withJSONObject: jsonDict, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                } else {
+                    print("{\"success\": \(result.success), \"path\": \"\(result.path)\"}")
+                }
+            } else {
+                if result.success {
+                    print("✓ Doctor diagnostic health report exported to BSI IT-Grundschutz file: \(result.path)")
                     print("  Status: \(result.report.overallStatus) (\(result.report.passedCount)/\(result.report.totalChecks) passed)")
                 } else {
                     print("✗ Failed to export doctor diagnostic report to: \(result.path)")
